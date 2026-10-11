@@ -1,0 +1,4 @@
+Original Emberfall pilot authored for this repository using Blender 4.3.2 and repository Python scripts.
+No Meshy, downloaded models, third-party texture packs, motion libraries, or external AI service were used.
+Source projects are editable and both colour/mask images are packed. Runtime material is Built-in Standard.
+Blender is the authoring/export/render tool; tool availability is not Unity or device acceptance.

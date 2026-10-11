@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+"""Prepared mobile UI wiring contracts, not a Unity or rendering test."""
+from pathlib import Path
+root=Path(__file__).resolve().parents[1]
+inv=(root/'Assets/Scripts/UI/GameUI.MobileInventory.cs').read_text()
+rewards=(root/'Assets/Scripts/UI/GameUI.MobileRewards.cs').read_text()
+checks=0
+def check(ok,label):
+ global checks
+ checks+=1
+ if not ok: raise AssertionError(label)
+check('private void DrawMobileInventory()' in inv and 'private void DrawMobileFashion()' in rewards and 'private void DrawMobileChests()' in rewards,'Routing entrypoints')
+check('Modal(' not in inv+rewards,'Mobile panels never reuse fixed desktop modals')
+check('MobilePanelGeometry()' in inv and rewards.count('MobilePanelGeometry()')==2,'Safe-area touch geometry')
+check('SideBySideInventory(layout.Width)' in inv and '"返回列表"' in inv,'Compact detail has an explicit fixed back action')
+check('EquipmentPreview(item)' in inv and 'progression.Equipped(item.slot)' in inv,'Real slot-enhanced candidate and actual equipped item')
+check('当前评分' in inv and '换装后评分' in inv and 'delta < 0' in inv,'Both scores and signed comparison')
+check(all('MobileAttributeLine("'+stat+'"' in inv for stat in ['攻击','防御','生命']),'Actual three-attribute changes')
+check('评分不含机制价值' in inv and '当前机制：' in inv and 'mechanicVariant' in inv,'Mechanism and active variant remain visible')
+check('ProgressionAttention.LevelEligible' in inv and '!worn && !item.locked' in inv,'Level and sale protections')
+check('SellInventoryItem(id)' in inv and 'SetItemLocked(id, locked)' in inv and 'Upgrade(item.id)' in inv and 'Equip(item.id)' in inv,'Mutations use existing stable-ID service paths')
+check('ProgressionService.MaximumUpgrade' in inv and 'Profile.gold >= cost' in inv,'Upgrade cap and affordability')
+check('BuyPotion()' in inv and 'ProgressionService.PotionPrice' in inv,'Potion purchase uses real service price')
+check('BeginTouchScroll(' in inv and inv.count('BeginTouchScroll(')==inv.count('EndTouchScroll();'),'Inventory scrolling balances begin/end')
+check('BeginTouchScroll(' in rewards and rewards.count('BeginTouchScroll(')==rewards.count('EndTouchScroll();'),'Reward scrolling balances begin/end')
+check('BlockUITransition();' in inv and 'BlockUITransition();' in rewards,'New panels retain transition release suppression')
+check('Attention.Rewards' in inv and 'ReviewEquipment(' in inv and inv.index('bool openCatalog = Button(') < inv.index('Badge(catalog,'),'Reward badges render above buttons and equipment review is preserved')
+check('mobileEquipmentPreviews.Clear()' in inv and 'mobileBagProfile == p' in inv and 'mobileWeaponRank == weapon' in inv and 'mobileRowRatio != TouchRatio' in inv,'Bounded preview and row caches invalidate on live progression and layout changes')
+check('StrongestFashion(slot)' in rewards and 'EquipFashion(chosenId)' in rewards and 'UnequipFashion(slot)' in rewards,'Collection uses strongest-owned bonuses and real appearance services')
+check('session.IsInCamp && !ownedLegendary && profile.fashionThreads >= ProgressionService.FashionChoiceCost' in rewards and 'ChooseLegendaryFashion(slot, session.IsInCamp)' in rewards,'Legendary exchange retains all gates')
+check(rewards.count('OpenDungeonChest()')==1 and 'pendingFashionChest&&!session.Progression.Profile.pendingChestReveal' in rewards,'Only an explicit unopened choice can grant')
+check('chestOpening=true;' in rewards and 'chestOpening=false;' in rewards and 'if(result==null)' in rewards,'Failed opening remains retryable')
+check('chestReceiptId != savedReward.Id' in rewards and 'ResetChestReveal()' in rewards,'Saved receipt drives restored display')
+check('FinishChestReveal();' in rewards and 'Time.unscaledTime - ChestDuration' in rewards,'Skip/acknowledge reuse existing lifecycle without reroll')
+check('DrawSingleChestCard(' in rewards and 'DrawRewardRadiance(' in rewards and 'rewardSoundPlayed' in rewards,'Existing animated rarity reveal and sound are reused')
+check('GUI.BeginGroup(clip)' in rewards and 'GUI.EndGroup();' in rewards,'Reveal radiance clips before text/control columns')
+check('RollFashionRarity(roll)' in rewards and 'Random.' not in rewards and 'ChestGoldMinimum(session.Progression.Profile.pendingChestTier)' in rewards,'Rules reflect production probabilities and captured tier without random reward calls')
+check('LastError' in inv and 'LastError' in rewards and 'Feedback(' in inv+rewards,'Failures retain inline and existing service feedback')
+check('DrawMobilePanelChrome(layout, title, subtitle, true, true)' in rewards,'Chest Menu remains available before opening and after failed acknowledgement')
+check('MobileInventoryResult(session.Progression.Equip(item.id)' in inv and 'MobileInventoryResult(session.Progression.Upgrade(item.id)' in inv and 'MobileInventoryResult(session.Progression.BuyPotion()' in inv,'Fixed-footer service actions capture their actual result')
+check('MobileInventoryResult(sold, "已出售 " + item.name, false, false)' in inv,'Sale status uses committed membership without a second global notification')
+check('mobileInventoryStatusOwner != session.Player' in inv and 'mobileFashionStatusOwner != session.Player' in rewards,'Copied status does not leak across replaced heroes')
+check(inv.index('string status = string.IsNullOrEmpty(mobileInventoryStatus)') < inv.index('if (draw) DrawMobileEquipmentScores'),'Full equipment status appears before comparison content')
+check(inv.index('if (statusHeight > 0) y += DrawMobileParagraph') < inv.index('y += DrawMobileParagraph(8, y, w, summary'),'Supplies display full status before quantity and stats')
+check(rewards.index('if (statusHeight > 0) DrawMobileParagraph') < rewards.index('Fill(TouchRect(0, statusHeight'),'Fashion displays full status before all collection cards')
+check('if (!accepted)\n            {\n                CancelMobileScroll();' in inv and 'if (!accepted) { CancelMobileScroll(); mobileFashionScroll = Vector2.zero; }' in rewards,'Failed mutations reset the relevant scroll while successful actions keep their position')
+check('if (panel == Panel.Chests) { CancelMobileScroll(); mobileChestScroll = Vector2.zero; }' in rewards,'Acknowledgement failure exposes its error without resetting the receipt')
+result=rewards[rewards.index('private void DrawMobileChestResult'):rewards.index('private void DrawMobileChestDetails')]
+check(result.index('width, error, 14') < result.index('width, result, 18'),'Full receipt failure is drawn before the reward text')
+print(f'PASS: {checks} mobile inventory/reward source contracts (not Unity execution)')

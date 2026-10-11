@@ -1,0 +1,15 @@
+    public enum ParticleSystemShapeType{Circle,Sphere}public enum ParticleSystemSimulationSpace{World}public enum ParticleSystemStopBehavior{StopEmittingAndClear}
+    public sealed class ParticleSystemRenderer:Renderer{}
+    public static class Random{public static float Range(float a,float b)=>a;}
+    public sealed class ParticleSystem:Component
+    {
+        public struct Particle{public Vector3 position,velocity;public float startLifetime,remainingLifetime,startSize;}
+        public class MainModule{public bool playOnAwake,loop;public ParticleSystemSimulationSpace simulationSpace;public float startLifetime,startSpeed,startSize,gravityModifier;public int maxParticles;public Color startColor;}
+        public class EmissionModule{public float rateOverTime;}
+        public class ShapeModule{public ParticleSystemShapeType shapeType;public float radius,radiusThickness;}
+        public class SizeOverLifetimeModule{public bool enabled;public MinMaxCurve size;}
+        public struct MinMaxCurve{public MinMaxCurve(float a,AnimationCurve b){}}
+        public MainModule main=new MainModule();public EmissionModule emission=new EmissionModule();public ShapeModule shape=new ShapeModule();public SizeOverLifetimeModule sizeOverLifetime=new SizeOverLifetimeModule();
+        public bool isPlaying,isEmitting;public void Play(){isPlaying=isEmitting=true;}public void Stop(bool children,ParticleSystemStopBehavior mode){isPlaying=isEmitting=false;}
+        public Particle[] Values=new Particle[0];public int GetParticles(Particle[] buffer){Array.Copy(Values,buffer,Values.Length);return Values.Length;}public void SetParticles(Particle[] buffer,int count){Values=new Particle[count];Array.Copy(buffer,Values,count);}
+    }

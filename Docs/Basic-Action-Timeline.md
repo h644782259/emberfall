@@ -1,0 +1,9 @@
+# Immediate basic-attack contact and recovery
+
+Basic attacks retain immediate damage/projectile emission. Their model now starts at the contact pose (melee/staff) or bow-release pose, then recovers over the actual attack interval after mobility and expedition attack-speed modifiers. The model does not advance this newly started basic action again in its creation frame. This removes the old post-hit anticipation rather than delaying combat behind a new timer.
+
+The bow begins returning from its drawn position at the same phase that hides the held arrow. A replacement arrow appears in the late recovery. BasicActionTimeline owns the shared contact/release, recovery-duration and bow rules. Skills retain their existing anticipation/charge behavior; this change does not claim to synchronize every skill animation.
+
+Teleport, committed dungeon entry, world teardown and death clear the old model action when the combat epoch changes. There is no pending basic-attack damage queue to survive cancellation. Existing projectile owner/death/terminal/epoch retirement remains in place. Damage already committed in the input frame is not undone by later cancellation.
+
+Validation: BasicActionTimelineTests covers minimum attack interval, normal/200ms/500ms samples, finite recovery, bow release visibility and invalid duration fallback. BasicActionTimelineSourceTests.py checks production connections; CombatTimingSourceTests.py checks timing contracts. These rule and source checks do not establish Unity 6 API, rendered animation, controller integration or device acceptance. Camera footage and visual quality require runtime review.

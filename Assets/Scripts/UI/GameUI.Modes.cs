@@ -1,0 +1,481 @@
+using UnityEngine;
+namespace Emberfall
+{
+ public sealed partial class GameUI
+ {
+  private string entryRewardSelection,entryRewardContext,entryRewardHoverKey;
+  private Rect entryRewardViewport,entryRewardPopupRect,entryRewardAnchor;
+  private EntryRewardPreview entryRewardPopup;
+  private System.Collections.Generic.List<EntryRewardPreview> entryRewardPopupVariants;
+  private Vector2 entryRewardScreenAnchor,entryRewardScreenEnd,entryRewardPopupScroll;
+  private bool entryRewardPopupVisible,entryRewardAnchorIsRoot;
+  private Vector2 entryRewardContentOrigin;
+  private void BeginEntryRewardPopup()
+  {
+   entryRewardPopup=null;entryRewardPopupVariants=null;entryRewardAnchorIsRoot=false;
+   if(suppressRewardHover&&!dismissedRewardAnchor.Contains(Mouse))suppressRewardHover=false;
+   if((!MobileControls.Active&&!(entryRewardSelection??" ").StartsWith("merchant:"))||!entryRewardPopupVisible||Event.current.type!=EventType.MouseDown)return;
+   Vector2 point=Event.current.mousePosition;
+   if(entryRewardPopupRect.Contains(point))
+   {
+    float closeUnit=MobileControls.Active?TouchRatio:1;bool compactClose=entryRewardPopup!=null&&CompactRewardItem(entryRewardPopup);
+    if(new Rect(entryRewardPopupRect.xMax-(compactClose?48:44)*closeUnit,entryRewardPopupRect.y+(compactClose?4:0)*closeUnit,44*closeUnit,44*closeUnit).Contains(point))entryRewardSelection=null;
+    if(entryRewardSelection==null)Event.current.Use();
+   }
+   else if(!entryRewardAnchor.Contains(point))entryRewardSelection=null;
+  }
+  private void DrawEntryRewardPopup()
+  {
+   entryRewardPopupVisible=entryRewardPopup!=null;
+   if(entryRewardPopup==null)return;
+   float u=MobileControls.Active?TouchRatio:1f;
+   if(!entryRewardAnchorIsRoot){Vector2 at=GUIUtility.ScreenToGUIPoint(entryRewardScreenAnchor),end=GUIUtility.ScreenToGUIPoint(entryRewardScreenEnd);entryRewardAnchor=new Rect(at.x,at.y,end.x-at.x,end.y-at.y);}
+   if(!entryRewardViewport.Overlaps(entryRewardAnchor)){entryRewardPopupVisible=false;return;}
+   bool comparing=entryRewardPopup.GearSlot.HasValue||entryRewardPopup.AppearanceSlot.HasValue;
+   bool compact=CompactRewardItem(entryRewardPopup);
+   float w=Mathf.Min((comparing?(IsWornReward(entryRewardPopup)?340:620):compact?InventoryGridGeometry.ItemPopupWidth:320)*u,width-24*u),textWidth=w-40*u;
+   float contentHeight=DrawRewardDetailRows(entryRewardPopup,textWidth/u,u,false)*u;
+   float headerHeight=comparing?0:compact?72:98;
+   float comparisonHeight=entryRewardPopupVariants!=null&&entryRewardPopupVariants.Count>1?48*u:0;
+   float h=Mathf.Min(compact?InventoryGridGeometry.ItemPopupHeight*u:contentHeight+(headerHeight+10)*u+comparisonHeight,height-24*u);
+   float x=entryRewardAnchor.xMax+10*u;
+   if(x+w>width-12*u)x=entryRewardAnchor.x-w-10*u;
+   x=Mathf.Clamp(x,12*u,Mathf.Max(12*u,width-w-12*u));
+   float y=Mathf.Clamp(entryRewardAnchor.y,12*u,Mathf.Max(12*u,height-h-12*u));
+   Rect box=new Rect(x,y,w,h);entryRewardPopupRect=box;blockedRects.Add(box);
+   if(!comparing){Fill(box,ink);Border(box,entryRewardPopup.QualityColor,2*u);}
+   if(compact)
+   {
+    var quantity=System.Text.RegularExpressions.Regex.Match(entryRewardPopup.Description??"",@"数量[ ：]*(.+)");
+    string quantityText="数量："+(quantity.Success?quantity.Groups[1].Value:entryRewardPopup.Quantity.ToString());
+    float quantityWidth=Mathf.Min(90*u,Style(Mathf.RoundToInt(11*u),true).CalcSize(new GUIContent(quantityText)).x+8*u);
+    float quantityX=box.xMax-52*u-quantityWidth;
+    Text(new Rect(x+8*u,y+4*u,Mathf.Max(0,quantityX-x-12*u),44*u),entryRewardPopup.Name,Mathf.RoundToInt(13*u),pale,true,false,TextAnchor.MiddleLeft);
+    Text(new Rect(quantityX,y+4*u,quantityWidth,44*u),quantityText,Mathf.RoundToInt(11*u),pale,true,false,TextAnchor.MiddleRight);
+    DrawIcon(new Rect(x+10*u,y+46*u,22*u,22*u),entryRewardPopup.Icon,entryRewardPopup.QualityColor);
+    DrawDetailTag(new Rect(x+40*u,y+46*u,62*u,21*u),GameBalance.RarityName(entryRewardPopup.Rarity),entryRewardPopup.QualityColor,u);
+   }
+   else if(!comparing)
+   {
+   DrawEntryRewardIcon(new Rect(x+12*u,y+12*u,48*u,48*u),entryRewardPopup,u);
+   Text(new Rect(x+70*u,y+10*u,w-122*u,44*u),entryRewardPopup.Name,Mathf.RoundToInt(14*u),entryRewardPopup.QualityColor,true,true);
+   string level=System.Text.RegularExpressions.Regex.Match(entryRewardPopup.Description,@"Lv\.?\d+").Value;
+   string[] tags={EntryRewardKind(entryRewardPopup),GameBalance.RarityName(entryRewardPopup.Rarity),level};
+   float tagX=x+12*u;
+   foreach(string tag in tags)if(tag.Length>0)
+   {float tagW=Mathf.Max(48,tag.Length*12+16)*u;Rect chip=new Rect(tagX,y+66*u,tagW,23*u);Fill(chip,new Color(entryRewardPopup.QualityColor.r,entryRewardPopup.QualityColor.g,entryRewardPopup.QualityColor.b,.18f));Text(chip,tag,Mathf.RoundToInt(10*u),pale,true,false,TextAnchor.MiddleCenter);tagX+=tagW+6*u;}
+   }
+   if(comparisonHeight>0)
+   {
+    float variantWidth=(w-(MobileControls.Active?72:24)*u)/entryRewardPopupVariants.Count;
+    for(int i=0;i<entryRewardPopupVariants.Count;i++)
+    {
+     var variant=entryRewardPopupVariants[i];
+     if(Button(new Rect(x+12*u+i*variantWidth,y+headerHeight*u,variantWidth-4*u,44*u),GameBalance.RarityName(variant.Rarity),variant.QualityColor))
+     {entryRewardSelection=variant.Key;entryRewardHoverKey=variant.Key;entryRewardPopup=variant;entryRewardPopupScroll=Vector2.zero;}
+    }
+   }
+   entryRewardPopupScroll=BeginTouchScroll("entry-reward-popup",new Rect(x+12*u,y+headerHeight*u+comparisonHeight,w-24*u,h-(headerHeight+10)*u-comparisonHeight),entryRewardPopupScroll,new Rect(0,0,textWidth,contentHeight),showScrollbar:false);
+   DrawRewardDetailRows(entryRewardPopup,textWidth/u,u,true);
+   EndTouchScroll();
+   if((MobileControls.Active||(entryRewardSelection??" ").StartsWith("merchant:"))&&PopupCloseButton(new Rect(box.xMax-(compact?48:44)*u,y+(compact?4:0)*u,44*u,44*u)))entryRewardSelection=null;
+  }
+  private string GemRewardDescription(EquipmentMechanic gem,Rarity rarity,int rank=0)
+  {
+   string attribute=BuildCatalog.IsAttributeGem(gem)?BuildCatalog.GemAttributeSummary(gem,rarity,rank):BuildCatalog.AttributeLabel(BuildCatalog.MechanicAttribute(gem))+" +"+(BuildCatalog.MechanicAttributeValue(gem,rank)*100).ToString("0.#")+"%";
+   return BuildCatalog.GemName(gem)+"\n"+GameBalance.SlotName(BuildCatalog.MechanicSlot(gem))+"槽\n基础属性\n"+attribute;
+  }
+  private string GemDropDescription(EquipmentMechanic gem,bool preview)
+  {return BuildCatalog.GemName(gem)+"\n"+GameBalance.ClassName(BuildCatalog.MechanicClass(gem))+"专用 · "+GameBalance.SlotName(BuildCatalog.MechanicSlot(gem))+"槽\n"+(preview?"通关宝箱必得整件；已拥有则转为3枚星烬碎片。\n":"")+"机制\n"+BuildCatalog.MechanicDescription(gem);}
+  private void InspectRewardItem(Rect hit,EntryRewardPreview item,bool clickToInspect=false)
+  {
+   if(!MobileControls.Active&&suppressRewardHover)return;
+   if((MobileControls.Active||clickToInspect)&&GUI.Button(hit,GUIContent.none,invisibleButton)){entryRewardSelection=entryRewardSelection==item.Key?null:item.Key;entryRewardPopupScroll=Vector2.zero;}
+   bool hover=hit.Contains(Event.current.mousePosition)&&GUI.enabled;
+   if(!MobileControls.Active&&hover)entryRewardHoverKey=item.Key;
+   if(MobileControls.Active||clickToInspect?entryRewardSelection==item.Key:hover||entryRewardPopupVisible&&entryRewardHoverKey==item.Key&&entryRewardPopupRect.Contains(Mouse))
+   {
+    tooltip=null;entryRewardAnchorIsRoot=false;entryRewardViewport=new Rect(0,0,width,height);entryRewardPopup=item;
+    entryRewardScreenAnchor=GUIUtility.GUIToScreenPoint(hit.position);entryRewardScreenEnd=GUIUtility.GUIToScreenPoint(new Vector2(hit.xMax,hit.yMax));
+   }
+  }
+  private EntryRewardPreview ActualEquipmentPreview(ItemData item)
+  {
+   item=session.Progression.PreviewUpgrade(item,item.upgradeLevel);
+   string description=ItemTitle(item)+"\n"+GameBalance.RarityName(item.rarity)+" · Lv"+item.level+"\n基础词条\n攻击  "+item.baseAttack+"\n防御  "+item.baseDefense+"\n生命  "+item.baseHealth;
+   if(item.criticalChance>0)description+="\n暴击率  "+(item.criticalChance*100).ToString("0.##")+"%";
+   if(item.criticalDamageBonus>0)description+="\n暴击伤害  "+(item.criticalDamageBonus*100).ToString("0.##")+"%";
+   if(item.attackPercent>0)description+="\n攻击加成  "+(item.attackPercent*100).ToString("0.##")+"%";
+   return new EntryRewardPreview{Key="obtained:"+item.id,Equipment=item,GearSlot=item.slot,Name=ItemTitle(item),Description=description,Rarity=item.rarity,Tint=GameBalance.RarityColor(item.rarity),Icon=UIIconAtlas.EquipmentCardIcon(item,session.Progression.Profile.heroClass)};
+  }
+  private string EntryRewardKind(EntryRewardPreview item)
+  {return item.Key.StartsWith("fashion:")?"时装":item.Key.Contains("gem:")?"宝石":item.Key=="shard"||item.Key=="thread"||(item.Key.Contains("refinement")||item.Key.Contains("affix-reforge"))?"材料":item.Key=="gold"?"货币":item.Key.Contains("potion")?"药剂":"装备";}
+  private void DrawEntryRewardIcon(Rect icon,EntryRewardPreview item,float u,bool compact=false)
+  {
+   bool fashion=item.Key.StartsWith("fashion:");
+   if(fashion){DrawIcon(icon,UIIconAtlas.ControlDisc(),card);DrawIcon(icon,UIIconAtlas.ControlRing(),item.QualityColor);}
+   else {Fill(icon,card);Border(icon,item.QualityColor,2*u);}
+   float labelHeight=compact?12:14,labelFont=compact?8:9;
+   float artSize=Mathf.Max(1,Mathf.Min(icon.width-(compact?6:12)*u,icon.height-(compact?14:22)*u));
+   DrawIcon(new Rect(icon.center.x-artSize*.5f,icon.y+(icon.height-labelHeight*u-artSize)*.5f,artSize,artSize),item.Icon,item.QualityColor);
+   Rect label=new Rect(icon.x+2*u,icon.yMax-labelHeight*u,icon.width-4*u,(compact?labelHeight:labelHeight-2)*u);Fill(label,new Color(.08f,.15f,.19f));
+   Text(label,EntryRewardKind(item),Mathf.RoundToInt(labelFont*u),item.QualityColor,true,false,TextAnchor.MiddleCenter);
+  }
+  private bool CompactRewardItem(EntryRewardPreview item)
+  {return (item.Key.Contains("refinement")||item.Key.Contains("affix-reforge"))||item.Key=="shard"||item.Key=="thread"||item.Key=="gold"||item.Key=="experience"||item.Key.Contains("potion");}
+  private float DrawEntryRewardRows(EntryRewardPreview item,float available,float u,bool draw)
+  {
+   float y=0;string[] lines=item.Description.Split('\n');
+   for(int i=1;i<lines.Length;i++)
+   foreach(string raw in (item.Key.StartsWith("fashion:")?lines[i].Split(new[]{" · "},System.StringSplitOptions.RemoveEmptyEntries):new[]{lines[i]}))
+   {
+    string line=raw.Trim();if(line.Length==0||line.StartsWith("Lv")||line==GameBalance.RarityName(item.Rarity)||line=="兵装"||line=="羽翼")continue;
+    if(CompactRewardItem(item)&&line.StartsWith("数量"))continue;
+    bool section=line.StartsWith("实际属性")||line.StartsWith("基础属性")||line.StartsWith("随机附加")||line.StartsWith("机制");
+    var stat=System.Text.RegularExpressions.Regex.Match(line,@"^(攻击加成|攻击|防御|生命|暴击率|暴击几率|暴击伤害|移动速度|受到伤害减免|技能冷却缩减|能量回复|护甲|数量)[ ：]*(.+)$");
+    if(stat.Success)
+    {
+     if(draw){Rect row=new Rect(0,y*u,available*u,30*u);Fill(row,new Color(.07f,.12f,.16f));string name=stat.Groups[1].Value;
+      DrawIcon(new Rect(5*u,(y+5)*u,20*u,20*u),UIIconAtlas.Utility(name=="攻击"?"attack":name=="防御"?"defense":name=="生命"?"health":name=="数量"?"shard":"core"),jade);
+      DrawGemEffectText(new Rect(30*u,y*u,Mathf.Min(76,available*.45f)*u,30*u),name,Mathf.RoundToInt(11*u),muted,false,TextAnchor.MiddleLeft);
+      Text(new Rect((30+Mathf.Min(76,available*.45f))*u,y*u,Mathf.Max(36,available-36-Mathf.Min(76,available*.45f))*u,30*u),stat.Groups[2].Value,Mathf.RoundToInt(12*u),pale,true,false,TextAnchor.MiddleRight);}
+     y+=34;continue;
+    }
+    if(CompactRewardItem(item))continue;
+    float h=Mathf.Max(24*u,Style(Mathf.RoundToInt(section?12*u:11*u),section,true).CalcHeight(new GUIContent(line),(available-16)*u)+8*u);
+    if(draw){if(section)Fill(new Rect(0,(y+5)*u,3*u,h-10*u),item.QualityColor);Text(new Rect(8*u,y*u,(available-16)*u,h),line,Mathf.RoundToInt(section?12*u:11*u),section?item.QualityColor:muted,section,true);}
+    y+=h/u+4;
+   }
+   return y;
+  }
+  // Retain range/affix notes in previews while using the same stat rows for actual rewards.
+  private bool IsWornReward(EntryRewardPreview item)
+  {
+   if(item.Equipment!=null)return IsEquipped(item.Equipment);
+   if(item.AppearanceSlot.HasValue&&item.Key!=null){var worn=session.Progression.EquippedFashion(item.AppearanceSlot.Value);return worn!=null&&item.Key=="fashion:"+worn.id;}
+   return false;
+  }
+  private float DrawRewardDetailRows(EntryRewardPreview item,float available,float u,bool draw)
+  {
+   if(CompactRewardItem(item)){if(draw)Text(new Rect(0,0,available*u,44*u),ResourceDescription(item.Key),Mathf.RoundToInt(12*u),new Color(.78f,.84f,.9f),false,true);return 44;}
+   if(!item.GearSlot.HasValue&&!item.AppearanceSlot.HasValue)return DrawEntryRewardRows(item,available,u,draw);
+   string current="";ItemData currentEquipment=null;
+   if(item.GearSlot.HasValue){var equipped=session.Progression.Equipped(item.GearSlot.Value);if(equipped!=null){var preview=ActualEquipmentPreview(equipped);current=preview.Description;currentEquipment=preview.Equipment;}}
+   else {var equipped=session.Progression.EquippedFashion(item.AppearanceSlot.Value);if(equipped!=null)current=ProgressionService.FashionBonus(equipped);}
+   var baseline=RewardStatValues(current);var selected=RewardStatValues(item.Description);
+   foreach(var pair in baseline)if(!selected.ContainsKey(pair.Key))selected[pair.Key]=pair.Value.Contains("×")?"×100%":pair.Value.Contains("%")?"0%":"0";
+   bool selectedWorn=IsWornReward(item);int firstColumn=selectedWorn?1:0;
+   float gap=2,cardWidth=selectedWorn?available:(available-gap)*.5f,y=92;
+   EntryRewardPreview worn=null;
+   if(currentEquipment!=null)worn=ActualEquipmentPreview(currentEquipment);
+   if(item.AppearanceSlot.HasValue){var f=session.Progression.EquippedFashion(item.AppearanceSlot.Value);if(f!=null)worn=new EntryRewardPreview{Name=f.name,Rarity=f.rarity,AppearanceSlot=f.slot};}
+   if(draw){Fill(new Rect(0,0,available*u,DrawRewardDetailRows(item,available,u,false)*u),ink);if(!selectedWorn)Fill(new Rect(cardWidth*u,0,gap*u,DrawRewardDetailRows(item,available,u,false)*u),new Color(.15f,.29f,.31f));}
+   if(draw)for(int col=firstColumn;col<2;col++){float x=(col-firstColumn)*(cardWidth+gap);Rect cardRect=new Rect(x*u,0,cardWidth*u,DrawRewardDetailRows(item,available,u,false)*u);Fill(cardRect,ink);Border(cardRect,col==0?muted:jade);}
+   var progression=session.Progression;
+   ItemData owned=item.Equipment==null?null:progression.Profile.inventory.Find(v=>v!=null&&v.id==item.Equipment.id);
+   if(draw)for(int col=firstColumn;col<2;col++)
+   {
+    var value=col==0?worn:item;float x=(col-firstColumn)*(cardWidth+gap);Color accent=value==null?muted:GameBalance.RarityColor(value.Rarity);
+    Fill(new Rect(x*u,0,cardWidth*u,86*u),new Color(.02f,.035f,.055f));
+    Text(new Rect((x+10)*u,2*u,(cardWidth-20)*u,20*u),col==0||selectedWorn?"已穿戴":"所选物品",Mathf.RoundToInt(12*u),col==0?pale:jade,true);
+    string name=value==null?"未穿戴":string.IsNullOrEmpty(value.Name)?"所选时装":value.Name;
+    string level=value==null?"":System.Text.RegularExpressions.Regex.Match(value.Description??"",@"Lv\.?\d+").Value;
+    if(level.Length>0)name=level+"  "+name;
+    Text(new Rect((x+10)*u,24*u,(cardWidth-20-(MobileControls.Active&&item.AllowActions&&col==1?44:0))*u,32*u),name,Mathf.RoundToInt(15*u),pale,true,true);
+    if(value!=null){DrawDetailTag(new Rect((x+8)*u,60*u,60*u,22*u),GameBalance.RarityName(value.Rarity),accent,u);DrawDetailTag(new Rect((x+74)*u,60*u,Mathf.Max(36,cardWidth-82)*u,22*u),item.GearSlot.HasValue?GameBalance.SlotName(item.GearSlot.Value):item.AppearanceSlot==FashionSlot.Wings?"羽翼":"兵装",jade,u);}
+   }
+   FashionData ownedFashion=item.AppearanceSlot.HasValue&&item.Key!=null&&item.Key.StartsWith("fashion:")?progression.Profile.fashions.Find(v=>v!=null&&"fashion:"+v.id==item.Key):null;
+   FashionData currentFashion=item.AppearanceSlot.HasValue?progression.EquippedFashion(item.AppearanceSlot.Value):null;
+   FashionData selectedFashion=ownedFashion??(item.AppearanceSlot.HasValue?new FashionData{slot=item.AppearanceSlot.Value,rarity=item.Rarity}:null);
+   for(int section=0;section<(item.GearSlot.HasValue?2:1);section++)
+   {
+    bool any=false;foreach(var stat in selected)if(!item.GearSlot.HasValue||(IsRandomEquipmentStat(stat.Key)?1:0)==section)any=true;
+    if(!any)continue;
+    if(draw)for(int col=firstColumn;col<2;col++){
+     float x=(col-firstColumn)*(cardWidth+gap);
+     Fill(new Rect(x*u,y*u,cardWidth*u,28*u),new Color(.07f,.13f,.16f));
+     Fill(new Rect((x+8)*u,(y+8)*u,3*u,12*u),jade);
+     Text(new Rect((x+18)*u,y*u,(cardWidth-24)*u,28*u),item.GearSlot.HasValue?(section==0?"基础词条":col==1&&item.Clear?"随机词条 · 最多"+ProgressionService.EquipmentAffixLimit(item.Rarity)+"项":"随机词条"):"基础属性 / 升阶加成",Mathf.RoundToInt(12*u),pale,true,false,TextAnchor.MiddleLeft);
+    }
+    y+=32;
+    foreach(var pair in selected)
+    {
+     if(item.GearSlot.HasValue&&(IsRandomEquipmentStat(pair.Key)?1:0)!=section)continue;
+     string before;if(!baseline.TryGetValue(pair.Key,out before))before=pair.Value.Contains("×")?"×100%":pair.Value.Contains("%")?"0%":"0";
+     if(draw)for(int col=firstColumn;col<2;col++){
+      if(item.GearSlot.HasValue&&!EquipmentComparisonPresentation.HasNonzeroStat(col==0?before:pair.Value))continue;
+      float x=(col-firstColumn)*(cardWidth+gap);Fill(new Rect(x*u,y*u,cardWidth*u,34*u),card);
+      DrawIcon(new Rect((x+8)*u,(y+9)*u,16*u,16*u),UIIconAtlas.Utility(pair.Key=="攻击"?"attack":pair.Key=="防御"?"defense":pair.Key=="生命"?"health":"core"),jade);
+      Text(new Rect((x+30)*u,y*u,Mathf.Min(72,cardWidth*.28f)*u,34*u),pair.Key,Mathf.RoundToInt(11*u),muted,true,false,TextAnchor.MiddleLeft);
+      if(item.AppearanceSlot.HasValue)
+      {
+       var f=col==0?currentFashion:selectedFashion;
+       int basis=ProgressionService.FashionBaseStat(f,pair.Key),rank=ProgressionService.FashionRankStat(f,pair.Key);
+       float start=34+Mathf.Min(72,cardWidth*.28f),space=cardWidth-start-6;
+       string prefix=pair.Key=="暴击几率"?"×":"";
+       DrawComparedValue(new Rect((x+start)*u,y*u,space*.55f*u,34*u),prefix+basis+"%",col==0||selectedWorn?0:basis.CompareTo(ProgressionService.FashionBaseStat(currentFashion,pair.Key)),u,false);
+       DrawComparedValue(new Rect((x+start+space*.55f)*u,y*u,space*.45f*u,34*u),"+"+rank+"%",item.Clear||item.UnenhancedReward||col==0||selectedWorn?0:rank.CompareTo(ProgressionService.FashionRankStat(currentFashion,pair.Key)),u,true);
+       continue;
+      }
+      int bonus=EquipmentStatBonus(col==0?currentEquipment:item.Equipment,pair.Key),oldBonus=EquipmentStatBonus(currentEquipment,pair.Key);
+      bool bonusVisible=bonus>0&&!(item.Clear&&col==1);
+      float valueX=34+Mathf.Min(72,cardWidth*.28f),room=cardWidth-valueX-6;
+      float valueWidth=bonusVisible?room*.56f:room;
+      DrawComparedValue(new Rect((x+valueX)*u,y*u,valueWidth*u,34*u),col==0?before:pair.Value,col==0||selectedWorn?0:EquipmentComparisonPresentation.StatDirection(pair.Value,before),u,false);
+      if(bonusVisible)DrawComparedValue(new Rect((x+valueX+valueWidth)*u,y*u,(room-valueWidth)*u,34*u),"+"+bonus,item.Clear||item.UnenhancedReward||col==0||selectedWorn?0:bonus.CompareTo(oldBonus),u,true);
+     }
+     y+=38;
+    }
+   }
+   if(item.AllowActions&&(owned!=null||ownedFashion!=null))
+   {
+    if(draw)
+    {
+     float actionX=selectedWorn?0:cardWidth+gap;
+     if(InventoryPictogramAction(new Rect((actionX+cardWidth*.15f)*u,y*u,cardWidth*.7f*u,40*u),selectedWorn?"卸下":"穿戴",UIIconAtlas.Utility("confirm"),selectedWorn||owned==null||owned.level<=progression.Profile.level,selectedWorn,true))
+     {
+      bool saved=owned!=null?(selectedWorn?progression.Unequip(owned.slot):progression.Equip(owned.id)):(selectedWorn?progression.UnequipFashion(ownedFashion.slot):progression.EquipFashion(ownedFashion.id));
+      Feedback(saved,selectedWorn?"已卸下":"已穿戴");if(saved)RebuildBagItems();
+     }
+    }
+    y+=48;
+   }
+   return y;
+  }
+  private void DrawDetailTag(Rect r,string label,Color tint,float u)
+  {Fill(r,new Color(.02f,.035f,.055f,1));Border(r,new Color(tint.r,tint.g,tint.b,.85f));Text(r,label,Mathf.RoundToInt(12*u),Color.Lerp(tint,Color.white,.78f),true,false,TextAnchor.MiddleCenter);}
+  private void DrawComparedValue(Rect r,string value,int direction,float u,bool enhancement)
+  {
+   Color tint=direction>0?new Color(.3f,.94f,.55f):direction<0?new Color(1f,.38f,.36f):enhancement?gold:pale;
+   if(direction!=0)r.width-=18*u;
+   int size=Mathf.RoundToInt(15*u);while(size>Mathf.RoundToInt(9*u)&&Style(size,true,false).CalcSize(new GUIContent(value)).x>r.width)size--;
+   Text(r,value,size,tint,true,false,TextAnchor.MiddleLeft);
+   if(direction!=0)DrawIcon(new Rect(r.x+Mathf.Min(r.width,Style(size,true,false).CalcSize(new GUIContent(value)).x)+2*u,r.center.y-7*u,14*u,14*u),UIIconAtlas.StatTrendArrow(direction>0),tint);
+  }
+  private static bool IsRandomEquipmentStat(string name)
+  {return name=="攻击加成"||name=="暴击率"||name=="暴击伤害";}
+  private static int EquipmentStatBonus(ItemData item,string name)
+  {return item==null?0:name=="攻击"?item.attack-item.baseAttack:name=="防御"?item.defense-item.baseDefense:name=="生命"?item.health-item.baseHealth:0;}
+  private void DrawEquipmentStatParts(Rect area,string basis,int bonus,float u,Color tint)
+  {
+   string extra=bonus>0?" +"+bonus:"";int size=Mathf.RoundToInt(11*u);
+   while(size>Mathf.RoundToInt(8*u)&&Style(size,true,false).CalcSize(new GUIContent(basis+extra)).x>area.width)size--;
+   float extraWidth=Style(size,true,false).CalcSize(new GUIContent(extra)).x;
+   Text(new Rect(area.x,area.y,Mathf.Max(0,area.width-extraWidth),area.height),basis,size,tint,true,false,TextAnchor.MiddleRight);
+   if(bonus>0)Text(new Rect(area.xMax-extraWidth,area.y,extraWidth,area.height),extra,size,jade,true,false,TextAnchor.MiddleRight);
+  }
+  private static System.Collections.Generic.Dictionary<string,string> RewardStatValues(string description)
+  {
+   var values=new System.Collections.Generic.Dictionary<string,string>();
+   foreach(string raw in description.Split(new[]{"\n"," · "},System.StringSplitOptions.RemoveEmptyEntries)){
+    var match=System.Text.RegularExpressions.Regex.Match(raw.Trim(),@"^(攻击加成|攻击|防御|生命|暴击率|暴击几率|暴击伤害|移动速度|受到伤害减免)[ ：]*(.+)$");
+    if(match.Success&&EquipmentComparisonPresentation.HasNonzeroStat(match.Groups[2].Value))values[match.Groups[1].Value]=match.Groups[2].Value;
+   }
+   return values;
+  }
+  private sealed class EntryRewardPreview
+  {
+   public ItemData Equipment;public string Key,Name,Description;public Texture2D Icon;public Color Tint;public Color QualityColor {get{return GameBalance.RarityColor(Rarity);}}public Rarity Rarity;public bool Clear;public bool UnenhancedReward;public bool AllowActions;public int Quantity=1;public ItemSlot? GearSlot;public FashionSlot? AppearanceSlot;
+  }
+  private readonly System.Collections.Generic.Dictionary<string,System.Collections.Generic.List<EntryRewardPreview>> entryPreviewCache = new System.Collections.Generic.Dictionary<string,System.Collections.Generic.List<EntryRewardPreview>>();
+  private System.Collections.Generic.List<EntryRewardPreview> EntryRewardPreviews(int mode,int tier,bool chapter)
+  {
+   string cacheKey=session.Progression.CurrentSlotId+":"+session.Progression.Profile.heroClass+":"+session.Progression.Profile.level+":"+mode+":"+tier+":"+chapter+":"+session.SelectedChapterNode+":"+session.SelectedChapterDifficulty+":"+session.SelectedChapterTier;
+   System.Collections.Generic.List<EntryRewardPreview> cached;
+   if(entryPreviewCache.TryGetValue(cacheKey,out cached))return cached;
+   var result=new System.Collections.Generic.List<EntryRewardPreview>();int level=chapter?ProgressionService.EquipmentGenerationLevel(session.Progression.Profile.level):AdventureRewardRules.DungeonLevel(tier);
+   int enemyTier=chapter?session.SelectedChapterTier:tier;
+   bool hasBoss=chapter?session.SelectedChapterNode==ChapterNode.StarPlatform:mode==-1||mode==2||mode==3;
+   // Each reachable quality has its own identity and graphic. Slot count comes from the completed-tier table.
+   for(int slotIndex=0;slotIndex<3;slotIndex++)
+   {
+    var slot=(ItemSlot)slotIndex;int count=DropPreviewRules.SlotCount(mode,tier,slot);if(count==0)continue;
+    foreach(var rarity in DropPreviewRules.ClearRarities(mode,tier))
+     result.Add(new EntryRewardPreview{Key="clear:"+slot+":"+rarity,GearSlot=slot,Clear=true,Rarity=rarity,Name=GameBalance.SlotName(slot),Icon=UIIconAtlas.EquipmentCardIcon(slot,level,rarity,session.Progression.Profile.heroClass),Tint=GameBalance.RarityColor(rarity),Description=ProgressionService.EquipmentDropPreview(slot,rarity,level)});
+   }
+   if(chapter&&session.SelectedChapterNode==ChapterNode.StarPlatform)
+   foreach(var gem in BuildCatalog.GemsFor(session.Progression.Profile.heroClass))foreach(var rarity in new[]{Rarity.Epic,Rarity.Legendary})
+    result.Add(new EntryRewardPreview{Key="gem:"+gem+":"+rarity,Clear=true,Rarity=rarity,Name=BuildCatalog.GemName(gem),Icon=UIIconAtlas.Utility("gem"),Tint=GameBalance.RarityColor(rarity),Description=GemRewardDescription(gem,rarity)});
+   if(!(chapter&&session.SelectedChapterNode==ChapterNode.StarPlatform))result.Add(new EntryRewardPreview{Key="refinement",Clear=true,Rarity=Rarity.Epic,Name="装备洗练石",Icon=UIIconAtlas.Utility("gem"),Tint=GameBalance.RarityColor(Rarity.Epic),Description="装备洗练石\n数量  "+ProgressionService.ChestStackMinimum(true,tier)+"～"+ProgressionService.ChestStackMaximum(true,tier)+"\n提高装备属性数值，不会降低。"});
+   result.Add(new EntryRewardPreview{Key="shard",Clear=true,Rarity=Rarity.Rare,Name="星烬碎片",Icon=UIIconAtlas.Utility("shard"),Tint=jade,Description="星烬碎片\n数量："+ProgressionService.ChestStackMinimum(false,tier)+"～"+ProgressionService.ChestStackMaximum(false,tier)+"\n用于机制宝石兑换、升阶与升华。"});
+   if(AdventureRewardRules.ChestFashion(mode,chapter))foreach(var rarity in new[]{Rarity.Legendary})foreach(var slot in new[]{FashionSlot.Weapon,FashionSlot.Wings})
+    result.Add(new EntryRewardPreview{Key="fashion:"+slot+":"+rarity,AppearanceSlot=slot,Clear=true,Rarity=rarity,Name=ProgressionService.FashionName(slot,rarity,session.Progression.Profile.heroClass),Icon=UIIconAtlas.FashionCardIcon(slot,(int)rarity,session.Progression.Profile.heroClass),Tint=GameBalance.RarityColor(rarity),Description=ProgressionService.FashionName(slot,rarity,session.Progression.Profile.heroClass)+"\n"+(slot==FashionSlot.Weapon?"兵装":"羽翼")+" · "+GameBalance.RarityName(rarity)+"\n"+ProgressionService.FashionBonus(slot,rarity)});
+   if(AdventureRewardRules.ChestAffixReforge(chapter?(int)session.SelectedChapterNode:mode,chapter)){var reforge=ResourceItemPreview("affix-reforge",1);reforge.Clear=true;result.Add(reforge);}
+   if(entryPreviewCache.Count>=64)entryPreviewCache.Clear();
+   entryPreviewCache[cacheKey]=result;return result;
+  }
+  private sealed class EntryRewardGroup
+  {
+   public readonly System.Collections.Generic.List<EntryRewardPreview> Variants=new System.Collections.Generic.List<EntryRewardPreview>();
+   public EntryRewardPreview First {get{return Variants[0];}}
+  }
+  private readonly System.Collections.Generic.Dictionary<System.Collections.Generic.List<EntryRewardPreview>,System.Collections.Generic.List<EntryRewardGroup>> entryRewardGroups=new System.Collections.Generic.Dictionary<System.Collections.Generic.List<EntryRewardPreview>,System.Collections.Generic.List<EntryRewardGroup>>();
+  private System.Collections.Generic.List<EntryRewardGroup> GroupEntryRewards(System.Collections.Generic.List<EntryRewardPreview> items)
+  {
+   System.Collections.Generic.List<EntryRewardGroup> result;
+   if(entryRewardGroups.TryGetValue(items,out result))return result;
+   result=new System.Collections.Generic.List<EntryRewardGroup>();var byKey=new System.Collections.Generic.Dictionary<string,EntryRewardGroup>();
+   foreach(var item in items)
+   {
+    string identity=item.GearSlot.HasValue?"gear:"+item.GearSlot.Value:item.Key.StartsWith("gem:")?item.Key.Substring(0,item.Key.LastIndexOf(':')):item.Key;
+    identity=item.Clear+":"+identity;EntryRewardGroup group;
+    if(!byKey.TryGetValue(identity,out group)){group=new EntryRewardGroup();byKey[identity]=group;result.Add(group);}
+    group.Variants.Add(item);
+   }
+   if(entryRewardGroups.Count>=64)entryRewardGroups.Clear();entryRewardGroups[items]=result;return result;
+  }
+  private float DrawEntryRewardPreviews(float available,float u,int mode,int tier,bool chapter,bool draw,bool compact=false)
+  {
+   string context=chapter?"chapter"+session.SelectedChapterNode+":"+session.SelectedChapterDifficulty+":"+session.SelectedChapterTier:mode+":"+tier;
+   if(entryRewardContext!=context){entryRewardContext=context;entryRewardSelection=null;entryRewardHoverKey=null;entryRewardPopupScroll=Vector2.zero;}
+   var groups=GroupEntryRewards(EntryRewardPreviews(mode,tier,chapter));int columns=Mathf.Max(1,Mathf.FloorToInt(available/(compact?68:88)));float cell=available/columns,end=0;
+   float iconSize=compact?28:40,labelY=iconSize+(compact?2:4);int labelFont=compact?10:11;
+   for(int section=0;section<2;section++)
+   {
+    bool clear=section==1;var cards=groups.FindAll(group=>group.First.Clear==clear);if(cards.Count==0)continue;
+    if(draw)
+    {
+     Text(new Rect(8*u,end*u,(available-16)*u,(compact?16:22)*u),clear?"通关宝箱":"通关固定掉落",Mathf.RoundToInt((compact?11:13)*u),gold,true);
+     if(clear)Text(new Rect(8*u,(end+(compact?16:22))*u,(available-16)*u,(compact?14:22)*u),"传说装备 4% · "+(AdventureRewardRules.LegendaryPityChests-session.Progression.Profile.legendaryEquipmentMisses)+"次内必出",Mathf.RoundToInt((compact?9:11)*u),muted);
+    }
+    end+=clear?(compact?32:46):(compact?22:24);
+    for(int row=0;row*columns<cards.Count;row++)
+    {
+     float labelHeight=compact?14:16;
+     for(int col=0;col<columns&&row*columns+col<cards.Count;col++)
+      labelHeight=Mathf.Max(labelHeight,Style(Mathf.RoundToInt(labelFont*u),false,true).CalcHeight(new GUIContent(cards[row*columns+col].First.Name),(cell-8)*u)/u);
+     float rowHeight=Mathf.Max(compact?44:0,labelY+labelHeight)+(compact?4:6);
+     for(int col=0;col<columns&&row*columns+col<cards.Count;col++)
+     {
+      if(!draw)continue;var group=cards[row*columns+col];var item=group.First;
+      foreach(var variant in group.Variants)if(variant.Key==entryRewardSelection||variant.Key==entryRewardHoverKey)item=variant;
+      Rect hit=new Rect((col*cell+4)*u,end*u,(cell-8)*u,Mathf.Max(compact?44:0,rowHeight-(compact?4:6))*u),icon=new Rect((col*cell+(cell-iconSize)*.5f)*u,end*u,iconSize*u,iconSize*u);
+      DrawEntryRewardIcon(icon,item,u,compact);
+      if(group.Variants.Count>1)for(int v=0;v<group.Variants.Count;v++)
+       Fill(new Rect(icon.x+v*icon.width/group.Variants.Count,icon.yMax-2*u,icon.width/group.Variants.Count,2*u),group.Variants[v].QualityColor);
+      Text(new Rect(hit.x,hit.y+labelY*u,hit.width,labelHeight*u),item.Name,Mathf.RoundToInt(labelFont*u),pale,false,true,TextAnchor.MiddleCenter);
+      if(MobileControls.Active&&GUI.Button(hit,GUIContent.none,invisibleButton)){entryRewardSelection=entryRewardSelection==item.Key?null:item.Key;entryRewardPopupScroll=Vector2.zero;}
+      Rect rootHit=new Rect(entryRewardContentOrigin.x+hit.x,entryRewardContentOrigin.y+hit.y,hit.width,hit.height);
+      bool hover=entryRewardViewport.Contains(Mouse)&&rootHit.Contains(Mouse)&&GUI.enabled;
+      if(!MobileControls.Active&&hover)entryRewardHoverKey=item.Key;
+      bool selected=false;foreach(var variant in group.Variants)if(variant.Key==(MobileControls.Active?entryRewardSelection:entryRewardHoverKey))selected=true;
+      bool show=!suppressRewardHover&&(MobileControls.Active?selected&&entryRewardSelection!=null:hover||entryRewardPopupVisible&&selected&&entryRewardPopupRect.Contains(Mouse));
+      if(show){entryRewardPopup=item;entryRewardPopupVariants=group.Variants;entryRewardAnchorIsRoot=true;entryRewardAnchor=compact?rootHit:new Rect(entryRewardContentOrigin.x+icon.x,entryRewardContentOrigin.y+icon.y,icon.width,icon.height);}
+     }
+     end+=rowHeight;
+    }
+    end+=4;
+   }
+   return end+4;
+  }
+  private Texture2D dungeonEntryAtlas;
+  private void DrawDungeonEntryArtwork(Rect area,int index)
+  {
+   if(dungeonEntryAtlas==null)dungeonEntryAtlas=Resources.Load<Texture2D>("UI/DungeonEntryAtlas");
+   Fill(area,card);
+   if(dungeonEntryAtlas!=null)
+   {
+    index=Mathf.Clamp(index,0,7);Rect uv=new Rect((index%2)*.5f,1-(index/2+1)*.25f,.5f,.25f);
+    float sourceAspect=dungeonEntryAtlas.width*.5f/(dungeonEntryAtlas.height*.25f),aspect=area.width/Mathf.Max(1,area.height);
+    if(aspect>sourceAspect){float crop=uv.height*sourceAspect/aspect;uv.y+=(uv.height-crop)*.5f;uv.height=crop;}
+    else {float crop=uv.width*aspect/sourceAspect;uv.x+=(uv.width-crop)*.5f;uv.width=crop;}
+    GUI.DrawTextureWithTexCoords(area,dungeonEntryAtlas,uv);
+   }
+   Border(area,new Color(gold.r,gold.g,gold.b,.4f));
+  }
+  private Vector2 adventureListScroll,adventureDetailScroll;
+  private bool adventureChapterSelected;
+  private Rect AdventureRect(MobilePanelLayout.Area a,float u){return new Rect(a.X*u,a.Y*u,a.Width*u,a.Height*u);}
+  private void DrawArenaSelection()
+  {
+   float u=MobileControls.Active?TouchRatio:1f,inset=MobileControls.Active?12:24;var l=new AdventureSelectionLayout(width/u,height/u,inset);
+   blockedRects.Add(new Rect(0,0,width,height));
+   Box(AdventureRect(l.Frame,u),jade,false);
+   Text(new Rect((l.X+inset)*u,(l.Y+inset)*u,(l.Frame.Width-2*inset-48)*u,36*u),"选择冒险",Mathf.RoundToInt(20*u),pale,true);
+   if(PopupCloseButton(new Rect((l.X+l.Frame.Width-44-inset)*u,(l.Y+inset)*u,44*u,36*u))){adventureChapterSelected=false;session.CancelDungeonSelection();BlockUITransition();return;}
+   string[] names={"沉星遗迹","守望林庭","烬河突围","蚀星斗场","回廊远征","星路章节"};
+   if(adventureChapterSelected)
+   {
+    PrepareInlineChapterSelection();
+    adventureListScroll=BeginTouchScroll("adventure-chapter-list",AdventureRect(l.List,u),adventureListScroll,new Rect(0,0,(l.List.Width-18)*u,232*u));
+    if(Button(new Rect(0,0,(l.List.Width-18)*u,44*u),"‹ 全部冒险",jade)){adventureChapterSelected=false;chapterScroll=adventureListScroll=Vector2.zero;CancelMobileScroll();}
+    for(int i=0;i<3;i++)
+    {
+     var node=(ChapterNode)i;bool unlocked=ChapterProgression.IsUnlocked(session.Progression.Profile,node);
+     Rect choice=new Rect(0,(52+i*60)*u,(l.List.Width-18)*u,52*u);
+     if(Button(choice,ChapterDefinition.Get(node).Name+(unlocked?"":" · "+ChapterProgression.UnlockLevel(node)+"级"),node==session.SelectedChapterNode?gold:jade,unlocked))SelectChapterNode(node);
+    }
+    EndTouchScroll();
+   }
+   else
+   {
+   adventureListScroll=BeginTouchScroll("adventure-list",AdventureRect(l.List,u),adventureListScroll,new Rect(0,0,(l.List.Width-18)*u,360*u));
+   for(int i=0;i<6;i++)
+   {
+    var a=l.Entry(i);Rect r=AdventureRect(a,u);bool chosen=i==5?adventureChapterSelected:!adventureChapterSelected&&session.SelectedArenaMode==i-1;
+    Fill(r,chosen?new Color(.11f,.2f,.21f):card);if(chosen)Fill(new Rect(r.x,r.y,3*u,r.height),gold);
+    Text(new Rect(r.x+8*u,r.y+6*u,r.width-16*u,25*u),names[i],Mathf.RoundToInt(14*u),chosen?gold:pale,true);
+    Text(new Rect(r.x+8*u,r.y+33*u,r.width-16*u,18*u),i==5?"双印路线":i==0?"五波 · 首领":i==1?"守点":i==2?"限时":i==3?"首领连战":"五房远征",Mathf.RoundToInt(11*u),new Color(.76f,.82f,.86f));
+    if(GUI.Button(r,GUIContent.none,invisibleButton))
+    {adventureChapterSelected=i==5;if(i<5)session.SelectedArenaMode=i-1;adventureDetailScroll=adventureListScroll=Vector2.zero;adventureRewardHint=null;CancelMobileScroll();}
+   }
+   EndTouchScroll();
+   }
+   if(adventureChapterSelected)
+   {
+    DrawInlineChapterEntry(AdventureRect(l.Details,u),u);
+    DrawChapterEntryControls(new Rect(l.List.X*u,l.FooterY*u,l.List.Width*u,48*u),u);
+    if(PrimaryButton(new Rect(l.Details.X*u,l.FooterY*u,l.Details.Width*u,48*u),"进入 "+ChapterDefinition.Get(session.SelectedChapterNode).Name,gold,ChapterProgression.IsUnlocked(session.Progression.Profile,session.SelectedChapterNode)))ConfirmSelectedChapter();
+    return;
+   }
+   int mode=session.SelectedArenaMode,tier=session.SelectedDungeonTier;float contentWidth=l.Details.Width-18;
+   string detail=names[mode+1]+" · Lv"+AdventureRewardRules.DungeonLevel(tier);
+   float rewardHeight=DrawEntryRewardPreviews(contentWidth,u,mode,tier,false,false),rewardY=52;
+   Rect detailBody=AdventureRect(l.Details,u);bool overflow=(rewardY+rewardHeight)*u>detailBody.height;
+   if(overflow)adventureDetailScroll=BeginTouchScroll("adventure-detail",detailBody,adventureDetailScroll,new Rect(0,0,contentWidth*u,(rewardY+rewardHeight)*u));
+   else {adventureDetailScroll=Vector2.zero;GUI.BeginGroup(detailBody);}
+   DrawDungeonEntryArtwork(new Rect(8*u,4*u,64*u,40*u),mode+1);
+   Text(new Rect(82*u,4*u,(contentWidth-90)*u,40*u),detail,Mathf.RoundToInt(18*u),pale,true,false,TextAnchor.MiddleLeft);
+   entryRewardViewport=detailBody;entryRewardContentOrigin=new Vector2(detailBody.x-adventureDetailScroll.x,detailBody.y+rewardY*u-adventureDetailScroll.y);
+   GUI.BeginGroup(new Rect(0,rewardY*u,contentWidth*u,rewardHeight*u));DrawEntryRewardPreviews(contentWidth,u,mode,tier,false,true);GUI.EndGroup();
+   if(overflow)EndTouchScroll();else GUI.EndGroup();
+   float x=l.List.X,y=l.FooterY,selectorButton=Mathf.Min(44,l.List.Width*.24f),selectorLabel=l.List.Width-selectorButton*2;
+
+   bool normal=!adventureChapterSelected;
+   if(Button(new Rect(x*u,y*u,selectorButton*u,48*u),"−",jade,normal&&tier>1))session.SelectedDungeonTier--;
+   Text(new Rect((x+selectorButton)*u,y*u,selectorLabel*u,48*u),"Lv"+AdventureRewardRules.DungeonLevel(tier),Mathf.RoundToInt(13*u),gold,true,false,TextAnchor.MiddleCenter);
+   if(Button(new Rect((x+selectorButton+selectorLabel)*u,y*u,selectorButton*u,48*u),"+",jade,normal&&tier<session.MaximumDungeonTier))session.SelectedDungeonTier++;
+   if(PrimaryButton(new Rect(l.Details.X*u,y*u,l.Details.Width*u,48*u),"进入挑战",gold))
+   {session.ConfirmDungeonSelection();}
+  }
+  private void DrawMobileModeStatus(Rect r)
+  {
+   float y=r.y;
+   if(session.ChapterActive)
+   {
+    var first=session.ChapterSealView(0);var second=session.ChapterSealView(1);
+    DrawMobileObjectiveText(r,ref y,first!=null&&session.ChapterRun.DoorUnlocked?"双印完成 · 前往出口":AdventureMapCaption,11,gold,true,true);
+    if(first!=null){DrawMobileSealText(r,ref y,first);DrawMobileSealText(r,ref y,second);}
+    else DrawMobileObjectiveText(r,ref y,session.ChapterObjectiveCompact,10,pale);
+    return;
+   }
+   if(session.RoomChainRun!=null)
+   {
+    var objective=session.RoomObjectiveView;var first=session.RoomSealView(0);
+    DrawMobileObjectiveText(r,ref y,first!=null&&session.RoomChainRun.DoorUnlocked?"双印完成 · 前往北门":objective.Title,11,gold,true,true);
+    if(first!=null){DrawMobileSealText(r,ref y,first);DrawMobileSealText(r,ref y,session.RoomSealView(1));}
+    else {DrawMobileObjectiveText(r,ref y,objective.ProgressText,10,pale);DrawMobileObjectiveText(r,ref y,objective.Hint,10,session.RoomCaptureContested?gold:jade);}
+    DrawMobileObjectiveText(r,ref y,objective.SupportHint,10,muted);
+    return;
+   }
+   DrawMobileObjectiveText(r,ref y,AdventureMapCaption,11,gold,true,true);
+   DrawMobileObjectiveText(r,ref y,"阶段 "+session.DungeonWave+" / 3 · "+Mathf.CeilToInt(session.ModeRun.RemainingSeconds)+"秒",10,pale);
+   DrawMobileObjectiveText(r,ref y,(session.ModeRun.Mode==ExpeditionModeKind.HoldPoint?session.ModeRun.HoldStateLabel+" ":"")+Mathf.RoundToInt(session.ModeRun.ObjectiveProgress*100)+"%",10,jade);
+  }
+  private void DrawMobileSealText(Rect r,ref float y,ChapterSealPresentation seal)
+  {
+   if(seal==null)return;
+   DrawMobileObjectiveText(r,ref y,seal.Label,10,seal.Complete?jade:seal.Contested?gold:pale,seal.Occupied);
+  }
+ }
+}

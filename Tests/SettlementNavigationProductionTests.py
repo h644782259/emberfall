@@ -1,0 +1,46 @@
+#!/usr/bin/env python3
+"""Exercise production settlement footer, acknowledgement and transition retry gates."""
+from pathlib import Path
+import os, subprocess, sys, tempfile
+root=Path(__file__).resolve().parents[1]
+def member(file, signature):
+    text=(root/file).read_text();start=text.index(signature);end=text.index('{',start)+1;depth=1
+    while depth:
+        depth+=(text[end]=='{')-(text[end]=='}');end+=1
+    return text[start:end]
+recap='Assets/Scripts/UI/GameUI.RunRecap.cs'
+source=r'''using System;using System.Collections.Generic;
+struct Rect{public float x,y,width,height;public Rect(float x,float y,float w,float h){this.x=x;this.y=y;width=w;height=h;}}
+class Color{}class Player{public int CombatEpoch;}
+class Profile{public bool pendingChestReveal,pendingFashionChest;}
+class Receipt{public string Id="receipt";}
+class Progression{public Profile Profile=new Profile();public Receipt LastChestReward=new Receipt();public string CurrentSlotId="hero";public bool SaveWorks=true;public int Saves;public bool AcknowledgeChestReward(){Saves++;if(!SaveWorks)return false;Profile.pendingChestReveal=false;return true;}}
+class Session{public bool SceneLoading,HasStarted=true,InDungeon=true,IsDead,DungeonCleared=true,ModeFinished,changingZone,ModeRewardPending,DungeonRewardPending,ChapterRewardPending,ChapterActive,CanAdvanceChapterTier=true,InCombat,Blocked=true,Paused,AsyncCampReturn;public int DungeonTier=1,MaximumDungeonTier=100,Repeats,Nexts,Returns;public Player Player=new Player();public bool NavWorks=true;public Progression Progression=new Progression();public void SetUIBlocking(bool v){Blocked=v;}public void SetPaused(bool v){Paused=v;}public bool RepeatCurrentDungeon(){Repeats++;return NavWorks;}public bool ChallengeNextTier(){Nexts++;return NavWorks;}public void ReturnToCamp(){Returns++;if(NavWorks){if(AsyncCampReturn)SceneLoading=true;else InDungeon=false;}}
+PREFLIGHT
+}
+class UI{public Session session=new Session();public Color gold=new Color(),jade=new Color();public bool ChestAnimationDone=true;public string chestReceiptId="receipt";public Receipt settlementChest;public Player settlementOwner;public string settlementSlot;public int settlementEpoch=-1;public enum Panel{None,Summary,Chests}public Panel panel=Panel.Summary;public int Feedbacks,Transitions,Resets;public List<(Rect,string,bool)> Buttons=new List<(Rect,string,bool)>();bool Button(Rect r,string text,Color c,bool enabled){Buttons.Add((r,text,enabled));return false;}void Feedback(bool ok,string text){Feedbacks++;}void BlockUITransition(){Transitions++;}void ResetChestReveal(){Resets++;}
+METHODS
+public void Draw(){Buttons.Clear();DrawSettlementNavigation(new Rect(16,240,520,44),1);}public void Navigate(int action)=>NavigateSettlement(action);
+}
+class Program{static int n;static void C(bool v,string s){n++;if(!v)throw new Exception(s);}static bool Enabled(UI ui,int index)=>ui.Buttons[index].Item3;
+static void Main(){
+foreach(float width in new[]{280f,520f,988f}){var ui=new UI();ui.DrawSettlementNavigation(new Rect(16,240,width,44),1);C(ui.Buttons.Count==3,"three permanent footer entries");C(ui.Buttons[0].Item2=="挑战下一阶"&&ui.Buttons[1].Item2=="返回营地"&&ui.Buttons[2].Item2=="再次挑战","requested action order");float end=0;foreach(var b in ui.Buttons){C(b.Item1.x>=end&&b.Item1.width>44&&b.Item1.y==240&&b.Item1.height==44,"bounded nonoverlapping targets");end=b.Item1.x+b.Item1.width;}C(end<=16+width+.001,"footer bounds");}
+foreach(string kind in new[]{"ruins","hold","timed","bosses","room-chain","chapter-forest","chapter-redrock","chapter-star"}){var ui=new UI();ui.session.ChapterActive=kind.StartsWith("chapter");ui.session.ModeFinished=kind!="ruins";ui.Draw();C(ui.Buttons.Count==3&&Enabled(ui,0)&&Enabled(ui,1)&&Enabled(ui,2),kind+" completed result enables three actions");ui.session.Progression.Profile.pendingChestReveal=true;ui.Draw();C(Enabled(ui,0)&&Enabled(ui,1)&&Enabled(ui,2),kind+" saved chest can continue after acknowledgement");}
+var gates=new UI();gates.session.SceneLoading=true;gates.Draw();C(gates.Buttons.Count==3&&gates.Buttons.TrueForAll(b=>!b.Item3),"loading keeps the footer stable but cannot navigate");gates.Navigate(0);C(gates.session.Repeats==0&&gates.session.Progression.Saves==0,"loading cannot acknowledge or create a new run");gates.session.SceneLoading=false;gates.session.Progression.Profile.pendingChestReveal=true;gates.ChestAnimationDone=false;gates.Draw();C(gates.Buttons.Count==3&&gates.Buttons.TrueForAll(b=>!b.Item3),"opening animation disables every permanent action");gates.Navigate(2);C(gates.session.Progression.Saves==0,"animation cannot acknowledge a still-opening receipt");gates.ChestAnimationDone=true;gates.session.Progression.Profile.pendingFashionChest=true;gates.Draw();C(gates.Buttons.TrueForAll(b=>!b.Item3),"unselected chest cannot leave or repeat");gates.session.Progression.Profile.pendingFashionChest=false;gates.chestReceiptId="another";gates.Draw();C(gates.Buttons.TrueForAll(b=>!b.Item3),"another receipt cannot complete this reveal");gates.chestReceiptId="receipt";
+foreach(int pending in new[]{0,1,2}){gates.session.DungeonRewardPending=pending==0;gates.session.ModeRewardPending=pending==1;gates.session.ChapterRewardPending=pending==2;gates.Draw();C(gates.Buttons.TrueForAll(b=>!b.Item3),"every uncommitted dungeon reward keeps actions disabled");}gates.session.DungeonRewardPending=gates.session.ModeRewardPending=gates.session.ChapterRewardPending=false;
+gates.session.DungeonTier=100;gates.Draw();C(!Enabled(gates,0)&&Enabled(gates,1)&&Enabled(gates,2),"maximum tier disables only next");gates.session.ChapterActive=true;gates.session.CanAdvanceChapterTier=false;gates.Draw();C(!Enabled(gates,0)&&Enabled(gates,2),"chapter admission is respected");gates.session.ChapterActive=false;gates.session.DungeonCleared=false;gates.session.ModeFinished=true;gates.Draw();C(!Enabled(gates,0)&&Enabled(gates,1)&&!Enabled(gates,2),"failed mode result allows camp without invalid next / repeat");
+for(int action=0;action<3;action++){var ui=new UI();ui.panel=UI.Panel.Chests;ui.session.Progression.Profile.pendingChestReveal=true;ui.session.Progression.SaveWorks=false;ui.Navigate(action);C(ui.session.Repeats+ui.session.Nexts+ui.session.Returns==0&&ui.session.Progression.Profile.pendingChestReveal&&ui.panel==UI.Panel.Chests&&ui.session.Blocked,"failed acknowledgement preserves receipt and chest page");ui.session.Progression.SaveWorks=true;ui.session.NavWorks=false;ui.Navigate(action);C(ui.panel==UI.Panel.Summary&&ui.session.Blocked&&object.ReferenceEquals(ui.settlementChest,ui.session.Progression.LastChestReward),"failed transition retains the reward in a retryable result page after acknowledgement");ui.Draw();C(Enabled(ui,0)&&Enabled(ui,1)&&Enabled(ui,2),"acknowledged reward remains navigable after transition failure");ui.session.NavWorks=true;ui.Navigate(action);C(ui.panel==UI.Panel.None&&!ui.session.Blocked&&ui.settlementChest==null&&ui.Resets==1,"accepted navigation clears only presentation");C(ui.session.Progression.Saves==2,"receipt saved once after acknowledgement retry; navigation retry does not grant again");}
+var asyncCamp=new UI();asyncCamp.session.AsyncCampReturn=true;asyncCamp.Navigate(2);C(asyncCamp.session.SceneLoading&&asyncCamp.panel==UI.Panel.None,"asynchronous camp preparation counts as accepted navigation");
+var invalid=new UI();invalid.session.Progression.Profile.pendingChestReveal=true;invalid.Navigate(3);C(invalid.session.Progression.Saves==0&&invalid.session.Returns==0,"invalid action cannot consume a receipt");
+Console.WriteLine("PASS "+n+" actual settlement navigation, every adventure result, acknowledgement and transition-retry assertions; managed boundaries");}}
+'''
+source=source.replace('PREFLIGHT',member('Assets/Scripts/Core/GameSession.Expedition.cs','public bool CanContinueDungeonAfterAcknowledgement'))
+methods='\n'.join(member(recap,signature) for signature in ['private void RefreshSettlementChest','private bool SettlementNavigationReady','private bool CanNavigateSettlement','private void DrawSettlementNavigation','private void NavigateSettlement'])
+methods=methods.replace('private void DrawSettlementNavigation','public void DrawSettlementNavigation')
+source=source.replace('METHODS',methods)
+for path in ['Assets/Scripts/UI/GameUI.Rewards.cs','Assets/Scripts/UI/GameUI.MobileRewards.cs']:
+    text=(root/path).read_text()
+    assert 'session.InDungeon&&(session.DungeonCleared||session.ModeFinished)' in text and 'DrawSettlementNavigation' in text,path+' must route terminal chest state to the same result navigation'
+with tempfile.TemporaryDirectory(prefix='settlement-navigation-') as folder:
+    p=Path(folder);(p/'Program.cs').write_text(source);(p/'Test.csproj').write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework><OutputType>Exe</OutputType><NuGetAudit>false</NuGetAudit><NoWarn>0649</NoWarn></PropertyGroup></Project>');(p/'NuGet.Config').write_text('<configuration><packageSources><clear /></packageSources></configuration>')
+    subprocess.run([sys.argv[1] if len(sys.argv)>1 else os.environ.get('DOTNET','dotnet'),'run','--project',str(p/'Test.csproj')],env=dict(os.environ,DOTNET_CLI_HOME=str(p/'cli'),DOTNET_NOLOGO='1'),check=True)

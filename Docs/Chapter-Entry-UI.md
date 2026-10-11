@@ -1,0 +1,9 @@
+# Chapter entry and result UI
+
+All three towns' exchange NPCs open the same chapter page. Its fixed **mechanism exchange** action preserves access to the existing camp exchange tab. Travel unlocks are not chapter prerequisites. Three named nodes can be replayed independently once unlocked. Normal/Hard/Heroic qualification comes from `ChapterProgression.CanEnter`; tier and limited healing have separate controls and do not modify legacy adventure selections.
+
+`ChapterEntryPresentation` consumes the shared node story, outcome, next clue, health/damage multipliers, mechanic descriptions and material reward functions. The page scrolls measured content above fixed 48-unit return/exchange/enter actions. A dialogue acknowledgement is never required. Every selection and confirmation rechecks the current profile identity and safe camp state, and failed entry preserves the selection for retry. System Back closes the chapter panel without starting a run.
+
+Chapter combat uses the existing objective-card regions and interaction button. Chapter terminal results precede legacy mode recap dispatch. Pending settlement does not claim story progress or rewards; retry calls the host's existing durable settlement path. Committed results use the captured receipt's actual material amount, not a fresh calculation after the first-reward flag has changed. Return to camp remains subject to the host's save/loot preservation checks.
+
+Managed validation: `ChapterPresentationTests.Run()` checks all node/difficulty/tier-band/healing combinations against shared production definitions. `ChapterEntryProductionTests.py` executes the production UI methods and measured layout with narrow engine shells, including stale selection, return, entry failure, real filesystem settlement failure/retry and old Back-hook mutation controls. These do not establish font rendering, physical touch feel, Unity 6 behavior or frame rate; those require runtime acceptance.

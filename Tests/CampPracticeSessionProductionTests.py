@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+import importlib.util,os,sys,tempfile,subprocess
+from pathlib import Path
+root=Path(__file__).resolve().parents[1];spec=importlib.util.spec_from_file_location('v',root/'Tools/cloud-validation.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+with tempfile.TemporaryDirectory(prefix='practice-session-') as directory:
+ p=Path(directory);production=p/'Session.cs';production.write_text((root/'Assets/Scripts/Core/GameSession.Practice.cs').read_text());original=production.read_text()
+ player=(root/'Assets/Scripts/Combat/PlayerController.cs').read_text();a=player.index('public void Initialize(GameSession game, HeroClass heroClass)');b=player.index('{',a)+1;depth=1
+ while depth:depth+=(player[b]=='{')-(player[b]=='}');b+=1
+ actual=p/'Initialize.cs';actual.write_text('using UnityEngine;namespace Emberfall{public partial class PlayerController{'+player[a:b]+'}}')
+ enemy=(root/'Assets/Scripts/Combat/EnemyController.cs').read_text()
+ def member(s,key):
+  a=s.index(key);b=s.index('{',a)+1;n=1
+  while n:n+=(s[b]=='{')-(s[b]=='}');b+=1
+  return s[a:b]
+ producers=p/'ProducerLifecycle.cs'
+ producerMethods=[]
+ for file,kind in [('CombatEffects.cs','CombatArea'),('AdvancedSkillSequence.cs','AdvancedSkillSequence'),('SummonerSpell.cs','SummonerSpell')]:
+  text=(root/'Assets/Scripts/Combat'/file).read_text();text=text[text.index('class '+kind):]
+  producerMethods.append('public partial class '+kind+'{'+member(text,'private void OnDisable()')+'}')
+ producers.write_text('namespace Emberfall{'+''.join(producerMethods)+'}')
+ companion=p/'CompanionBond.cs';companionSource=(root/'Assets/Scripts/Combat/SummonedCompanion.cs').read_text()
+ companionMethods=''.join(member(companionSource,k) for k in ['private sealed class BondState','private static BondState State(','public static void OnPerfectDodge(','public static float CommandOpportunityRemaining(','public static bool HasPracticeTimedState('])
+ companion.write_text('using System.Collections.Generic;using UnityEngine;namespace Emberfall{public partial class SummonedCompanion{private static readonly Dictionary<PlayerController,BondState> bonds=new Dictionary<PlayerController,BondState>();private static readonly List<PlayerController> staleOwners=new List<PlayerController>();'+companionMethods+'}}')
+ lifecycle=p/'EnemyLifecycle.cs';lifecycle.write_text('using UnityEngine;namespace Emberfall{public partial class EnemyController{'+''.join(member(enemy,k) for k in ['public bool IsAggro','public bool IsPreparingAttack','private void OnDisable()','private void CancelAttack(','private void ClearWarning()'])+'}}')
+ session=(root/'Assets/Scripts/Core/GameSession.cs').read_text();shutdown=p/'Shutdown.cs';shutdown.write_text('using System;using UnityEngine;namespace Emberfall{public sealed partial class GameSession{'+''.join(member(session,k) for k in ['public bool SaveBeforeLeaving()','private bool CanQuitSafely()','private void SaveOnApplicationQuit()','private void OnApplicationPause(bool pause)','private void OnApplicationFocus(bool focus)','private void OnApplicationQuit()','private void OnDestroy()','private void UpdateTimeScale()','public bool TryCollectGroundLoot(string itemId'])+'}}')
+ expedition=(root/'Assets/Scripts/Core/GameSession.Expedition.cs').read_text()
+ telemetry=p/'Telemetry.cs';telemetry.write_text('using System;using UnityEngine;namespace Emberfall{public sealed partial class GameSession{'+member(expedition,'public bool InCombat')+member(expedition,'public void RecordCombatEngagement()')+member(expedition,'public void RecordIncomingDamage(')+member(expedition,'public void RecordActualHealing(')+member(expedition,'public void OnEnemyInterrupted(').split('            if(!enemy.IsLargeBossCounterWindow)')[0]+'throw new Exception("ordinary interrupt outside fixture");}public void TestKill(EnemyController enemy){'+member(member(session,'public void OnEnemyKilled('),'if(PracticeActive)')+'throw new Exception("ordinary kill outside fixture");}public void TestDeath(){'+member(member(session,'public void OnPlayerDied()'),'if(PracticeActive)')+'throw new Exception("ordinary death outside fixture");}}public partial class PlayerController{'+member(player,'public void Heal(')+'}}')
+ # Add only engine/service dependencies to the generated boundary. The actual
+ # producer cancellation, practice admission and engagement clocks stay compiled.
+ boundary=p/'Boundary.cs';host=(root/'Tests/CampPracticeSessionBoundary.cs').read_text()
+ additions={
+  'public void Save(){Saves++;LastError=SaveFails?"injected save failure":"";}':'public void Save(){Saves++;LastError=SaveFails?"injected save failure":"";}public bool SaveDungeonCheckpoint(){Save();return string.IsNullOrEmpty(LastError);}',
+  'public bool Stopped;public void Stop(){Stopped=true;}':'public bool Stopped;public void Stop(){Stopped=true;}public void Retire(){Stopped=true;}',
+  'public partial class CombatArea:Component,IPracticeProducerProbe{':'public struct PracticeArrowHandleBoundary{public void Retire(){}}public partial class CombatArea:Component,IPracticeProducerProbe{PracticeAuraBoundary performance;PracticeArrowHandleBoundary arrowRainVisual;',
+  'public partial class AdvancedSkillSequence:Component,IPracticeProducerProbe{':'public partial class AdvancedSkillSequence:Component,IPracticeProducerProbe{PracticeAuraBoundary performance,ultimateField;',
+  'public partial class EnemyController:MonoBehaviour{':'public partial class EnemyController:MonoBehaviour{float pounceRemaining,pounceHeight;bool pounceHarmless;public bool isActiveAndEnabled=>gameObject.activeInHierarchy;',
+  'public sealed partial class GameSession:MonoBehaviour\n {':'public sealed partial class GameSession:MonoBehaviour\n {PlayerController combatStateOwner;int combatStateEpoch=-1;float combatStateUntil=-1;public bool CombatEnded=>false;public bool FinishedResultReady=>false;public bool FinishedResultDismissed=>false;private void UpdateMobileFrameRate(){}private void EndHubNpcConversation(){}public void ReturnToOrigin(){}private readonly List<string> runItemIds=new List<string>();',
+  's.Enemies.Add(enemy);var warning=enemy.warning;':'s.Enemies.Add(enemy);if(danger!="warning")s.RecordCombatEngagement();var warning=enemy.warning;',
+  's.LastNotice.Contains("交战")':'s.LastNotice.Contains("战斗")',
+  's.Enemies.Remove(enemy);UnityEngine.MonoBehaviour.Destroy(enemy.gameObject);':'s.Enemies.Remove(enemy);UnityEngine.MonoBehaviour.Destroy(enemy.gameObject);UnityEngine.Time.time+=5;'
+ }
+ for old,new in additions.items():
+  assert old in host,old;host=host.replace(old,new)
+ boundary.write_text(host)
+ project=m.write_project(p/'project',[production,actual,lifecycle,shutdown,telemetry,producers,companion,root/'Assets/Scripts/Combat/CompanionRules.cs',root/'Assets/Scripts/Combat/CompanionDirective.cs',root/'Assets/Scripts/Core/CastFirstHitReceipt.cs',root/'Assets/Scripts/Core/ScheduledTickWindow.cs',root/'Assets/Scripts/Core/ApplicationPauseState.cs',root/'Assets/Scripts/Core/SaveLifecycleGate.cs',root/'Assets/Scripts/Core/CombatImpactBatch.cs',root/'Assets/Scripts/Core/CampPracticeRecord.cs',boundary],'using System;class Program{static void Main(){Console.WriteLine(CampPracticeSessionTests.Run());}}')
+ config=p/'NuGet.Config';config.write_text('<configuration><packageSources><clear/></packageSources></configuration>');env=dict(os.environ,DOTNET_CLI_HOME=str(p/'cli'),DOTNET_NOLOGO='1');dotnet=sys.argv[1] if len(sys.argv)>1 else 'dotnet'
+ def run(args):
+  q=subprocess.run([dotnet]+args,env=env,capture_output=True,text=True);print(q.stdout+q.stderr);return q
+ assert run(['restore',str(project),'--configfile',str(config),'-v:q']).returncode==0
+ assert run(['run','--project',str(project),'--no-restore']).returncode==0
+ for typeName,kind in [('CombatArea',0),('AdvancedSkillSequence',1),('SummonerSpell',2)]:
+  old='root.GetComponentInChildren<'+typeName+'>()!=null'
+  assert old in original;production.write_text(original.replace(old,'false'));assert run(['build',str(project),'--no-restore','-v:q']).returncode==0
+  q=run([str(project.parent/'bin/Debug/net8.0/Validation.dll')]);expected='practice must not invoke irreversible producer OnDisable on admission: '+str(kind)
+  assert q.returncode!=0 and expected in q.stdout+q.stderr;print('PASS compiled producer admission negative:',typeName);production.write_text(original)
+ originalCompanion=companion.read_text()
+ for old,expected in [('state.Commands.IsProtected(Time.time)','practice cannot age original absolute command/protection clocks: 10 consumed=True'),('state.Cooperation.HasPending(Time.time)','original cooperation mark or cooldown refuses practice before aging')]:
+  assert old in originalCompanion;companion.write_text(originalCompanion.replace(old,'false'));assert run(['build',str(project),'--no-restore','-v:q']).returncode==0
+  q=run([str(project.parent/'bin/Debug/net8.0/Validation.dll')]);assert q.returncode!=0 and expected in q.stdout+q.stderr;print('PASS compiled bond admission negative:',expected);companion.write_text(originalCompanion)
+ originalTelemetry=telemetry.read_text()
+ for old,new,expected in [('if(PracticeActive){PracticeRecord.IncomingDamage(amount);return;}','','actual clipped Heal and damage telemetry stay out of original run'),('if(PracticeActive){PracticeRecord.Healing(amount);return;}','','actual clipped Heal and damage telemetry stay out of original run')]:
+  assert old in originalTelemetry;telemetry.write_text(originalTelemetry.replace(old,new));assert run(['build',str(project),'--no-restore','-v:q']).returncode==0
+  q=run([str(project.parent/'bin/Debug/net8.0/Validation.dll')]);assert q.returncode!=0 and expected in q.stdout+q.stderr;print('PASS compiled telemetry isolation negative:',expected);telemetry.write_text(originalTelemetry)
+ originalShutdown=shutdown.read_text();old='if(PracticeActive)\n            {try{EndPractice("保存或离开 · 试招结束，恢复原角色");}\n             catch(System.Exception exception){Debug.LogException(exception);Notify("试招收尾出现异常，请重试保存退出。");return false;}}';assert old in originalShutdown
+ shutdown.write_text(originalShutdown.replace(old,'if(PracticeActive)return false;'));assert run(['build',str(project),'--no-restore','-v:q']).returncode==0
+ q=run([str(project.parent/'bin/Debug/net8.0/Validation.dll')]);assert q.returncode!=0 and 'actual CanQuitSafely restores owner then saves once' in q.stdout+q.stderr;print('PASS compiled negative control: original OS-close veto');shutdown.write_text(originalShutdown)
+ for old,new,message in [('if(SummonedCompanion.HasPracticeTimedState(Player))','if(false)','practice cannot age original absolute command/protection clocks: 10 consumed=False'),('if(!rootsRetired)','if(false)','failed exit snapshot cannot leave temporary combat actors active beside formal owner'),('PreviousPracticeRecord==null&&PracticeRecord.Started','PracticeRecord.Started','baseline A is a separate frozen first result across repeated B'),('PreviousPracticeRecord=PracticeRecord.FrozenCopy()','PreviousPracticeRecord=PracticeRecord','baseline A is a separate frozen first result across repeated B'),('PracticeRecord.Prepare();','','prepare freezes real session before timer and attacks'),('&&!practiceSupplier.IsDead','','actual kill removes supply once and records order'),('if(!PracticeEntrySafe())return false;','if(false)return false;','unsafe entry refused before real enemy OnDisable'),('Player=practiceOriginalPlayer','Player=Player','timed finish restores exact references'),('practiceRandom=UnityEngine.Random.state','practiceRandom=default(UnityEngine.Random.State)','random state restored')]:
+  assert old in original;production.write_text(original.replace(old,new));assert run(['build',str(project),'--no-restore','-v:q']).returncode==0
+  q=run([str(project.parent/'bin/Debug/net8.0/Validation.dll')]);assert q.returncode!=0 and message in q.stdout+q.stderr;print('PASS compiled negative control:',message);production.write_text(original)
