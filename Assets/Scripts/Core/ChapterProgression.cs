@@ -55,9 +55,9 @@ namespace Emberfall
         public static bool CanEnter(GameProfile profile,ChapterNode node,ChapterDifficulty difficulty,int tier)
         {return CanEnter(profile,node,difficulty)&&tier>=1&&tier<=AvailableTier(profile,node,difficulty);}
         public static float TierHealthMultiplier(int tier)
-        {double step=Math.Max(1,tier)-1d;return (float)(1d+.009d*step+.000035d*step*step);}
+        {double step=Math.Max(1,tier)-1d;return (float)(1d+.10d*step+.001d*step*step);}
         public static float TierDamageMultiplier(int tier)
-        {double step=Math.Max(1,tier)-1d;return (float)(1d+.014d*step+.00008d*step*step);}
+        {double step=Math.Max(1,tier)-1d;return (float)(1d+.06d*step+.0004d*step*step);}
         public static ChapterDifficulty LevelDifficulty(ChapterNode node,int level)
         {return ChapterDifficulty.Heroic;}
         public static bool IsUnlocked(GameProfile profile,ChapterNode node){return profile!=null&&Valid(node)&&profile.level>=UnlockLevel(node);}
@@ -65,7 +65,7 @@ namespace Emberfall
         {return profile==null||!Valid(node)||profile.chapterHighestDifficulties==null||profile.chapterHighestDifficulties.Length<3?-1:Math.Max(-1,Math.Min(2,profile.chapterHighestDifficulties[(int)node]-1));}
         public static bool CanEnter(GameProfile profile,ChapterNode node,ChapterDifficulty difficulty)
         {return IsUnlocked(profile,node)&&difficulty==ChapterDifficulty.Heroic;}
-        public static int MaterialReward(ChapterNode node,int tier){return TierRewardBand.Materials(ChapterDefinition.Get(node).BaseMaterials,tier);}
+        public static int MaterialReward(ChapterNode node,int tier){return TierRewardBand.Materials(ChapterDefinition.Get(node).BaseMaterials,1)+TierRewardBand.Clamp(tier)-1;}
         public static int CompletionMaterials(GameProfile profile,ChapterNode node,int tier)
         {return MaterialReward(node,tier)+((profile.chapterFirstRewardMask&(1<<(int)node))==0?1:0);}
         public const int DifficultyFirstRewardMaterials = 4;

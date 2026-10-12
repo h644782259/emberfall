@@ -265,9 +265,20 @@ namespace Emberfall
     [Serializable]
     public class MaterialExchangeReceipt
     { public string id;public long sequence;public RewardMaterialKind materialKind;public int threadsDelta,materialsDelta; }
+    // Display snapshots only. Unselected contents never enter inventory or grant paths.
+    [Serializable]
+    public class ChestContentPreview
+    {
+        public int kind,count;
+        public ItemData equipment;
+        public FashionData fashion;
+        public EquipmentMechanic gemMechanic;
+        public Rarity gemRarity;
+    }
     [Serializable]
     public class ChestReward
     {
+        public ChestContentPreview[] contents;
         public int primaryKind,primaryCount,primarySlot,refinementStonesDelta,affixReforgeStonesDelta;
         public Rarity primaryRarity;
         public string[] equipmentIds;

@@ -247,7 +247,11 @@ namespace Emberfall
             Fill(r,new Color(.14f,.115f,.055f,.55f));
             Border(r,new Color(tint.r,tint.g,tint.b,.25f));
             DrawIcon(new Rect(r.x+4*unit,r.center.y-9*unit,18*unit,18*unit),UIIconAtlas.Utility(material?"shard":"coin"),material?GameBalance.RarityColor(Rarity.Rare):gold);
-            Text(new Rect(r.x+27*unit,r.y,r.width-31*unit,r.height),(amount>=10000?(amount/10000d).ToString("0.#")+"万":amount.ToString()),Mathf.RoundToInt(13*unit),tint,true,false,TextAnchor.MiddleLeft);
+            string value=Money(amount);
+            Rect label=new Rect(r.x+27*unit,r.y,Mathf.Max(1,r.width-31*unit),r.height);
+            int fontSize=Mathf.Max(1,Mathf.RoundToInt(13*unit));
+            while(fontSize>1&&Style(fontSize,true).CalcSize(new GUIContent(value)).x>label.width)fontSize--;
+            Text(label,value,fontSize,tint,true,false,TextAnchor.MiddleLeft);
         }
     }
 }

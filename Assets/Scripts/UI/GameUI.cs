@@ -869,8 +869,10 @@ namespace Emberfall
             blockedRects.Add(playerRect);
             Box(playerRect, accent);
             Fill(new Rect(16, 16, 2, 88), accent);
-            Text(new Rect(28, 24, 139, 22), GameBalance.ClassName(p.heroClass), 16, pale, true);
-            DrawPrice(new Rect(169,26,74,20),p.gold,false,1);
+            float goldWidth=Mathf.Clamp(Style(13,true).CalcSize(new GUIContent(Money(p.gold))).x+35,74,118);
+            float goldX=243-goldWidth;
+            Text(new Rect(28, 24, goldX-36, 22), GameBalance.ClassName(p.heroClass), 16, pale, true);
+            DrawPrice(new Rect(goldX,26,goldWidth,20),p.gold,false,1);
             float hp = session.Player == null ? 0 : session.Player.Health;
             float maxHp = session.Player == null ? 1 : session.Player.MaxHealth;
             DrawHudVital(new Rect(28,48,216,23),hp/Mathf.Max(1,maxHp),new Color(.20f,.95f,.30f),Mathf.CeilToInt(hp)+" / "+Mathf.CeilToInt(maxHp));
@@ -1526,8 +1528,8 @@ namespace Emberfall
 
         private static string Money(int amount)
         {
-            if (amount >= 100000000) return (amount / 100000000f).ToString("0.#") + " 亿";
-            if (amount >= 10000) return (amount / 10000f).ToString("0.#") + " 万";
+            if (amount >= 100000000) return (amount / 100000000d).ToString("0.#") + "亿";
+            if (amount >= 10000) return (amount / 10000d).ToString("0.#") + "万";
             return amount.ToString();
         }
 

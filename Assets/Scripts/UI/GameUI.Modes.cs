@@ -75,13 +75,14 @@ namespace Emberfall
   }
   private string GemDropDescription(EquipmentMechanic gem,bool preview)
   {return BuildCatalog.GemName(gem)+"\n"+GameBalance.ClassName(BuildCatalog.MechanicClass(gem))+"专用 · "+GameBalance.SlotName(BuildCatalog.MechanicSlot(gem))+"槽\n"+(preview?"通关宝箱必得整件；已拥有则转为3枚星烬碎片。\n":"")+"机制\n"+BuildCatalog.MechanicDescription(gem);}
-  private void InspectRewardItem(Rect hit,EntryRewardPreview item,bool clickToInspect=false)
+  private void InspectRewardItem(Rect hit,EntryRewardPreview item,bool clickToInspect=false,string inspectionKey=null)
   {
+   string key=inspectionKey??item.Key;
    if(!MobileControls.Active&&suppressRewardHover)return;
-   if((MobileControls.Active||clickToInspect)&&GUI.Button(hit,GUIContent.none,invisibleButton)){entryRewardSelection=entryRewardSelection==item.Key?null:item.Key;entryRewardPopupScroll=Vector2.zero;}
+   if((MobileControls.Active||clickToInspect)&&GUI.Button(hit,GUIContent.none,invisibleButton)){entryRewardSelection=entryRewardSelection==key?null:key;entryRewardPopupScroll=Vector2.zero;}
    bool hover=hit.Contains(Event.current.mousePosition)&&GUI.enabled;
-   if(!MobileControls.Active&&hover)entryRewardHoverKey=item.Key;
-   if(MobileControls.Active||clickToInspect?entryRewardSelection==item.Key:hover||entryRewardPopupVisible&&entryRewardHoverKey==item.Key&&entryRewardPopupRect.Contains(Mouse))
+   if(!MobileControls.Active&&hover)entryRewardHoverKey=key;
+   if(MobileControls.Active||clickToInspect?entryRewardSelection==key:hover||entryRewardPopupVisible&&entryRewardHoverKey==key&&entryRewardPopupRect.Contains(Mouse))
    {
     tooltip=null;entryRewardAnchorIsRoot=false;entryRewardViewport=new Rect(0,0,width,height);entryRewardPopup=item;
     entryRewardScreenAnchor=GUIUtility.GUIToScreenPoint(hit.position);entryRewardScreenEnd=GUIUtility.GUIToScreenPoint(new Vector2(hit.xMax,hit.yMax));
@@ -104,6 +105,14 @@ namespace Emberfall
    if(fashion){DrawIcon(icon,UIIconAtlas.ControlDisc(),card);DrawIcon(icon,UIIconAtlas.ControlRing(),item.QualityColor);}
    else {Fill(icon,card);Border(icon,item.QualityColor,2*u);}
    float labelHeight=compact?12:14,labelFont=compact?8:9;
+   if(fashion)
+   {
+    float side=Mathf.Min(icon.width,icon.height),art=side*.48f;
+    DrawIcon(new Rect(icon.center.x-art*.5f,icon.y+side*.10f,art,art),item.Icon,Color.white);
+    Rect caption=new Rect(icon.center.x-side*.34f,icon.y+side*.59f,side*.68f,side*.25f);
+    DrawOutlinedIconText(caption,EntryRewardKind(item),Mathf.RoundToInt((compact?7:8)*u),item.QualityColor,TextAnchor.MiddleCenter);
+    return;
+   }
    float artSize=Mathf.Max(1,Mathf.Min(icon.width-(compact?6:12)*u,icon.height-(compact?14:22)*u));
    DrawIcon(new Rect(icon.center.x-artSize*.5f,icon.y+(icon.height-labelHeight*u-artSize)*.5f,artSize,artSize),item.Icon,item.QualityColor);
    Rect label=new Rect(icon.x+2*u,icon.yMax-labelHeight*u,icon.width-4*u,(compact?labelHeight:labelHeight-2)*u);Fill(label,new Color(.08f,.15f,.19f));
@@ -293,8 +302,8 @@ namespace Emberfall
    if(chapter&&session.SelectedChapterNode==ChapterNode.StarPlatform)
    foreach(var gem in BuildCatalog.GemsFor(session.Progression.Profile.heroClass))foreach(var rarity in new[]{Rarity.Epic,Rarity.Legendary})
     result.Add(new EntryRewardPreview{Key="gem:"+gem+":"+rarity,Clear=true,Rarity=rarity,Name=BuildCatalog.GemName(gem),Icon=UIIconAtlas.Utility("gem"),Tint=GameBalance.RarityColor(rarity),Description=GemRewardDescription(gem,rarity)});
-   if(!(chapter&&session.SelectedChapterNode==ChapterNode.StarPlatform))result.Add(new EntryRewardPreview{Key="refinement",Clear=true,Rarity=Rarity.Epic,Name="装备洗练石",Icon=UIIconAtlas.Utility("gem"),Tint=GameBalance.RarityColor(Rarity.Epic),Description="装备洗练石\n数量  "+ProgressionService.ChestStackMinimum(true,tier)+"～"+ProgressionService.ChestStackMaximum(true,tier)+"\n提高装备属性数值，不会降低。"});
-   result.Add(new EntryRewardPreview{Key="shard",Clear=true,Rarity=Rarity.Rare,Name="星烬碎片",Icon=UIIconAtlas.Utility("shard"),Tint=jade,Description="星烬碎片\n数量："+ProgressionService.ChestStackMinimum(false,tier)+"～"+ProgressionService.ChestStackMaximum(false,tier)+"\n用于机制宝石兑换、升阶与升华。"});
+   if(!(chapter&&session.SelectedChapterNode==ChapterNode.StarPlatform))result.Add(new EntryRewardPreview{Key="refinement",Clear=true,Rarity=Rarity.Epic,Name="装备洗练石\n"+ProgressionService.ChestStackMinimum(true,tier)+"～"+ProgressionService.ChestStackMaximum(true,tier),Icon=UIIconAtlas.Utility("gem"),Tint=GameBalance.RarityColor(Rarity.Epic),Description="装备洗练石\n数量  "+ProgressionService.ChestStackMinimum(true,tier)+"～"+ProgressionService.ChestStackMaximum(true,tier)+"\n提高装备属性数值，不会降低。"});
+   result.Add(new EntryRewardPreview{Key="shard",Clear=true,Rarity=Rarity.Rare,Name="星烬碎片\n"+ProgressionService.ChestStackMinimum(false,tier)+"～"+ProgressionService.ChestStackMaximum(false,tier),Icon=UIIconAtlas.Utility("shard"),Tint=jade,Description="星烬碎片\n数量："+ProgressionService.ChestStackMinimum(false,tier)+"～"+ProgressionService.ChestStackMaximum(false,tier)+"\n用于机制宝石兑换、升阶与升华。"});
    if(AdventureRewardRules.ChestFashion(mode,chapter))foreach(var rarity in new[]{Rarity.Legendary})foreach(var slot in new[]{FashionSlot.Weapon,FashionSlot.Wings})
     result.Add(new EntryRewardPreview{Key="fashion:"+slot+":"+rarity,AppearanceSlot=slot,Clear=true,Rarity=rarity,Name=ProgressionService.FashionName(slot,rarity,session.Progression.Profile.heroClass),Icon=UIIconAtlas.FashionCardIcon(slot,(int)rarity,session.Progression.Profile.heroClass),Tint=GameBalance.RarityColor(rarity),Description=ProgressionService.FashionName(slot,rarity,session.Progression.Profile.heroClass)+"\n"+(slot==FashionSlot.Weapon?"兵装":"羽翼")+" · "+GameBalance.RarityName(rarity)+"\n"+ProgressionService.FashionBonus(slot,rarity)});
    if(AdventureRewardRules.ChestAffixReforge(chapter?(int)session.SelectedChapterNode:mode,chapter)){var reforge=ResourceItemPreview("affix-reforge",1);reforge.Clear=true;result.Add(reforge);}
@@ -334,9 +343,20 @@ namespace Emberfall
     if(draw)
     {
      Text(new Rect(8*u,end*u,(available-16)*u,(compact?16:22)*u),clear?"通关宝箱":"通关固定掉落",Mathf.RoundToInt((compact?11:13)*u),gold,true);
-     if(clear)Text(new Rect(8*u,(end+(compact?16:22))*u,(available-16)*u,(compact?14:22)*u),"传说装备 4% · "+(AdventureRewardRules.LegendaryPityChests-session.Progression.Profile.legendaryEquipmentMisses)+"次内必出",Mathf.RoundToInt((compact?9:11)*u),muted);
+     if(clear)
+     {
+      Rect odds=new Rect((available-90)*u,end*u,82*u,(compact?16:22)*u);
+      Text(odds,"概率说明 ⓘ",Mathf.RoundToInt((compact?9:10)*u),muted,false,false,TextAnchor.MiddleRight);
+      var info=new EntryRewardPreview{Key="chest-odds",Name="通关宝箱概率",Rarity=Rarity.Legendary,Icon=UIIconAtlas.Utility("inventory"),Description="通关宝箱概率\n传说装备概率  "+AdventureRewardRules.LegendaryChance(tier)+"%\n每箱获得一件物品或一组材料。\n连续未获得传说装备时，第30箱必出；获得后重新计数。"};
+      InspectRewardItem(MobileControls.Active?new Rect(odds.x,odds.y,odds.width,44*u):odds,info);
+      int remaining=Mathf.Max(1,AdventureRewardRules.LegendaryPityChests-session.Progression.Profile.legendaryEquipmentMisses);
+      Rect pity=new Rect(8*u,(end+(compact?18:26))*u,(available-16)*u,(compact?26:34)*u);
+      Fill(pity,new Color(.22f,.12f,.025f));Border(pity,gold,u);
+      Fill(new Rect(pity.x,pity.y,3*u,pity.height),gold);
+      Text(new Rect(pity.x+8*u,pity.y,pity.width-16*u,pity.height),remaining==1?"下一箱必出传说装备":"再开 "+remaining+" 箱内必出传说装备",Mathf.RoundToInt((compact?11:14)*u),new Color(1f,.82f,.35f),true,true,TextAnchor.MiddleCenter);
+     }
     }
-    end+=clear?(compact?32:46):(compact?22:24);
+    end+=clear?(compact?50:68):(compact?22:24);
     for(int row=0;row*columns<cards.Count;row++)
     {
      float labelHeight=compact?14:16;
@@ -389,34 +409,24 @@ namespace Emberfall
    Box(AdventureRect(l.Frame,u),jade,false);
    Text(new Rect((l.X+inset)*u,(l.Y+inset)*u,(l.Frame.Width-2*inset-48)*u,36*u),"选择冒险",Mathf.RoundToInt(20*u),pale,true);
    if(PopupCloseButton(new Rect((l.X+l.Frame.Width-44-inset)*u,(l.Y+inset)*u,44*u,36*u))){adventureChapterSelected=false;session.CancelDungeonSelection();BlockUITransition();return;}
-   string[] names={"沉星遗迹","守望林庭","烬河突围","蚀星斗场","回廊远征","星路章节"};
-   if(adventureChapterSelected)
+   string[] names={"沉星遗迹","守望林庭","烬河突围","蚀星斗场","回廊远征"};
+   adventureListScroll=BeginTouchScroll("adventure-list",AdventureRect(l.List,u),adventureListScroll,new Rect(0,0,(l.List.Width-18)*u,480*u));
+   for(int i=0;i<8;i++)
    {
-    PrepareInlineChapterSelection();
-    adventureListScroll=BeginTouchScroll("adventure-chapter-list",AdventureRect(l.List,u),adventureListScroll,new Rect(0,0,(l.List.Width-18)*u,232*u));
-    if(Button(new Rect(0,0,(l.List.Width-18)*u,44*u),"‹ 全部冒险",jade)){adventureChapterSelected=false;chapterScroll=adventureListScroll=Vector2.zero;CancelMobileScroll();}
-    for(int i=0;i<3;i++)
+    bool chapter=i>=5;var node=(ChapterNode)(chapter?i-5:0);
+    bool unlocked=!chapter||ChapterProgression.IsUnlocked(session.Progression.Profile,node);
+    bool chosen=chapter?adventureChapterSelected&&session.SelectedChapterNode==node:!adventureChapterSelected&&session.SelectedArenaMode==i-1;
+    string caption=chapter?ChapterDefinition.Get(node).Name:names[i];
+    if(!unlocked)caption+=" · "+ChapterProgression.UnlockLevel(node)+"级";
+    if(TabButton(AdventureRect(l.Entry(i),u),caption,chosen,unlocked))
     {
-     var node=(ChapterNode)i;bool unlocked=ChapterProgression.IsUnlocked(session.Progression.Profile,node);
-     Rect choice=new Rect(0,(52+i*60)*u,(l.List.Width-18)*u,52*u);
-     if(Button(choice,ChapterDefinition.Get(node).Name+(unlocked?"":" · "+ChapterProgression.UnlockLevel(node)+"级"),node==session.SelectedChapterNode?gold:jade,unlocked))SelectChapterNode(node);
+     adventureChapterSelected=chapter;
+     if(chapter){PrepareInlineChapterSelection();SelectChapterNode(node);}
+     else session.SelectedArenaMode=i-1;
+     adventureDetailScroll=Vector2.zero;adventureRewardHint=null;CancelMobileScroll();
     }
-    EndTouchScroll();
-   }
-   else
-   {
-   adventureListScroll=BeginTouchScroll("adventure-list",AdventureRect(l.List,u),adventureListScroll,new Rect(0,0,(l.List.Width-18)*u,360*u));
-   for(int i=0;i<6;i++)
-   {
-    var a=l.Entry(i);Rect r=AdventureRect(a,u);bool chosen=i==5?adventureChapterSelected:!adventureChapterSelected&&session.SelectedArenaMode==i-1;
-    Fill(r,chosen?new Color(.11f,.2f,.21f):card);if(chosen)Fill(new Rect(r.x,r.y,3*u,r.height),gold);
-    Text(new Rect(r.x+8*u,r.y+6*u,r.width-16*u,25*u),names[i],Mathf.RoundToInt(14*u),chosen?gold:pale,true);
-    Text(new Rect(r.x+8*u,r.y+33*u,r.width-16*u,18*u),i==5?"双印路线":i==0?"五波 · 首领":i==1?"守点":i==2?"限时":i==3?"首领连战":"五房远征",Mathf.RoundToInt(11*u),new Color(.76f,.82f,.86f));
-    if(GUI.Button(r,GUIContent.none,invisibleButton))
-    {adventureChapterSelected=i==5;if(i<5)session.SelectedArenaMode=i-1;adventureDetailScroll=adventureListScroll=Vector2.zero;adventureRewardHint=null;CancelMobileScroll();}
    }
    EndTouchScroll();
-   }
    if(adventureChapterSelected)
    {
     DrawInlineChapterEntry(AdventureRect(l.Details,u),u);

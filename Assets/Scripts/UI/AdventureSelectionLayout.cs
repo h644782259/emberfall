@@ -16,7 +16,7 @@ namespace Emberfall
             FooterY=Y+h-52-padding;OptionsY=FooterY;Footer=new MobilePanelLayout.Area(X+padding,FooterY,inner,48);
         }
         public MobilePanelLayout.Area Entry(int index)
-        {if(index<0||index>=6)throw new ArgumentOutOfRangeException(nameof(index));return new MobilePanelLayout.Area(0,index*60,List.Width-18,56);}
+        {if(index<0||index>=8)throw new ArgumentOutOfRangeException(nameof(index));return new MobilePanelLayout.Area(0,index*60,List.Width-18,56);}
         public MobilePanelLayout.Area EntryTitle(int index){var a=Entry(index);return new MobilePanelLayout.Area(a.X+8,a.Y+6,a.Width-16,25);}
         public MobilePanelLayout.Area EntryReward(int index){var a=Entry(index);return new MobilePanelLayout.Area(a.X+8,a.Y+33,a.Width-16,18);}
         public MobilePanelLayout.Area EntryEncounter(int index){return EntryReward(index);}

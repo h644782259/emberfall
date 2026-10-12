@@ -17,7 +17,7 @@ namespace Emberfall
             bool previous=GUI.enabled;GUI.enabled=previous&&enabled;
             bool hover=GUI.enabled&&!MobileControls.Active&&hit.Contains(Event.current.mousePosition);
             Rect art=hit;
-            if(hover){Fill(hit,new Color(gold.r,gold.g,gold.b,.12f));Border(hit,new Color(gold.r,gold.g,gold.b,.7f),2*unit);art=new Rect(hit.x-side*.025f,hit.y-side*.025f,side*1.05f,side*1.05f);}
+            if(hover){Fill(hit,new Color(gold.r,gold.g,gold.b,.12f));Border(hit,new Color(gold.r,gold.g,gold.b,.7f),2*unit);}
             DrawRewardChest(art,false,GUI.enabled?1f:.35f,0);
             bool clicked=GUI.Button(hit,GUIContent.none,invisibleButton);
             GUI.enabled=previous;return clicked;

@@ -1755,7 +1755,7 @@ namespace Emberfall
 
         public string ChestOpenCaption {get{return pendingChestRoll!=null||Profile.pendingChestDraw!=null?"继续开启":"开启宝箱";}}
         public string ActiveDungeonChestRules {
-            get {if(Profile.pendingChestRulesRevision>=3)return "开启获得一件物品或一组材料；传说装备4%，第30箱保底。";if(!Profile.pendingAdventureChest)return DungeonChestRules(Profile.pendingChestTier,LastChestReward);
+            get {if(Profile.pendingChestRulesRevision>=3)return "开启获得一件物品或一组材料；传说装备"+AdventureRewardRules.LegendaryChance(Profile.pendingChestTier)+"%，第30箱保底。";if(!Profile.pendingAdventureChest)return DungeonChestRules(Profile.pendingChestTier,LastChestReward);
                 int mode=Profile.pendingChestMode,tier=Profile.pendingChestTier;
                 return AdventureRewardRules.EquipmentSummary(mode,tier)+"\n装备 × "+AdventureRewardRules.EquipmentCount(mode,tier)+" · 等级匹配角色\n星烬碎片 × "+AdventureRewardRules.MaterialsMinimum(mode,tier)+"～"+AdventureRewardRules.MaterialsMaximum(mode,tier)+"\n"+
                 (mode==-1?"时装：史诗保底 · 史诗 "+AdventureRewardRules.UpgradeChance(-1,tier)+"% · 传说 "+AdventureRewardRules.LegendaryChance(tier)+"%\n":"")+"金币随阶数增长 · 开箱调整后入背包";
@@ -1792,13 +1792,13 @@ namespace Emberfall
             return CommitCandidate(candidate);
         }
         // Revision 3 grants exactly one item or one material stack. The draw is frozen before payment.
-        public static int ChestStackMinimum(bool stones,int tier){return stones?2+TierRewardBand.Of(tier):12+2*TierRewardBand.Of(tier);}
+        public static int ChestStackMinimum(bool stones,int tier){int step=TierRewardBand.Clamp(tier)-1;return stones?2+step:12+2*step;}
         public static int ChestStackMaximum(bool stones,int tier){return ChestStackMinimum(stones,tier)+(stones?3:8);}
         private static ChestReward BuildOneItemChestRoll(GameProfile profile,int qualityRoll,int slotRoll,int quantityRoll,string id)
         {
             if(qualityRoll<0||qualityRoll>=100)throw new ArgumentOutOfRangeException("qualityRoll");
             var r=new ChestReward{rulesRevision=3,rewardKind=ChestRewardKind.SingleChest,id=id,choice=-1,materialKind=RewardMaterialKind.StarAshFragment,primaryCount=1};
-            bool legendary=qualityRoll<4||profile.legendaryEquipmentMisses>=AdventureRewardRules.LegendaryPityChests-1;
+            bool legendary=qualityRoll<AdventureRewardRules.LegendaryChance(profile.pendingChestTier)||profile.legendaryEquipmentMisses>=AdventureRewardRules.LegendaryPityChests-1;
             bool fashion=AdventureRewardRules.ChestFashion(profile.pendingChestMode,profile.pendingChestChapterSource);
             bool reforge=AdventureRewardRules.ChestAffixReforge(profile.pendingChestMode,profile.pendingChestChapterSource);
             r.primaryKind=legendary||qualityRoll<40?1:qualityRoll>=95&&reforge?7:profile.pendingChestGemSource?(qualityRoll<75?4:3):qualityRoll<70?3:qualityRoll<85&&fashion?2:5;
@@ -1821,9 +1821,40 @@ namespace Emberfall
             else r.primaryCount=ChestStackMinimum(r.primaryKind==5,profile.pendingChestTier)+quantityRoll%(ChestStackMaximum(r.primaryKind==5,profile.pendingChestTier)-ChestStackMinimum(r.primaryKind==5,profile.pendingChestTier)+1);
             return r;
         }
+        private static ChestContentPreview ChestContent(GameProfile profile,ChestReward roll)
+        {
+            var preview=new ChestContentPreview{kind=roll.primaryKind,count=roll.primaryCount};
+            if(roll.primaryKind==1)
+            {
+                var item=new ItemData{id=roll.id+"-clear-0",slot=(ItemSlot)roll.primarySlot,rarity=roll.primaryRarity,level=profile.pendingChestChapterSource?EquipmentGenerationLevel(profile.level):AdventureRewardRules.DungeonLevel(profile.pendingChestTier)};
+                item.name=new[]{"旅者","苍蓝","星辉","烬王"}[(int)item.rarity]+ItemBaseName(item.slot,profile.heroClass);
+                SetRolledStats(item);EnsureUpgradeBasis(item);preview.equipment=item;
+            }
+            else if(roll.primaryKind==2)
+            {
+                var slot=(FashionSlot)roll.slotIndex;
+                preview.fashion=new FashionData{id="fashion-"+(int)slot+"-3",slot=slot,rarity=Rarity.Legendary,appearanceTier=3,name=FashionName(slot,Rarity.Legendary,profile.heroClass)};
+            }
+            else if(roll.primaryKind==4){preview.gemMechanic=roll.gemMechanic;preview.gemRarity=roll.gemRarity;}
+            return preview;
+        }
+        private static void FreezeChestContents(GameProfile profile,ChestReward roll)
+        {
+            if(roll.rulesRevision!=3||roll.contents!=null)return;
+            roll.contents=new ChestContentPreview[3];
+            for(int i=0;i<3;i++)
+            {
+                if(i==roll.selectedChest){roll.contents[i]=ChestContent(profile,roll);continue;}
+                string id=roll.id+"-preview-"+i;int seed=17;
+                unchecked{foreach(char c in id)seed=seed*31+c;}
+                var random=new System.Random(seed);
+                var other=BuildOneItemChestRoll(profile,random.Next(100),random.Next(2),random.Next(41),id);
+                roll.contents[i]=ChestContent(profile,other);
+            }
+        }
         private static bool ValidOneItemChest(ChestReward r)
         {
-            if(r==null||r.rulesRevision!=3||string.IsNullOrEmpty(r.id)||r.id.Length>80||r.rewardKind!=ChestRewardKind.SingleChest||r.choice!=-1||r.gold!=0||r.primaryKind<1||r.primaryKind>7||r.primaryCount<1||r.primaryCount>100)return false;
+            if(r==null||r.rulesRevision!=3||string.IsNullOrEmpty(r.id)||r.id.Length>80||r.rewardKind!=ChestRewardKind.SingleChest||r.choice!=-1||r.gold!=0||r.primaryKind<1||r.primaryKind>7||r.primaryCount<1||r.primaryCount>ChestStackMaximum(false,100))return false;
             if(r.primaryKind==7)return r.primaryCount==1&&r.primaryRarity==Rarity.Legendary;
             if(r.primaryKind==1)return r.primaryCount==1&&r.primarySlot>=0&&r.primarySlot<=2&&(r.primaryRarity==Rarity.Epic||r.primaryRarity==Rarity.Legendary);
             if(r.primaryKind==2)return r.primaryCount==1&&r.rarityIndex==(int)Rarity.Legendary&&r.slotIndex>=0&&r.slotIndex<=1;
@@ -1837,9 +1868,8 @@ namespace Emberfall
             if(receipt.primaryKind==1)
             {
                 if(candidate.inventory.Count+candidate.pendingLoot.Count+candidate.recoveryLoot.Count>=MaximumSavedEquipment){Fail("装备空间已满，请整理后重试。");return null;}
-                var item=new ItemData{id=receipt.id+"-clear-0",slot=(ItemSlot)receipt.primarySlot,rarity=receipt.primaryRarity,level=AdventureRewardRules.DungeonLevel(Profile.pendingChestTier)};
-                item.name=new[]{"旅者","苍蓝","星辉","烬王"}[(int)item.rarity]+ItemBaseName(item.slot,candidate.heroClass);
-                SetRolledStats(item);EnsureUpgradeBasis(item);candidate.inventory.Add(item);receipt.equipmentIds=new[]{item.id};receipt.name=item.name;
+                var item=ChestContent(candidate,receipt).equipment;
+                candidate.inventory.Add(item);receipt.equipmentIds=new[]{item.id};receipt.name=item.name;
             }
             else if(receipt.primaryKind==2)
             {
@@ -1872,6 +1902,9 @@ namespace Emberfall
                 else {candidate.fashionThreads+=receipt.primaryCount;receipt.threadsDelta=receipt.primaryCount;receipt.name="星纹";}
             }
             candidate.legendaryEquipmentMisses=receipt.primaryKind==1&&receipt.primaryRarity==Rarity.Legendary?0:Math.Min(AdventureRewardRules.LegendaryPityChests-1,candidate.legendaryEquipmentMisses+1);
+            // Reflect duplicate conversions in the chosen slot; keep the other saved contents.
+            if(receipt.contents!=null&&receipt.contents.Length==3&&receipt.selectedChest>=0&&receipt.selectedChest<3)
+                receipt.contents[receipt.selectedChest]=ChestContent(candidate,receipt);
             receipt.summary=receipt.name+(receipt.primaryCount>1?" × "+receipt.primaryCount:"");
             candidate.pendingFashionChest=false;candidate.pendingChestDraw=null;candidate.lastChestReward=receipt;candidate.pendingChestReveal=true;
             string failure;if(!TryWriteAttachedProfile(candidate,out failure)){Fail(failure);return null;}
@@ -1924,6 +1957,8 @@ namespace Emberfall
             }
             if(selected>=0&&pendingChestRoll.selectedChest>=0&&pendingChestRoll.selectedChest!=selected){Fail("请继续开启已选择的宝箱");return null;}
             if(pendingChestRoll.selectedChest<0){pendingChestRoll.selectedChest=selected>=0?selected:0;pendingChestContexts[SaveFilePath]=new PendingChestContext(CopyChestRoll(pendingChestRoll),pendingChestRollClears,pendingChestRollTier);}
+            FreezeChestContents(Profile,pendingChestRoll);
+            pendingChestContexts[SaveFilePath]=new PendingChestContext(CopyChestRoll(pendingChestRoll),pendingChestRollClears,pendingChestRollTier);
             // Persist the exact draw before consuming eligibility or granting anything.
             // A failed first write retains the same process-local roll; a failed grant
             // can also retry after restart from the durable frozen qualification.

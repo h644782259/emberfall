@@ -4,6 +4,37 @@ using UnityEngine;
 namespace Emberfall {
  public sealed partial class VisualValidationPlayer {
   public static void EnsureInstalled(){if(Object.FindAnyObjectByType<VisualValidationPlayer>()==null)Bootstrap();}
+  private IEnumerator VerifyRewardPresentation(){
+   yield return SetResolution(1456,868);
+   SetField("selectedClass",HeroClass.Arcanist);Invoke("StartSelectedHero");yield return WaitForSceneReady();
+   session.Progression.Profile.level=100;session.Progression.Profile.classTutorialCompleted=true;
+   session.Player.Teleport(new Vector3(0,0,11));session.EnterDungeon();
+   Check(session.DungeonSelectionOpen,"Open same-page adventure selection");
+   session.SelectedArenaMode=3;yield return Capture("fashion-round-icons");
+   SetField("adventureChapterSelected",true);Invoke("PrepareInlineChapterSelection");
+   yield return Capture("chapter-inline-selected");
+   SetField("adventureChapterSelected",false);session.SelectedArenaMode=-1;
+   session.ConfirmDungeonSelection();yield return WaitForSceneReady();
+   typeof(GameSession).GetProperty("DungeonCleared").SetValue(session,true);
+   var p=session.Progression;p.Profile.legendaryEquipmentMisses=29;
+   Check(p.TryGrantModeReward(System.Guid.NewGuid().ToString("N"),0,0,0,1,0),"Create isolated settlement reward");
+   yield return Capture("settlement-closed");
+   Invoke("CollectSettlementRewards",1);
+   yield return Capture("settlement-opening",.2f);
+   yield return Capture("settlement-open",1.5f);
+   var reward=p.LastChestReward;
+   Check(reward.contents!=null&&reward.contents.Length==3,"Three contents available in real Unity");
+   string snapshot=JsonUtility.ToJson(reward,true);
+   var recovered=new ProgressionService(p.SaveDirectory);
+   Check(recovered.LoadSlot(p.CurrentSlotId)&&JsonUtility.ToJson(recovered.LastChestReward,true)==snapshot,"Real Unity JSON retains all three contents");
+   MobileControls.SimulationEnabled=true;yield return SetResolution(813,421);
+   SetField("entryRewardSelection","chest:"+reward.Id+":1:0");
+   yield return Capture("settlement-touch-comparison");
+   SetField("entryRewardSelection",null);yield return SetResolution(568,320);
+   yield return Capture("settlement-touch-small");
+   Invoke("CloseSettlement");yield return null;
+   Check(!p.Profile.pendingChestReveal&&session.FinishedResultDismissed,"Closing completed settlement acknowledges once");
+  }
   private IEnumerator VerifyAdventureRework(){
    yield return SetResolution(1280,720);
    SetField("selectedClass",HeroClass.Arcanist);Invoke("StartSelectedHero");yield return WaitForSceneReady();session.Player.enabled=false;

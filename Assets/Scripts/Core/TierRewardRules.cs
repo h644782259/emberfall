@@ -45,7 +45,8 @@ namespace Emberfall
         public static int EnemyEquipmentChance(bool boss,bool elite){return boss?100:elite?35:8;}
         public static int PotionChance(int tier){return 12+3*TierRewardBand.Of(tier);}
         public const int LegendaryPityChests=30;
-        public static int LegendaryChance(int tier){return 4;}
+        // Ordinary saves store a level index (1 = Lv10); chapters store their tier.
+        public static int LegendaryChance(int tier){return Math.Min(25,4+TierRewardBand.Clamp(tier)-1);}
         private static void Validate(int mode){if(mode < -1 || mode > 3)throw new ArgumentOutOfRangeException(nameof(mode));}
         public static ItemSlot EquipmentSlot(int mode,int index)
         {Validate(mode);if(index<0||index>=8)throw new ArgumentOutOfRangeException(nameof(index));return mode==0?ItemSlot.Armor:mode==1?ItemSlot.Relic:mode==3?(index%2==0?ItemSlot.Armor:ItemSlot.Relic):ItemSlot.Weapon;}

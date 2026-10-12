@@ -114,12 +114,11 @@ namespace Emberfall
             else if(settlementChest!=null)DrawSettlementChestStage(stage,settlementChest,u);
             else if(p.Profile.pendingFashionChest)
             {
-                Text(new Rect(stage.x,stage.y,stage.width,24*u),"选择你的通关宝箱",Mathf.RoundToInt(15*u),gold,true,false,TextAnchor.MiddleCenter);
-                float cw=(stage.width-16*u)/3;int locked=p.SelectedRewardChest;
+                if(stage.height>=100*u)Text(new Rect(stage.x,stage.y,stage.width,24*u),"选择你的通关宝箱",Mathf.RoundToInt(15*u),gold,true,false,TextAnchor.MiddleCenter);
+                int locked=p.SelectedRewardChest;
                 for(int i=0;i<3;i++)
                 {
-                    Rect tile=new Rect(stage.x+i*(cw+8*u),stage.y+28*u,cw,stage.height-28*u);
-                    Rect art=new Rect(tile.x+4*u,tile.y,tile.width-8*u,Mathf.Max(36*u,tile.height));
+                    Rect art=SettlementChestArt(stage,i,u);
                     if(ChestOpenButton(art,u,locked<0||locked==i))
                     {chestRevealOrigin=art;CollectSettlementRewards(i);}
                 }
@@ -184,18 +183,67 @@ namespace Emberfall
         {
             bool animating=chestReceiptId==reward.Id&&!ChestAnimationDone;
             float progress=animating?ChestRevealPresentation.Progress(Time.unscaledTime-chestRevealedAt,ChestDuration):1;
-            float badgeSize=Mathf.Min(180*u,Mathf.Min(stage.height*.8f,stage.width*.24f));
-            Rect badge=new Rect(stage.x,stage.center.y-badgeSize*.5f,badgeSize,badgeSize);
-            float heroSize=Mathf.Min(stage.height,stage.width*.52f);
-            Rect hero=new Rect(stage.center.x-heroSize*.5f,stage.center.y-heroSize*.5f,heroSize,heroSize);
-            float dock=Mathf.SmoothStep(0,1,Mathf.Clamp01((progress-.45f)/.32f));
-            Rect art=new Rect(Mathf.Lerp(hero.x,badge.x,dock),Mathf.Lerp(hero.y,badge.y,dock),Mathf.Lerp(hero.width,badge.width,dock),Mathf.Lerp(hero.height,badge.height,dock));
-            if(animating&&progress>.18f&&progress<.8f)
-            {GUI.BeginGroup(art);DrawRewardRadiance(new Rect(0,0,art.width,art.height),gold,progress);GUI.EndGroup();}
-            DrawRewardChest(art,true,1,progress);
-            if(progress<.55f)return;
-            Rect rewardsArea=new Rect(badge.xMax+16*u,stage.y+8*u,Mathf.Max(1,stage.xMax-badge.xMax-24*u),stage.height-16*u);
-            Fill(new Rect(badge.xMax+6*u,stage.y+stage.height*.15f,u,stage.height*.7f),new Color(gold.r,gold.g,gold.b,.25f));
+            if(stage.height>=100*u)Text(new Rect(stage.x,stage.y,stage.width,24*u),"宝箱已开启",Mathf.RoundToInt(15*u),gold,true,false,TextAnchor.MiddleCenter);
+            for(int choice=0;choice<3;choice++)
+            {
+                Rect art=SettlementChestArt(stage,choice,u);
+                DrawRewardChest(art,true,1,progress);
+                if(progress<.42f)continue;
+                bool selected=choice==Mathf.Clamp(reward.selectedChest,0,2);
+                var icons=new List<EntryRewardPreview>();
+                if(reward.contents!=null&&reward.contents.Length==3&&reward.contents[choice]!=null)
+                {
+                    var preview=ChestContentItem(reward.contents[choice]);
+                    if(preview!=null)icons.Add(preview);
+                }
+                else if(selected)icons=GrantedChestItems(reward);
+                if(icons.Count==0)continue;
+                float side=Mathf.Min(art.width,art.height);
+                Rect square=new Rect(art.center.x-side*.5f,art.center.y-side*.5f,side,side);
+                float iconSize=Mathf.Min(64*u,Mathf.Max(32*u,side*.23f)),gap=4*u;
+                float left=square.center.x-(icons.Count*iconSize+(icons.Count-1)*gap)*.5f;
+                for(int i=0;i<icons.Count;i++)
+                {
+                    var item=icons[i];
+                    // Each chest owns its inspection key, even when two stacks match.
+                    string inspectionKey="chest:"+reward.Id+":"+choice+":"+i;
+                    Rect icon=new Rect(left+i*(iconSize+gap),square.y+side*.48f-iconSize*.5f,iconSize,iconSize);
+                    Color before=GUI.color;
+                    float reveal=Mathf.Clamp01((progress-.42f)/.18f);
+                    float pulse=selected?.72f+.28f*Mathf.Sin(Time.unscaledTime*4):1;
+                    GUI.color=new Color(before.r,before.g,before.b,before.a*reveal*pulse);
+                    Fill(icon,card);Border(icon,item.QualityColor,2*u);
+                    DrawIcon(new Rect(icon.x+4*u,icon.y+4*u,icon.width-8*u,icon.height-8*u),item.Icon,Color.white);
+                    if(item.Quantity>1)DrawOutlinedIconText(new Rect(icon.x,icon.yMax-16*u,icon.width-2*u,16*u),item.Quantity.ToString(),Mathf.RoundToInt(11*u),pale,TextAnchor.MiddleRight);
+                    GUI.color=before;
+                    // Inspection remains available throughout the pulse, including its dim phase.
+                    Rect hit=MobileControls.Active?new Rect(icon.center.x-Mathf.Max(icon.width,44*u)*.5f,icon.center.y-Mathf.Max(icon.height,44*u)*.5f,Mathf.Max(icon.width,44*u),Mathf.Max(icon.height,44*u)):icon;
+                    InspectRewardItem(hit,item,false,inspectionKey);
+                }
+                if(side>=80*u)Text(new Rect(square.x,square.yMax-18*u,square.width,18*u),selected?"已获得":"未选中",Mathf.RoundToInt(11*u),selected?gold:muted,true,false,TextAnchor.MiddleCenter);
+            }
+        }
+        private Rect SettlementChestArt(Rect stage,int choice,float u)
+        {
+            float cell=(stage.width-16*u)/3;
+            float header=stage.height>=100*u?28*u:0;
+            return new Rect(stage.x+choice*(cell+8*u)+4*u,stage.y+header,cell-8*u,Mathf.Max(1,stage.height-header));
+        }
+        private EntryRewardPreview ChestContentItem(ChestContentPreview content)
+        {
+            if(content.kind==1&&content.equipment!=null){var item=ActualEquipmentPreview(content.equipment);item.UnenhancedReward=true;return item;}
+            if(content.kind==2&&content.fashion!=null)
+            {
+                var fashion=content.fashion;
+                return new EntryRewardPreview{Key="fashion:"+fashion.id,UnenhancedReward=true,AppearanceSlot=fashion.slot,Name=fashion.name,Rarity=fashion.rarity,Icon=UIIconAtlas.FashionCardIcon(fashion,session.Progression.Profile.heroClass),Description=ProgressionService.FashionBonus(fashion)};
+            }
+            if(content.kind==4&&content.gemMechanic!=EquipmentMechanic.None)
+                return new EntryRewardPreview{Key="gem:"+content.gemMechanic,Name=BuildCatalog.GemName(content.gemMechanic),Rarity=content.gemRarity,Icon=UIIconAtlas.Utility("gem"),Description=GemRewardDescription(content.gemMechanic,content.gemRarity)};
+            string key=content.kind==3?"shard":content.kind==5?"refinement":content.kind==6?"thread":content.kind==7?"affix-reforge":null;
+            return key==null?null:ResourceItemPreview(key,content.count);
+        }
+        private List<EntryRewardPreview> GrantedChestItems(ChestReward reward)
+        {
             var icons=new System.Collections.Generic.List<EntryRewardPreview>();
             if(reward.equipmentIds!=null)foreach(string id in reward.equipmentIds)
             {var item=session.Progression.Profile.inventory.Find(v=>v!=null&&v.id==id);if(item!=null){var preview=ActualEquipmentPreview(item);preview.UnenhancedReward=true;icons.Add(preview);}}
@@ -208,32 +256,7 @@ namespace Emberfall
             string[] keys={"shard","refinement","thread"},names={"星烬碎片","装备洗练石","星纹"};
             for(int n=0;n<counts.Length;n++)if(counts[n]>0)icons.Add(new EntryRewardPreview{Key=keys[n],Name=names[n],Quantity=counts[n],Description=names[n]+"\n数量  "+counts[n],Icon=n==1?UIIconAtlas.Utility("gem"):UIIconAtlas.Reward(n==0?1:2),Rarity=n==1?Rarity.Epic:Rarity.Rare,Tint=n==1?GameBalance.RarityColor(Rarity.Epic):jade});
             if(reward.affixReforgeStonesDelta>0)icons.Add(ResourceItemPreview("affix-reforge",reward.affixReforgeStonesDelta));
-            if(icons.Count==0)return;
-            float gap=12*u,caption=0,cell=0;int cols=1,rows=icons.Count;
-            for(int candidate=1;candidate<=icons.Count;candidate++)
-            {
-                int candidateRows=(icons.Count+candidate-1)/candidate;
-                float size=Mathf.Min(60*u,Mathf.Min((rewardsArea.width-gap*(candidate-1))/candidate,(rewardsArea.height-gap*(candidateRows-1))/candidateRows-caption));
-                if(size>cell){cell=size;cols=candidate;rows=candidateRows;}
-            }
-            cell=Mathf.Max(1,cell);
-            float top=rewardsArea.center.y-(rows*(cell+caption)+(rows-1)*gap)*.5f;
-            for(int i=0;i<icons.Count;i++)
-            {
-                float reveal=animating?Mathf.Clamp01((progress-.55f-i*.035f)/.16f):1;
-                if(reveal<=0)continue;
-                int rowCount=Mathf.Min(cols,icons.Count-(i/cols)*cols);
-                float rowLeft=rewardsArea.center.x-(rowCount*cell+(rowCount-1)*gap)*.5f;
-                Rect icon=new Rect(rowLeft+(i%cols)*(cell+gap),top+(i/cols)*(cell+caption+gap),cell,cell);
-                Color before=GUI.color;GUI.color=new Color(before.r,before.g,before.b,before.a*reveal);
-                Fill(icon,card);Border(icon,icons[i].QualityColor,2*u);
-                DrawIcon(new Rect(icon.x+5*u,icon.y+5*u,icon.width-10*u,icon.height-10*u),icons[i].Icon,icons[i].QualityColor);
-                if(icons[i].Quantity>1)Text(new Rect(icon.x+2*u,icon.yMax-18*u,icon.width-5*u,16*u),icons[i].Quantity.ToString(),Mathf.RoundToInt(11*u),pale,true,false,TextAnchor.MiddleRight);
-                if(caption>0)Text(new Rect(icon.x,icon.yMax+4*u,icon.width,caption-4*u),icons[i].Name,Mathf.RoundToInt(12*u),icons[i].QualityColor,true,true,TextAnchor.MiddleCenter);
-                GUI.color=before;
-                InspectRewardItem(icon,icons[i]);
-            }
-
+            return icons;
         }
 
         // Returns only the explicit primary action. Respawn/navigation stays with the caller.
