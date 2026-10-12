@@ -94,13 +94,7 @@ namespace Emberfall
             int descriptionFont=14;bool compact=false;float descriptionY=52;
             float textWidth=w-24,descriptionHeight=Style(Mathf.RoundToInt(descriptionFont*u),false,true).CalcHeight(new GUIContent(mechanic),textWidth*u)/u+12;
             float rewardWidth=w,rewardsHeight=DrawEntryRewardPreviews(rewardWidth,u,mode,session.SelectedChapterTier,true,false),rewardX=0,rewardY=52+descriptionHeight;
-            bool columns=w>=620&&(rewardY+rewardsHeight)*u>body.height;
-            if(columns)
-            {
-                textWidth=w*.46f-24;rewardX=w*.46f+8;rewardWidth=w-rewardX;
-                descriptionHeight=Style(Mathf.RoundToInt(descriptionFont*u),false,true).CalcHeight(new GUIContent(mechanic),textWidth*u)/u+12;
-                rewardsHeight=DrawEntryRewardPreviews(rewardWidth,u,mode,session.SelectedChapterTier,true,false);rewardY=52;
-            }
+            // Keep rewards below the full-width mechanic text; overflow scrolls vertically.
             float total=Mathf.Max(52+descriptionHeight,rewardY+rewardsHeight),errorHeight=string.IsNullOrEmpty(chapterEntryError)?0:48;
             // A measured compact stack keeps the complete mechanic and all reward
             // groups visible on the short phone and narrow tablet entry bodies.
