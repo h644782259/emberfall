@@ -16,6 +16,12 @@ namespace Emberfall
         public const float MinimumArmorDamageMultiplier = .30f;
         public const float MinimumCombinedDamageMultiplier = .16f;
 
+        // Confirmed earlier hits empower the next direct hit; expired combos pass zero.
+        public static float ComboDamageMultiplier(int confirmedHits)
+        {
+            return 1f + Math.Max(confirmedHits, 0) * .005f;
+        }
+
         public static float UpgradeMultiplier(int rank)
         {
             return 1f + Clamp(rank, 0, MaximumUpgradeRank) * UpgradePerRank;

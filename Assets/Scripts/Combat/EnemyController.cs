@@ -189,9 +189,10 @@ namespace Emberfall
             return obj.transform;
         }
 
-        public void TakeDamage(float amount, Vector3 direction, float knockback = 0f, float stun = 0f, bool impact = true, bool critical = false, System.Action<float> actualHealthLoss = null, int practiceCastId = 0, Vector3? contactPoint = null)
+        public void TakeDamage(float amount, Vector3 direction, float knockback = 0f, float stun = 0f, bool impact = true, bool critical = false, System.Action<float> actualHealthLoss = null, int practiceCastId = 0, Vector3? contactPoint = null, string damageIcon = null)
         {
             if (session == null || !AdventureResultPolicy.AcceptsDamage(session.HasStarted,session.CombatEnded) || IsDead || amount <= 0 || float.IsNaN(amount) || float.IsInfinity(amount)) return;
+            if(impact)amount *= CombatBalance.ComboDamageMultiplier(session.ComboHitCount);
             amount *= session.RoomSupportMultiplier(this)*session.ChapterSupportMultiplier(this);
             amount *= StatusEffects == null ? 1 : StatusEffects.DamageMultiplier;
             if (largeBoss != null) amount *= largeBoss.State.IncomingMultiplier;
@@ -231,7 +232,7 @@ namespace Emberfall
             // Use the confirmed world contact, captured before later recoil/turning.
             Vector3 contact=contactPoint.HasValue&&FinitePoint(contactPoint.Value)?contactPoint.Value:
                 transform.position+Vector3.up*(IsBoss?2f*BodyScale:Kind==EnemyKind.Slime?.65f:1.25f)-CombatFx.Flat(direction).normalized*.25f;
-            session.SpawnCombatDamage(contact,Mathf.CeilToInt(amount).ToString(),critical);
+            session.SpawnCombatDamage(contact,System.Math.Ceiling(amount).ToString(System.Globalization.CultureInfo.InvariantCulture),critical,damageIcon);
             if (Health <= 0 && !deathReported)
             {
                 if (CombatReviewEvents.Enabled) CombatReviewEvents.Emit("enemydeath","0",CombatReviewObjectId.Get(this));

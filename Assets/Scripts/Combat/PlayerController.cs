@@ -39,6 +39,8 @@ namespace Emberfall
         private float CombatAttack { get { return stats.Damage * RunAttackMultiplier * (1f+(Health>=MaxHealth*.8f?stats.GemHealthyDamage:Health<=MaxHealth*.5f?stats.GemLowHealthDamage:0)); } }
 
         private float attackCooldown, attackAnimation, hurtTimer, dodgeCooldown, invulnerability, skillFeedbackCooldown;
+        private float basicFacingUntil;
+        private Vector3 basicFacingDirection;
         private const float BlinkProtectionDuration = .38f;
         private float blinkInvulnerableUntil;
         public bool IsBlinkInvulnerable { get { return Time.time < blinkInvulnerableUntil; } }
@@ -227,6 +229,7 @@ namespace Emberfall
             openingFrost.Clear(); openingFrostTarget = null; openingFrostIdentity = 0;
             slowTime = slowStrength = 0;
             attackAnimation = 0;
+            basicFacingUntil = 0;
             attackCooldown = .15f;
             blinkInvulnerableUntil = 0;
             invulnerability = .65f;
@@ -522,9 +525,12 @@ namespace Emberfall
             if (advancePendingSkillRelease) AdvanceSkillRelease(dt);
             if (!jumping && !TraversalStartedThisFrame && !SkillReleaseInputBlocked && wantsBasic && !suppressBasic && (charge == null || (!charge.IsCharging && !charge.ConsumedThisFrame)))
             {
+                ResolveBasicAttackFacing();
                 FaceAim();
                 if (attackCooldown <= 0) BasicAttack();
             }
+            if(Time.time<basicFacingUntil&&!jumping&&!TraversalStartedThisFrame&&!SkillReleaseInputBlocked&&!HasPendingSkillRelease&&!suppressBasic&&(charge==null||!charge.IsCharging)&&basicFacingDirection.sqrMagnitude>.0001f)
+                transform.rotation=Quaternion.LookRotation(basicFacingDirection);
             model.Animate(movement.magnitude,attackAnimation,hurtTimer > 0);
             if (HasPendingSkillRelease) AnimateSkillPreparation(pendingSkillReleaseSlot, SkillPreparationProgress);
             else if (charge != null && charge.IsCharging) model.AnimateCharge(charge.Progress,charge.SkillIndex);
@@ -732,6 +738,12 @@ namespace Emberfall
             }
             return chosen;
         }
+        private void ResolveBasicAttackFacing()
+        {
+            if(!MobileControls.Active)AimTarget=ResolveDesktopBasicTarget();
+            if((HeroClass==HeroClass.Arcanist||HeroClass==HeroClass.Summoner)&&!ValidAimTarget(AimTarget))AimTarget=MagicConeTarget();
+        }
+
         private void BasicAttack()
         {
             CombatImpactBatch.BeginAction();
@@ -740,9 +752,10 @@ namespace Emberfall
             if (TraversalStartedThisFrame || SkillReleaseInputBlocked || skillBasicRecovery.Blocked) return;
             if(!MobilePinnedActionAllowed(-1,true))return;
             if (charge != null && (charge.IsCharging || charge.ConsumedThisFrame)) return;
-            if(!MobileControls.Active)AimTarget=ResolveDesktopBasicTarget();
-            if ((HeroClass==HeroClass.Arcanist || HeroClass==HeroClass.Summoner) && !ValidAimTarget(AimTarget)) AimTarget=MagicConeTarget();
+            ResolveBasicAttackFacing();
             FaceAim();
+            basicFacingDirection=transform.forward;
+            basicFacingUntil=Time.time+.25f;
             if (CombatReviewEvents.Enabled) CombatReviewEvents.Emit("attack",CombatReviewObjectId.Get(this));
             attackCooldown = SkillDamageBudgets.BasicInterval(HeroClass);
             if (mobilityTime > 0) attackCooldown *= .8f;
@@ -1328,7 +1341,7 @@ namespace Emberfall
             int rank=session.Progression.Profile.skillRanks[skill];
             string failure=null;
             if(rank<=0) failure="按 K 学习这个技能后再施放。";
-            else if(skillRuntime.Remaining(skill)>0) failure=GameBalance.SkillName(HeroClass,skill)+" 冷却中（"+skillRuntime.Remaining(skill).ToString("0.0")+" 秒）";
+            else if(skillRuntime.Remaining(skill)>0) { session.ReportControlFailure("skill"+skill,"冷却"); return false; }
             else if(Energy<GameBalance.SkillEnergyCost(HeroClass,skill)) failure="能量不足：普攻命中回复 8 点，持续回复每秒 4 点。";
             else if(!SkillHealingHasEffect(skill,rank)) failure="生命已满，无需使用治疗技能。";
             else if(!StockTargetReady(skill,rank)) failure="附近没有可连锁的目标。";
@@ -1429,11 +1442,12 @@ namespace Emberfall
                 {
                     float remaining = skillRuntime.Remaining(slot);
                     session.ReportControlFailure("skill"+slot,remaining>0?"冷却":"缺能");
-                    if(!MobileControls.Active)session.Notify(remaining > 0 ? GameBalance.SkillName(HeroClass,slot) + " 冷却中（" + remaining.ToString("0.0") + " 秒）" : "能量不足：需要 " + GameBalance.SkillEnergyCost(HeroClass,slot) + " 点；普攻命中回复 8 点，持续回复每秒 4 点。");
+                    if(!MobileControls.Active&&remaining<=0)session.Notify("能量不足：需要 " + GameBalance.SkillEnergyCost(HeroClass,slot) + " 点；普攻命中回复 8 点，持续回复每秒 4 点。");
                     skillFeedbackCooldown = .8f;
                 }
                 return;
             }
+            basicFacingUntil=0;
             MasteryResourceProc resourceProc=masteryCore.SkillSpent(GameBalance.SkillEnergyCost(HeroClass,slot));
             if(resourceProc.Energy>0){skillRuntime.RestoreEnergy(resourceProc.Energy);skillRuntime.ReduceCooldowns(resourceProc.CooldownReduction);session.RecordCombatAction("循能核心");}
             int castId = NewCastId();HoldCastReceipt(ref skillCastReceipt,castId);

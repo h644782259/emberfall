@@ -1017,6 +1017,8 @@ namespace Emberfall
         private float yaw, pitch = DefaultPitch;
         private float smoothYaw, smoothPitch = DefaultPitch, smoothDistance = 19f;
         private Vector3 lookTarget;
+        private float manualCameraUntil, assistTargetSince;
+        private EnemyController assistTarget;
         public static bool CancelSkillRequested { get { return !MobileControls.Active && active != null && active.inputFrame == Time.frameCount && active.orbitInput.Clicked; } }
         public static bool IsOrbitDragging { get { return !MobileControls.Active && active != null && active.orbitInput.IsDragging; } }
         public float Pitch { get { return pitch; } }
@@ -1027,6 +1029,8 @@ namespace Emberfall
         {
             HitFeedback.ClearCamera();
             ResetOrbitInput();
+            assistTarget=null;
+            manualCameraUntil=Time.unscaledTime+1f;
             lookTarget = DesiredTarget();
             MoveCamera(true);
         }
@@ -1053,7 +1057,7 @@ namespace Emberfall
             ProcessOrbitInput(Input.mousePosition, Input.GetMouseButtonDown(1), Input.GetMouseButton(1), Input.GetMouseButtonUp(1), canStart, canContinue, Input.mouseScrollDelta.y);
         }
 
-        public void ApplyMobilePitch(float delta) { if(MobileControls.Active&&GameSession.Instance!=null&&!GameSession.Instance.InputBlocked)pitch=MobileCameraGesture.Apply(pitch,delta); }
+        public void ApplyMobilePitch(float delta) { if(MobileControls.Active&&GameSession.Instance!=null&&!GameSession.Instance.InputBlocked){pitch=MobileCameraGesture.Apply(pitch,delta);if(Mathf.Abs(delta)>.001f)manualCameraUntil=Time.unscaledTime+4f;} }
 
         private void ProcessOrbitInput(Vector2 position, bool pressed, bool held, bool released, bool canStart, bool canContinue, float scroll)
         {
@@ -1061,15 +1065,47 @@ namespace Emberfall
             orbitInput.Advance(position, pressed, held, released, canStart, canContinue);
             if (orbitInput.DragDelta.sqrMagnitude > 0)
             {
+                manualCameraUntil=Time.unscaledTime+4f;
                 yaw = Mathf.Repeat(yaw + orbitInput.DragDelta.x * .22f, 360f);
                 pitch = Mathf.Clamp(pitch + orbitInput.DragDelta.y * .18f, MinimumPitch, MaximumPitch);
             }
-            if (canStart && canContinue) distance = Mathf.Clamp(distance - scroll * 1.5f, 13f, 25f);
+            if (canStart && canContinue)
+            {
+                distance = Mathf.Clamp(distance - scroll * 1.5f, 13f, 25f);
+                if(Mathf.Abs(scroll)>.001f)manualCameraUntil=Time.unscaledTime+4f;
+            }
+        }
+
+        private void AssistCombatView()
+        {
+            var game=GameSession.Instance;
+            if(!Application.isFocused||game==null||game.InputBlocked||!game.InCombat||game.Player==null)
+            {assistTarget=null;return;}
+            // A held orbit gesture owns the camera even when the mouse stops moving.
+            if(orbitInput.IsHeld){manualCameraUntil=Time.unscaledTime+4f;assistTarget=null;return;}
+            if(Time.unscaledTime<manualCameraUntil)return;
+            var targeting=game.Player.GetComponent<SkillTargetingController>();
+            if(targeting!=null&&targeting.IsTargeting){assistTarget=null;return;}
+            var target=game.Player.FocusTarget!=null?game.Player.FocusTarget:game.Player.AimTarget;
+            if(target==null||target.IsDead||!target.isActiveAndEnabled||!target.gameObject.activeInHierarchy)
+            {assistTarget=null;return;}
+            Vector3 direction=Vector3.ProjectOnPlane(target.transform.position-game.Player.transform.position,Vector3.up);
+            if(direction.sqrMagnitude<2.25f||direction.sqrMagnitude>18f*18f||!CombatSight.Direct(game.Player.transform.position,target.transform.position))
+            {assistTarget=null;return;}
+            if(assistTarget!=target){assistTarget=target;assistTargetSince=Time.unscaledTime;return;}
+            if(Time.unscaledTime-assistTargetSince<.45f)return;
+            float desiredYaw=Mathf.Atan2(direction.x,direction.z)*Mathf.Rad2Deg;
+            float error=Mathf.DeltaAngle(yaw,desiredYaw);
+            // Leave comfortable framing alone; never force a hard target lock.
+            if(Mathf.Abs(error)<=20f)return;
+            float speed=Mathf.Min(30f,(Mathf.Abs(error)-20f)*1.8f);
+            yaw=Mathf.Repeat(yaw+Mathf.Sign(error)*Mathf.Min(Mathf.Abs(error)-20f,speed*Mathf.Min(Time.deltaTime,.05f)),360f);
         }
 
         private void LateUpdate() { using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.Camera)) MoveCamera(false); }
         private void MoveCamera(bool snap)
         {
+            if(!snap)AssistCombatView();
             Vector3 desired = DesiredTarget();
             float follow = 1f - Mathf.Exp(-8f * Time.unscaledDeltaTime);
             float orbit = 1f - Mathf.Exp(-12f * Time.unscaledDeltaTime);

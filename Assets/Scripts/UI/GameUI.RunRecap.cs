@@ -308,10 +308,13 @@ namespace Emberfall
             float iconSize=mobile?35:44;
             DrawIcon(new Rect(header.x,header.y+2*unit,iconSize*unit,iconSize*unit),UIIconAtlas.Utility(snapshot!=null&&snapshot.Won?"confirm":"skills"),accent);
             string title=snapshot==null?"战斗复盘":snapshot.Won?(snapshot.ModeName.Length>0?"挑战完成":"遗迹通关"):"本次止步";
-            Text(new Rect(header.x+(iconSize+12)*unit,header.y,header.width-(iconSize+126)*unit,32*unit),title,Mathf.RoundToInt((mobile?23:28)*unit),pale,true);
+            Rect titleRect=new Rect(header.x+(iconSize+12)*unit,header.y,header.width-(iconSize+20)*unit,(mobile?38:44)*unit);
+            int titleSize=Mathf.RoundToInt((mobile?23:28)*unit);
+            while(titleSize>8){Vector2 measured=Style(titleSize,true).CalcSize(new GUIContent(title));if(measured.x<=titleRect.width&&measured.y<=titleRect.height)break;titleSize--;}
+            Text(titleRect,title,titleSize,pale,true,false,TextAnchor.MiddleLeft);
             string location=snapshot==null?"":snapshot.InDungeon?(snapshot.ModeName.Length>0?snapshot.ModeName+"  ·  ":"")+(session.ChapterActive?("第 "+snapshot.Tier+" 阶"):"Lv"+AdventureRewardRules.DungeonLevel(snapshot.Tier))+"  ·  "+snapshot.Wave+" / "+snapshot.TotalWaves+(snapshot.ModeName.Length>0?" 阶段":" 波"):"原野探索";
-            Text(new Rect(header.x+(iconSize+12)*unit,header.y+34*unit,header.width-(iconSize+20)*unit,22*unit),location,Mathf.RoundToInt(13*unit),muted);
-            Rule(frame.x+16*unit,frame.y+(mobile?61:78)*unit,frame.width-32*unit,accent*.5f);
+            Text(new Rect(header.x+(iconSize+12)*unit,titleRect.yMax+2*unit,header.width-(iconSize+20)*unit,26*unit),location,Mathf.RoundToInt(13*unit),muted);
+            Rule(frame.x+16*unit,layout.Viewport.Y*unit-6*unit,frame.width-32*unit,accent*.5f);
             Rect viewport=RecapRect(layout.Viewport,unit);
             float statusHeight=RecapStatusHeight(layout,unit);
             float rewardHeight=settlementChest==null?0:DrawChestRewardContents(layout.ContentWidth,unit,settlementChest,null,false,false)+36;
@@ -349,23 +352,17 @@ namespace Emberfall
             }
             EndTouchScroll();
             Rect primary=RecapRect(layout.Primary,unit);
-            if(death)
-            {
-                float menuWidth=Mathf.Min(152*unit,primary.width*.35f);
-                if(NavigationButton(new Rect(primary.x,primary.y,menuWidth,primary.height),"菜单 / 存档",jade))session.SetPaused(true);
-                primary.x+=menuWidth+12*unit;primary.width-=menuWidth+12*unit;
-            }
             if(!death&&session.InDungeon&&SettlementRewardsPending)
             {
                 float claimWidth=primary.width*.48f;
                 if(Button(new Rect(primary.x,primary.y,claimWidth,primary.height),session.Progression.Profile.pendingFashionChest?"请选择上方宝箱":string.IsNullOrEmpty(session.Progression.LastError)?"领取奖励":"重试领取",gold,!session.Progression.Profile.pendingFashionChest))CollectSettlementRewards();
                 primary.x+=claimWidth+8*unit;primary.width-=claimWidth+8*unit;
             }
-            if(death&&session.CanRetryRoomChain)
+            if(death&&(session.CanRetryChapter||session.CanRetryRoomChain))
             {
                 float retryWidth=primary.width*.48f;
-                if(Button(new Rect(primary.x,primary.y,retryWidth,primary.height),"原条件重试",gold))
-                {session.RetryFailedRoomChain();BlockUITransition();return false;}
+                if(Button(new Rect(primary.x,primary.y,retryWidth,primary.height),"再次挑战",gold))
+                {if(session.CanRetryChapter)session.RetryFailedChapter();else session.RetryFailedRoomChain();BlockUITransition();return false;}
                 primary.x+=retryWidth+8*unit;primary.width-=retryWidth+8*unit;
             }
             return death&&PrimaryButton(primary,"回营整备",accent,true,null,true);
@@ -399,10 +396,10 @@ namespace Emberfall
                     Fill(r,card);Fill(new Rect(r.x,r.y,3*unit,r.height),jade*.7f);
                     DrawIcon(new Rect(r.xMax-(compact?24:38)*unit,r.y+(compact?7:13)*unit,(compact?16:25)*unit,(compact?16:25)*unit),UIIconAtlas.Utility(RunRecapPresentation.IconFor(metric.Key)),jade);
                     int numberSize=Mathf.RoundToInt((compact?21:34)*unit*Mathf.Clamp(EffectPreferences.CombatTextScale/1.25f,1f,1.18f));
-                    string value=metric.Value.ToString("N0");
-                    float measured=Style(numberSize,true).CalcSize(new GUIContent(value)).x;
-                    if(measured>r.width-(compact?32:48)*unit)numberSize=Mathf.Max(Mathf.RoundToInt((compact?14:20)*unit),Mathf.FloorToInt(numberSize*(r.width-(compact?32:48)*unit)/measured));
-                    Text(new Rect(r.x+(compact?8:14)*unit,r.y+(compact?4:6)*unit,r.width-(compact?32:48)*unit,(compact?27:44)*unit),value,numberSize,pale,true);
+                    string value=CombatNumberFormat.Compact(metric.Value);
+                    Rect numberRect=new Rect(r.x+(compact?8:14)*unit,r.y+(compact?4:6)*unit,r.width-(compact?40:60)*unit,(compact?27:44)*unit);
+                    while(numberSize>8){Vector2 measured=Style(numberSize,true).CalcSize(new GUIContent(value));if(measured.x<=numberRect.width&&measured.y<=numberRect.height)break;numberSize--;}
+                    Text(numberRect,value,numberSize,pale,true,false,TextAnchor.MiddleLeft);
                     Text(new Rect(r.x+(compact?8:14)*unit,r.y+(compact?31:57)*unit,r.width-(compact?12:25)*unit,(compact?20:22)*unit),metric.Key,Mathf.RoundToInt((compact?11:14)*unit),muted);
                 }
                 y+=layout.MetricRowsHeight(data.Metrics.Length)+18;

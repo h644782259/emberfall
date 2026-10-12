@@ -41,7 +41,7 @@ namespace Emberfall
    x=Mathf.Clamp(x,12*u,Mathf.Max(12*u,width-w-12*u));
    float y=Mathf.Clamp(entryRewardAnchor.y,12*u,Mathf.Max(12*u,height-h-12*u));
    Rect box=new Rect(x,y,w,h);entryRewardPopupRect=box;blockedRects.Add(box);
-   if(!comparing){Fill(box,ink);Border(box,entryRewardPopup.QualityColor,2*u);if(entryRewardPopup.Rarity==Rarity.Legendary)DrawFashionSlotFlow(box,entryRewardPopup.QualityColor,u);}
+   if(!comparing){Fill(box,ink);Border(box,entryRewardPopup.QualityColor,2*u);}
    if(!comparing)
    {
     float closeInset=(MobileControls.Active||(entryRewardSelection??"").StartsWith("merchant:"))?40*u:0;
@@ -150,7 +150,7 @@ namespace Emberfall
    if(currentEquipment!=null)worn=ActualEquipmentPreview(currentEquipment);
    if(item.AppearanceSlot.HasValue){var f=session.Progression.EquippedFashion(item.AppearanceSlot.Value);if(f!=null)worn=new EntryRewardPreview{Name=f.name,Rarity=f.rarity,AppearanceSlot=f.slot,Icon=UIIconAtlas.FashionCardIcon(f,session.Progression.Profile.heroClass)};}
    if(draw){Fill(new Rect(0,0,available*u,DrawRewardDetailRows(item,available,u,false)*u),ink);if(!selectedWorn)Fill(new Rect(cardWidth*u,0,gap*u,DrawRewardDetailRows(item,available,u,false)*u),new Color(.15f,.29f,.31f));}
-   if(draw)for(int col=firstColumn;col<2;col++){float x=(col-firstColumn)*(cardWidth+gap);Rect cardRect=new Rect(x*u,0,cardWidth*u,DrawRewardDetailRows(item,available,u,false)*u);Fill(cardRect,ink);Border(cardRect,col==0?muted:jade);var value=col==0?worn:item;if(value!=null&&value.Rarity==Rarity.Legendary)DrawFashionSlotFlow(cardRect,value.QualityColor,u);}
+   if(draw)for(int col=firstColumn;col<2;col++){float x=(col-firstColumn)*(cardWidth+gap);Rect cardRect=new Rect(x*u,0,cardWidth*u,DrawRewardDetailRows(item,available,u,false)*u);Fill(cardRect,ink);Border(cardRect,col==0?muted:jade);}
    var progression=session.Progression;
    ItemData owned=item.Equipment==null?null:progression.Profile.inventory.Find(v=>v!=null&&v.id==item.Equipment.id);
    if(draw)for(int col=firstColumn;col<2;col++)

@@ -176,7 +176,7 @@ namespace Emberfall
             if (name == "inventory") name = "bag";
             if (name == "camp") name = "home";
             if (name == "blink") name = "dodge";
-            string[] names = { "bag", "skills", "home", "portal", "attack", "dodge", "potion", "pause", "help", "confirm", "cancel", "jump", "codex", "coin", "shard", "compare", "save", "apply", "reset", "upgrade", "core", "lock", "settings", "shop", "smith", "gem", "critical" };
+            string[] names = { "bag", "skills", "home", "portal", "attack", "dodge", "potion", "pause", "help", "confirm", "cancel", "jump", "codex", "coin", "shard", "compare", "save", "apply", "reset", "upgrade", "core", "lock", "settings", "shop", "smith", "gem", "critical", "burn", "poison", "total-damage", "combo", "damage-taken" };
             int id = System.Array.IndexOf(names, name);
             if (id < 0) id = 1;
             int key = 100 + id;
@@ -194,6 +194,31 @@ namespace Emberfall
             else if (id == 8) { ink.Arc(32, 23, 13, 190, 470, 5); ink.Line(32, 36, 32, 42, 5); ink.Disc(32, 52, 3); }
             else if (id == 9) { ink.Line(10, 32, 26, 48, 6); ink.Line(26, 48, 54, 16, 6); }
             else if (id == 10) { ink.Line(16, 16, 48, 48, 6); ink.Line(16, 48, 48, 16, 6); }
+            else if(id==27)
+            {
+                ink.color=new Color(1f,.35f,.06f);ink.Polygon(new[]{V(32,4),V(43,25),V(48,16),V(56,39),V(48,55),V(30,60),V(12,51),V(8,36),V(19,19),V(21,34)});
+                ink.color=new Color(1f,.86f,.28f);ink.Polygon(new[]{V(32,28),V(43,43),V(38,55),V(25,55),V(20,45)});
+            }
+            else if(id==28)
+            {
+                ink.color=new Color(.43f,.9f,.18f);ink.Polygon(new[]{V(32,5),V(51,34),V(53,45),V(45,56),V(32,60),V(19,56),V(11,45),V(13,34)});
+                ink.color=new Color(.1f,.25f,.035f);ink.Disc(24,40,4);ink.Disc(40,40,4);ink.Line(26,51,38,51,3);
+            }
+            else if(id==29)
+            {
+                ink.color=new Color(1f,.76f,.3f);ink.Polygon(new[]{V(10,6),V(20,10),V(48,44),V(42,50),V(12,18)});ink.Polygon(new[]{V(54,6),V(44,10),V(16,44),V(22,50),V(52,18)});
+                ink.color=new Color(.65f,.84f,.95f);ink.Line(12,39,28,53,5);ink.Line(36,53,52,39,5);ink.Line(19,48,11,58,5);ink.Line(45,48,53,58,5);
+            }
+            else if(id==30)
+            {
+                ink.color=new Color(.35f,.92f,.82f);ink.Ring(22,40,14,5);ink.Ring(42,22,14,5);ink.Line(23,39,41,23,5);
+            }
+            else if(id==31)
+            {
+                ink.color=new Color(.55f,.75f,.88f);ink.Polygon(new[]{V(9,12),V(32,6),V(55,12),V(51,40),V(42,52),V(32,60),V(22,52),V(13,40)});
+                ink.color=new Color(.12f,.23f,.29f);ink.Polygon(new[]{V(16,18),V(32,13),V(48,18),V(44,38),V(32,51),V(20,38)});
+                ink.color=new Color(1f,.4f,.22f);ink.Polygon(new[]{V(37,4),V(27,29),V(38,28),V(25,55),V(30,34),V(19,35)});
+            }
             else if(id==26)
             {
                 // A broad comic impact with a quiet centre for the damage number.

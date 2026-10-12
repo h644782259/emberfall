@@ -201,7 +201,7 @@ namespace Emberfall
             while(burnSchedule!=null&&burnSchedule.HasDueTicks&&!enemy.IsDead&&ValidSource(source,expectedEpoch))
             {
                 if(!burnSchedule.TryTakeDueTick(true))break;
-                enemy.TakeDamage(burnDamage*StatusTickRates.Burn,Vector3.zero,impact:false);
+                enemy.TakeDamage(burnDamage*StatusTickRates.Burn,Vector3.zero,impact:false,damageIcon:"burn");
             }
             if(enemy.IsDead||!ValidSource(source,expectedEpoch))return null;
             bool hadOwnBurn=burnSource==source&&burnEpoch==source.CombatEpoch&&burnSchedule!=null&&!burnSchedule.Complete&&burnSchedule.Remaining>0;
@@ -240,7 +240,7 @@ namespace Emberfall
                 if(status==null||status.enemy==null||status.enemy.IsDead||!status.ValidSource(source,epoch))return false;
                 // Already-claimed DOT budget: never re-enter spell-hit/crit/resource hooks.
                 float before=status.enemy.Health;
-                status.enemy.TakeDamage(amount,Vector3.zero,impact:false);
+                status.enemy.TakeDamage(amount,Vector3.zero,impact:false,damageIcon:"burn");
                 return status.enemy.Health<before;
             }
         }
@@ -284,7 +284,7 @@ namespace Emberfall
                 else { poisonSchedule.Elapse(dt,true); poisonTime=poisonSchedule.Remaining; }
             }
             for(int i=0;i<ScheduledTickWindow.MaximumCatchUp&&!enemy.IsDead&&!game.InputBlocked&&!game.CombatEnded&&burnSchedule!=null&&burnSchedule.TryTakeDueTick(true);i++)
-                enemy.TakeDamage(burnDamage*StatusTickRates.Burn,Vector3.zero,impact:false);
+                enemy.TakeDamage(burnDamage*StatusTickRates.Burn,Vector3.zero,impact:false,damageIcon:"burn");
             if(burnSchedule!=null&&burnSchedule.Complete){burnTime=burnDamage=0;burnSource=null;}
             airborneTime = Mathf.Max(0, airborneTime - dt);
             airborneRecovery = Mathf.Max(0, airborneRecovery - dt);
@@ -292,7 +292,7 @@ namespace Emberfall
             if (markTime <= 0) markStrength = 0;
             int poisonDue=0;
             for(;poisonDue<ScheduledTickWindow.MaximumCatchUp&&!enemy.IsDead&&!game.InputBlocked&&!game.CombatEnded&&poisonSchedule!=null&&poisonSchedule.TryTakeDueTick(true);poisonDue++)
-                enemy.TakeDamage(poisonDamage*poisonStacks,Vector3.zero,impact:false);
+                enemy.TakeDamage(poisonDamage*poisonStacks,Vector3.zero,impact:false,damageIcon:"poison");
             if(poisonDue>0&&!enemy.IsDead)CombatFx.Ring(enemy.transform.position,.6f,new Color(.55f,1f,.28f),.35f,.06f);
             if(poisonSchedule!=null&&poisonSchedule.Complete){poisonTime=poisonDamage=0;poisonStacks=0;poisonSource=null;}
 

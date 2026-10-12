@@ -130,7 +130,7 @@ namespace Emberfall
             }
         }
         public static string IconFor(string action)
-        { return action.Contains("闪避")?"dodge":action=="普攻回能"||action=="打断"||action=="伤害总计"||action=="单次最大伤害"?"attack":action=="支线"?"confirm":"skills"; }
+        { return action=="伤害总计"?"total-damage":action=="单次最大伤害"?"critical":action=="最大连击"?"combo":action=="承受伤害"?"damage-taken":action.Contains("闪避")?"dodge":action=="普攻回能"||action=="打断"?"attack":action=="支线"?"confirm":"skills"; }
     }
 
     public sealed class RunRecapLayout
@@ -151,7 +151,7 @@ namespace Emberfall
             width=Math.Max(280,width);height=Math.Max(220,height);
             float margin=mobile?8:20,frameWidth=Math.Min(mobile?920:960,width-margin*2),frameHeight=Math.Min(mobile?720:656,height-margin*2);
             float x=(width-frameWidth)*.5f,y=(height-frameHeight)*.5f,padding=mobile?16:24;
-            float headerHeight=mobile?66:86,footerHeight=mobile?64:74;
+            float headerHeight=mobile?88:96,footerHeight=mobile?64:74;
             Frame=new Area(x,y,frameWidth,frameHeight);
             Header=new Area(x+padding,y+10,frameWidth-padding*2,headerHeight-14);
             Viewport=new Area(x+padding,y+headerHeight,frameWidth-padding*2,frameHeight-headerHeight-footerHeight);

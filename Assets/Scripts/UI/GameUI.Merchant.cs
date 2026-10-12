@@ -70,8 +70,8 @@ namespace Emberfall
                 if(merchantMode==0&&index==2)
                 {
                     var purchase=p.PrepareAffixReforgePurchase(MerchantServiceActive,captureState:false);var preview=ResourceItemPreview("affix-reforge",1);
-                    DrawFashionSlotFlow(tile,preview.QualityColor,u);
                     DrawIcon(new Rect(tile.center.x-23*u,tile.y+6*u,46*u,46*u),preview.Icon,preview.QualityColor);
+                    DrawFashionSlotFlow(new Rect(tile.center.x-23*u,tile.y+6*u,46*u,46*u),preview.QualityColor,u);
                     Text(new Rect(tile.x+6*u,tile.y+52*u,tile.width-12*u,30*u),"词条重铸石",Mathf.RoundToInt(11*u),gold,false,true,TextAnchor.MiddleCenter);
                     DrawPriceTint(new Rect(tile.x+8*u,tile.y+77*u,tile.width-16*u,20*u),ProgressionService.AffixReforgeStonePrice,false,u,purchase!=null?gold:muted);
                     InspectRewardItem(new Rect(tile.x,tile.y,tile.width,96*u),preview,true);
@@ -95,8 +95,8 @@ namespace Emberfall
                 if(merchantMode==2&&itemIndex>=saleItems.Count)
                 {
                     var gem=saleGems[itemIndex-saleItems.Count];Color tint=GameBalance.RarityColor(gem.rarity);
-                    if(gem.rarity==Rarity.Legendary)DrawFashionSlotFlow(tile,tint,u);
                     Rect gemIcon=new Rect(tile.center.x-23*u,tile.y+6*u,46*u,46*u);
+                    if(gem.rarity==Rarity.Legendary)DrawFashionSlotFlow(gemIcon,tint,u);
                     DrawIcon(gemIcon,UIIconAtlas.Utility("gem"),tint);
                     if(gem.mounted)DrawWornIconBadge(gemIcon,u,"已镶嵌");
                     Text(new Rect(tile.x+6*u,tile.y+52*u,tile.width-12*u,30*u),BuildCatalog.GemName(gem.mechanic),Mathf.RoundToInt(11*u),pale,false,true,TextAnchor.MiddleCenter);
@@ -115,8 +115,8 @@ namespace Emberfall
                 bool first=p.Profile.pendingFirstClearReward&&!p.Profile.firstClearRewardClaimed&&mechanic!=EquipmentMechanic.None&&merchantGemRarity==Rarity.Epic;
                 int price=item!=null?p.SellValue(item):mechanic==EquipmentMechanic.None?ProgressionService.PotionPrice:first?0:BuildCatalog.GemPrice(merchantGemRarity);
                 string caption=item!=null?item.name:mechanic==EquipmentMechanic.None?"生命药剂":BuildCatalog.GemName(mechanic);
-                if(item!=null?item.rarity==Rarity.Legendary:mechanic!=EquipmentMechanic.None&&merchantGemRarity==Rarity.Legendary)DrawFashionSlotFlow(tile,GameBalance.RarityColor(Rarity.Legendary),u);
                 DrawIcon(new Rect(tile.center.x-23*u,tile.y+(merchantMode==1?26:6)*u,46*u,46*u),item!=null?UIIconAtlas.EquipmentCardIcon(item,session.Progression.Profile.heroClass):UIIconAtlas.Utility(mechanic==EquipmentMechanic.None?"potion":"gem"),item!=null?GameBalance.RarityColor(item.rarity):merchantMode==1?GameBalance.RarityColor(merchantGemRarity):Color.white);
+                if(item!=null?item.rarity==Rarity.Legendary:mechanic!=EquipmentMechanic.None&&merchantGemRarity==Rarity.Legendary)DrawFashionSlotFlow(new Rect(tile.center.x-23*u,tile.y+(merchantMode==1?26:6)*u,46*u,46*u),GameBalance.RarityColor(Rarity.Legendary),u);
                 if(item!=null&&IsEquipped(item))DrawWornIconBadge(new Rect(tile.center.x-23*u,tile.y+6*u,46*u,46*u),u,"已穿戴");
                 Text(new Rect(tile.x+6*u,tile.y+(merchantMode==1?74:52)*u,tile.width-12*u,(merchantMode==1?24:30)*u),caption,Mathf.RoundToInt(11*u),pale,false,true,TextAnchor.MiddleCenter);
                 if(merchantMode==1)

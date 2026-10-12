@@ -104,7 +104,6 @@ namespace Emberfall
                 var slot=(ItemSlot)i;var item=p.Equipped(slot);
                 Rect tile=new Rect((columns==3?i*(cardWidth+12):0)*u,(columns==3?0:top)*u,cardWidth*u,(columns==3?rowHeight:cardHeights[i])*u);
                 Fill(tile,card);Border(tile,item==null?muted:GameBalance.RarityColor(item.rarity));
-                if(item!=null&&item.rarity==Rarity.Legendary)DrawFashionSlotFlow(tile,GameBalance.RarityColor(item.rarity),u);
                 GUI.BeginGroup(new Rect(tile.x+8*u,tile.y+8*u,tile.width-16*u,tile.height-16*u));
                 if(item==null)
                 {
@@ -319,9 +318,9 @@ namespace Emberfall
             {
                 var a=candidates[i];Rect tile=new Rect((i%2)*(cw+10)*u,(i/2)*178*u,cw*u,168*u);
                 Fill(tile,new Color(.06f,.09f,.13f));Border(tile,a.mounted?jade:GameBalance.RarityColor(a.rarity));
-                if(a.rarity==Rarity.Legendary)DrawFashionSlotFlow(tile,GameBalance.RarityColor(a.rarity),u);
                 Rect gemIcon=new Rect(tile.center.x-24*u,tile.y+12*u,48*u,48*u);
                 DrawIcon(gemIcon,UIIconAtlas.Utility("gem"),GameBalance.RarityColor(a.rarity));
+                if(a.rarity==Rarity.Legendary)DrawFashionSlotFlow(gemIcon,GameBalance.RarityColor(a.rarity),u);
                 if(a.mounted)DrawWornIconBadge(gemIcon,u,"已镶嵌");
                 Text(new Rect(tile.x+6*u,tile.y+65*u,tile.width-12*u,28*u),BuildCatalog.GemName(a.mechanic),Mathf.RoundToInt(13*u),pale,true,false,TextAnchor.MiddleCenter);
                 DrawGemEffectText(new Rect(tile.x+6*u,tile.y+94*u,tile.width-12*u,30*u),BuildCatalog.IsAttributeGem(a.mechanic)?BuildCatalog.GemAttributeSummary(a.mechanic,a.rarity,a.upgradeRank):a.mounted?"已镶嵌":"阶数 "+a.upgradeRank,Mathf.RoundToInt(10*u),a.mounted?jade:muted,false,TextAnchor.MiddleCenter);

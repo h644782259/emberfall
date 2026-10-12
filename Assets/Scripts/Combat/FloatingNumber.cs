@@ -41,6 +41,7 @@ namespace Emberfall
         private Color color;
         private bool critical,mechanism,counted;
         private string display;
+        private string damageIcon;
         private CombatTextLayout.Box bounds;
         private float Duration {get{return display!=null&&display.StartsWith("等级提升")?4.5f:mechanism?1.8f:critical?1.8f:1.5f;}}
         private static float Density {get{return MobileControls.Active?MobileControls.Layout.Scale:Mathf.Clamp(Screen.dpi>=120?Screen.dpi/163f:Screen.height/1080f,1,3);}}
@@ -50,19 +51,23 @@ namespace Emberfall
             FloatingNumber replacement;int selectedLane;Camera camera;CombatTextLayout.Box box;CombatTextMetrics measured;
             return TrySelectAdmission(origin,"1",isCritical,false,out replacement,out selectedLane,out camera,out box,out measured);
         }
-        public static FloatingNumber Spawn(Vector3 origin,string value,Color tint,bool isCritical=false,string objectName="Combat Text",bool isMechanism=false)
+        public static FloatingNumber Spawn(Vector3 origin,string value,Color tint,bool isCritical=false,string objectName="Combat Text",bool isMechanism=false,string damageIcon=null)
         {
             string shown=Display(value,isCritical);
             FloatingNumber replacement;int selectedLane;Camera camera;CombatTextLayout.Box box;CombatTextMetrics measured;
-            if(!TrySelectAdmission(origin,shown,isCritical,isMechanism,out replacement,out selectedLane,out camera,out box,out measured))return null;
+            if(!TrySelectAdmission(origin,shown,isCritical,isMechanism,out replacement,out selectedLane,out camera,out box,out measured,damageIcon))return null;
             GameObject root=new GameObject(objectName);root.transform.position=origin;
             FloatingNumber number=root.AddComponent<FloatingNumber>();
+            number.damageIcon=damageIcon;
             number.InitializeAdmitted(shown,tint,isCritical,isMechanism,replacement,selectedLane,camera,box,measured);
             return number;
         }
         private static string Display(string value,bool critical)
         {
             string shown=value??"";
+            double numeric;
+            if(double.TryParse(shown.TrimEnd('!','！'),System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out numeric))
+                shown=(shown.StartsWith("+")?"+":"")+CombatNumberFormat.Compact(numeric);
             // Combat captions are short; detailed explanations stay in the HUD/log.
             if(shown.Length>24)shown=shown.Substring(0,23)+"…";
             return critical?shown.TrimEnd('!','！'):shown;
@@ -89,10 +94,10 @@ namespace Emberfall
             float pixels=CombatTextLayout.PixelHeight(EffectPreferences.CombatTextScale,Density,critical);
             float w=aspect*pixels;
             // Reserve the full screen-space envelope of the tilted critical glyph.
-            return critical?new Vector2(w*.99027f+pixels*.13918f,pixels*.99027f+w*.13918f):new Vector2(w,pixels);
+            return critical?new Vector2(w*1.35f,pixels*1.4f):new Vector2(w,pixels);
         }
         private static bool TrySelectAdmission(Vector3 origin,string value,bool isCritical,bool isMechanism,out FloatingNumber replacement,
-            out int selectedLane,out Camera camera,out CombatTextLayout.Box box,out CombatTextMetrics measured)
+            out int selectedLane,out Camera camera,out CombatTextLayout.Box box,out CombatTextMetrics measured,string damageIcon=null)
         {
             replacement=null;selectedLane=0;camera=Camera.main;box=default(CombatTextLayout.Box);measured=default(CombatTextMetrics);
             int globalLimit=MobileControls.Active?20:36;
@@ -116,7 +121,7 @@ namespace Emberfall
                 if(close)nearby++;
             }
             if(nearby>=(isMechanism?4:isCritical?6:4))return false;
-            float aspect=MeasureAspect(value,isCritical);measured=new CombatTextMetrics(aspect,fontRevision);
+            float aspect=MeasureAspect(value,isCritical)+(damageIcon==null?0:.9f);measured=new CombatTextMetrics(aspect,fontRevision);
             Vector2 size=ScaledSize(aspect,isCritical)*(isMechanism?1f:1.22f);
             if(Place(point,size,replacement,null,camera,out selectedLane,out box))return true;
             if(isMechanism)
@@ -175,7 +180,7 @@ namespace Emberfall
         private GUIContent numberCaption;
         private void OnGUI()
         {
-            if(!counted||Event.current.type!=EventType.Repaint)return;
+            if(!counted||Event.current.type!=EventType.Repaint||GameSession.Instance!=null&&GameSession.Instance.InputBlocked)return;
             Matrix4x4 priorMatrix=GUI.matrix;Color priorColor=GUI.color;int priorDepth=GUI.depth;
             GUI.matrix=Matrix4x4.identity;GUI.depth=1;
             float alpha=Mathf.Clamp01((Duration-life)/(display!=null&&display.StartsWith("等级提升")?1f:mechanism?.35f:.45f));
@@ -183,6 +188,12 @@ namespace Emberfall
             Rect burst=new Rect(bounds.X,Screen.height-bounds.Y-bounds.Height,bounds.Width,bounds.Height);
             if(!critical)
             {
+                if(damageIcon!=null)
+                {
+                    float iconSize=Mathf.Min(burst.height*.75f,burst.width*.3f);
+                    GUI.DrawTexture(new Rect(burst.x,burst.center.y-iconSize*.5f,iconSize,iconSize),UIIconAtlas.Utility(damageIcon),ScaleMode.ScaleToFit);
+                    burst.x+=iconSize+2*Density;burst.width-=iconSize+2*Density;
+                }
                 if(criticalNumberStyle==null)criticalNumberStyle=new GUIStyle{alignment=TextAnchor.MiddleCenter,fontStyle=FontStyle.Bold,wordWrap=false,padding=new RectOffset()};
                 criticalNumberStyle.font=sharedFont;
                 criticalNumberStyle.fontSize=Mathf.Max(1,Mathf.RoundToInt(CombatTextLayout.PixelHeight(EffectPreferences.CombatTextScale,Density,false)*(mechanism?1:DamageFloatScale)));
@@ -197,15 +208,14 @@ namespace Emberfall
             if(criticalNumberStyle==null)criticalNumberStyle=new GUIStyle{alignment=TextAnchor.MiddleCenter,fontStyle=FontStyle.BoldAndItalic,wordWrap=false,padding=new RectOffset()};
             criticalNumberStyle.font=sharedFont;
             criticalNumberStyle.fontSize=Mathf.Max(1,Mathf.RoundToInt(CombatTextLayout.PixelHeight(EffectPreferences.CombatTextScale,Density,true)*DamageFloatScale));
-            Rect label=new Rect(burst.x+burst.width*.04f,burst.y,burst.width*.92f,burst.height);
+            GUI.DrawTexture(burst,UIIconAtlas.Utility("critical"),ScaleMode.StretchToFill);
+            Rect label=new Rect(burst.x+burst.width*.14f,burst.y+burst.height*.12f,burst.width*.72f,burst.height*.76f);
             GUIContent caption=numberCaption??(numberCaption=new GUIContent(display));
             while(criticalNumberStyle.fontSize>1&&(criticalNumberStyle.CalcSize(caption).x>label.width||criticalNumberStyle.CalcSize(caption).y>label.height))criticalNumberStyle.fontSize--;
-            // A warm accented glyph and one soft shadow read as a critical hit
-            // without covering combat with a saturated explosion plate.
             float shadow=Mathf.Max(1,Density*.55f);
             criticalNumberStyle.normal.textColor=new Color(.055f,.045f,.025f,.72f);
             GUI.Label(new Rect(label.x+shadow,label.y+shadow,label.width,label.height),caption,criticalNumberStyle);
-            criticalNumberStyle.normal.textColor=color;
+            criticalNumberStyle.normal.textColor=new Color(.27f,.055f,.015f);
             GUI.Label(label,caption,criticalNumberStyle);
             GUI.matrix=priorMatrix;GUI.color=priorColor;GUI.depth=priorDepth;
         }
@@ -228,7 +238,7 @@ namespace Emberfall
                 Vector3 point=camera.WorldToScreenPoint(number.originAtSpawn);point.y+=number.life*(number.mechanism?18:30)*Density*EffectPreferences.EffectsScale;
                 float aspect;
                 if(!number.metrics.TryGet(fontRevision,out aspect))
-                {aspect=MeasureAspect(number.display,number.critical);number.metrics=new CombatTextMetrics(aspect,fontRevision);}
+                {aspect=MeasureAspect(number.display,number.critical)+(number.damageIcon==null?0:.9f);number.metrics=new CombatTextMetrics(aspect,fontRevision);}
                 if(number.textRenderer!=null)
                 {
                     Vector3 actual=number.textRenderer.localBounds.size;

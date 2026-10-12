@@ -18,11 +18,11 @@ namespace Emberfall
         }
         public void SpawnMechanismText(Vector3 position,string value,Color tint)
         { FloatingNumber.Spawn(position,value,tint,isMechanism:true); }
-        public void SpawnCombatDamage(Vector3 position, string value, bool critical)
+        public void SpawnCombatDamage(Vector3 position, string value, bool critical, string damageIcon = null)
         {
             FloatingNumber.Spawn(position,value,
-                critical ? new Color(1f,.72f,.23f) : new Color(1f,.96f,.85f), critical,
-                critical ? "Critical Damage" : "Damage");
+                damageIcon=="burn"?new Color(1f,.43f,.12f):damageIcon=="poison"?new Color(.55f,1f,.25f):critical ? new Color(1f,.72f,.23f) : new Color(1f,.96f,.85f), critical,
+                critical ? "Critical Damage" : "Damage",damageIcon:damageIcon);
         }
         private RunRecapSnapshot lastRunRecap;
         private string recapSlotId;
