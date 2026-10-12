@@ -85,7 +85,7 @@ namespace Emberfall
             epoch = owner.CombatEpoch;
             CurrentPreview = Describe(owner.HeroClass, index, session.Progression.Profile.skillRanks[index]);
             EnsureVisuals();
-            visuals.SetActive(false); // Placement data stays active without exposed hit boundaries.
+            visuals.SetActive(true); // Show terrain-following placement and cast-range circles.
             SetTarget(owner.AimPoint);
             return true;
         }

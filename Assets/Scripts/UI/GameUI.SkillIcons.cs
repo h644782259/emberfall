@@ -74,6 +74,22 @@ namespace Emberfall
             Text(corner,key,font,disabled?muted:Color.white,true,false,TextAnchor.UpperLeft);
         }
 
+        private void DrawOutlinedIconText(Rect rect,string value,int font,Color color,TextAnchor alignment)
+        {
+            Color outline=new Color(.015f,.02f,.03f,1f);
+            for(int x=-1;x<=1;x++)
+                for(int y=-1;y<=1;y++)
+                    if(x!=0||y!=0)Text(new Rect(rect.x+x,rect.y+y,rect.width,rect.height),value,font,outline,true,false,alignment);
+            Text(rect,value,font,color,true,false,alignment);
+        }
+
+        private void DrawFunctionKey(Rect icon,string key)
+        {
+            // Small corner gutter separates the shortcut from the artwork.
+            Rect corner=new Rect(icon.x+2,icon.y+1,icon.width-4,12);
+            DrawOutlinedIconText(corner,key,key.Length>2?7:10,Color.white,TextAnchor.UpperLeft);
+        }
+
         private void DrawExperienceBadge(Rect rect,float unit)
         {
             Rect badge=new Rect(rect.x+unit,rect.y+unit,24*unit,12*unit);

@@ -51,7 +51,7 @@ namespace Emberfall
         {
             DrawComboCounter();
             if(MobileControls.Active)DrawMobileHotbar();else DrawHotbar();
-            DrawCompanionCommands();DrawChargeProgress();DrawTargetingHint();
+            DrawCompanionCommands();DrawChargeProgress();
         }
         private void DrawPracticeOverlay()
         {

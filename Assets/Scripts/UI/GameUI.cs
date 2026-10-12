@@ -326,7 +326,7 @@ namespace Emberfall
                 GUI.enabled = priorEnabled && panel == Panel.None && !session.InputBlocked;
                 DrawHUD();
                 GUI.enabled = priorEnabled;
-                if (panel == Panel.None && !session.Paused && !session.IsDead) DrawTargetingHint();
+
                 if (session.Paused) DrawPause();
                 else if(PauseUtilityVisible)
                 {if(panel==Panel.Controls)DrawControls();else if(panel==Panel.Bindings)DrawBindings();else if(panel==Panel.SaveLocation)DrawSaveLocation();else DrawTravelMap();}
@@ -941,19 +941,6 @@ namespace Emberfall
             }
         }
 
-        private void DrawTargetingHint()
-        {
-            if(MobileControls.Active)return;
-            SkillTargetingController targeting = session.Player == null ? null : session.Player.GetComponent<SkillTargetingController>();
-            if (targeting == null || !targeting.IsTargeting) return;
-            Rect strip = new Rect((width - 490) * .5f, height - (MobileControls.Active ? 235 : 197), 490, 43);
-            blockedRects.Add(strip);
-            Box(strip, jade, false);
-            Fill(new Rect(strip.x, strip.y, 3, strip.height), jade);
-            Text(new Rect(strip.x + 10, strip.y + 5, strip.width - 20, 17), "准备施放 · " + targeting.SkillName, 12, jade, true, false, TextAnchor.MiddleCenter);
-            Text(new Rect(strip.x + 10, strip.y + 25, strip.width - 20, 14), MobileControls.Active ? "点选地面并松开，或点击确认按钮 · 点击取消按钮取消" : targeting.Hint, 10, pale, false, false, TextAnchor.MiddleCenter);
-        }
-
         private void DrawChargeProgress()
         {
             SkillChargeController charge = session.Player == null ? null : session.Player.GetComponent<SkillChargeController>();
@@ -1082,8 +1069,8 @@ namespace Emberfall
                 bool ready=session.Player!=null&&(potion?!session.InputBlocked&&!session.Player.IsDead&&!locked&&session.Player.Health<session.Player.MaxHealth-.5f:skill>=0&&session.Player.IsSkillAvailable(skill));
                 if (!empty)
                 {
-                    // Reserve a footer for desktop labels so they never cover the glyph.
-                    Rect identity=new Rect(slot.x+1,slot.y+1,slot.width-2,slot.height-(mobile?2:15));
+                    // Artwork fills the slot; counts are drawn on top of it.
+                    Rect identity=new Rect(slot.x+1,slot.y+1,slot.width-2,slot.height-2);
                     Color tint=!ready?new Color(.5f,.55f,.6f,.85f):Color.white;
                     if(potion)DrawIcon(identity,HotbarIcon(p,skill),tint);
                     else DrawRecoveringSkill(identity,UIIconAtlas.Skill(p.heroClass,skill,48),skill,ready);
@@ -1104,7 +1091,7 @@ namespace Emberfall
                 {
                     string count = "×"+(session.ChallengeRun && session.InDungeon ? session.HealingCharges : p.potions).ToString();
                     Rect countBadge=new Rect(slot.x+16,slot.yMax-14,slot.width-20,13);
-                    Text(countBadge,count,10,locked?muted:pale,false,false,TextAnchor.MiddleRight);
+                    DrawOutlinedIconText(countBadge,count,10,locked?muted:Color.white,TextAnchor.MiddleRight);
                 }
 
                 if(actionCaption.Length>0)
@@ -1248,9 +1235,10 @@ namespace Emberfall
             bool hover = r.Contains(Mouse) && GUI.enabled;
             Fill(r, hover ? new Color(.11f, .18f, .21f) : ink);
             Border(r, new Color(accent.r, accent.g, accent.b, hover ? .9f : .35f));
-            DrawIcon(new Rect(r.x + 2, r.y + 2, r.width - 4, r.height - 4), UIIconAtlas.Utility(icon), Color.white);
+            float inset=MobileControls.Active?2:7;
+            DrawIcon(new Rect(r.x + inset, r.y + inset, r.width - inset - 2, r.height - inset - 2), UIIconAtlas.Utility(icon), Color.white);
             Badge(r,icon=="inventory"?NewEquipmentAttention||Attention.LootPending:icon=="skills"?Attention.Skills:icon=="camp"?Attention.Rewards:icon=="achievement"?session.Progression.ClaimableAchievements>0:false);
-            if (!MobileControls.Active) DrawHotbarKey(r,key,false);
+            if (!MobileControls.Active) DrawFunctionKey(r,key);
             if (!string.IsNullOrEmpty(badge))
             {
                 Rect label = new Rect(r.xMax - 21, r.yMax - 15, 20, 14);
