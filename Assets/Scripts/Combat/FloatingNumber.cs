@@ -67,7 +67,7 @@ namespace Emberfall
             string shown=value??"";
             double numeric;
             if(double.TryParse(shown.TrimEnd('!','！'),System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out numeric))
-                shown=(shown.StartsWith("+")?"+":"")+CombatNumberFormat.Compact(numeric);
+                return (shown.StartsWith("+")?"+":"")+numeric.ToString("0",System.Globalization.CultureInfo.InvariantCulture);
             // Combat captions are short; detailed explanations stay in the HUD/log.
             if(shown.Length>24)shown=shown.Substring(0,23)+"…";
             return critical?shown.TrimEnd('!','！'):shown;
@@ -93,8 +93,8 @@ namespace Emberfall
         {
             float pixels=CombatTextLayout.PixelHeight(EffectPreferences.CombatTextScale,Density,critical);
             float w=aspect*pixels;
-            // Reserve the full screen-space envelope of the tilted critical glyph.
-            return critical?new Vector2(w*1.35f,pixels*1.4f):new Vector2(w,pixels);
+            // Critical emphasis comes from the larger glyph, without a backing plate.
+            return new Vector2(w,pixels);
         }
         private static bool TrySelectAdmission(Vector3 origin,string value,bool isCritical,bool isMechanism,out FloatingNumber replacement,
             out int selectedLane,out Camera camera,out CombatTextLayout.Box box,out CombatTextMetrics measured,string damageIcon=null)
@@ -208,14 +208,13 @@ namespace Emberfall
             if(criticalNumberStyle==null)criticalNumberStyle=new GUIStyle{alignment=TextAnchor.MiddleCenter,fontStyle=FontStyle.BoldAndItalic,wordWrap=false,padding=new RectOffset()};
             criticalNumberStyle.font=sharedFont;
             criticalNumberStyle.fontSize=Mathf.Max(1,Mathf.RoundToInt(CombatTextLayout.PixelHeight(EffectPreferences.CombatTextScale,Density,true)*DamageFloatScale));
-            GUI.DrawTexture(burst,UIIconAtlas.Utility("critical"),ScaleMode.StretchToFill);
-            Rect label=new Rect(burst.x+burst.width*.14f,burst.y+burst.height*.12f,burst.width*.72f,burst.height*.76f);
+            Rect label=burst;
             GUIContent caption=numberCaption??(numberCaption=new GUIContent(display));
             while(criticalNumberStyle.fontSize>1&&(criticalNumberStyle.CalcSize(caption).x>label.width||criticalNumberStyle.CalcSize(caption).y>label.height))criticalNumberStyle.fontSize--;
             float shadow=Mathf.Max(1,Density*.55f);
             criticalNumberStyle.normal.textColor=new Color(.055f,.045f,.025f,.72f);
             GUI.Label(new Rect(label.x+shadow,label.y+shadow,label.width,label.height),caption,criticalNumberStyle);
-            criticalNumberStyle.normal.textColor=new Color(.27f,.055f,.015f);
+            criticalNumberStyle.normal.textColor=new Color(1f,.76f,.3f);
             GUI.Label(label,caption,criticalNumberStyle);
             GUI.matrix=priorMatrix;GUI.color=priorColor;GUI.depth=priorDepth;
         }
