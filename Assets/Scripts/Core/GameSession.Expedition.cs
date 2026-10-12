@@ -181,7 +181,8 @@ namespace Emberfall
             combatActions.Clear(); lastDamageSource = "未记录"; lastDamageAmount = 0; lastInterruptAt = -10; recapGoldLost = 0;
             if (dungeon)
             {
-                DungeonEntryLevel = AdventureRewardRules.DungeonLevel(DungeonTier);
+                // Freeze chapter level on entry; tier independently controls stat multipliers.
+                DungeonEntryLevel = enteringChapter?ChapterProgression.EnemyLevel(Progression.Profile.level):AdventureRewardRules.DungeonLevel(DungeonTier);
                 runSeed = retryingRoomChain ? roomRetrySeed : Random.Range(0, 1000000);
                 DungeonLayout = runSeed % 2;
                 HealingCharges = 3;

@@ -47,7 +47,14 @@ public static class LegendaryEquipmentPityTests
  C(ChapterProgression.MaterialReward(ChapterNode.ForestCourt,tier)>ChapterProgression.MaterialReward(ChapterNode.ForestCourt,tier-1),"chapter completion materials improve each tier");
  C(ChapterProgression.TierHealthMultiplier(tier)>ChapterProgression.TierHealthMultiplier(tier-1)&&ChapterProgression.TierDamageMultiplier(tier)>ChapterProgression.TierDamageMultiplier(tier-1),"chapter difficulty grows monotonically");
  }
- C(Math.Abs(ChapterProgression.TierHealthMultiplier(13)-2.344f)<.001f&&Math.Abs(ChapterProgression.TierDamageMultiplier(13)-1.7776f)<.001f,"chapter tier13 uses the stronger curve");
+ C(Math.Abs(ChapterProgression.TierHealthMultiplier(13)-3.592f)<.001f&&Math.Abs(ChapterProgression.TierDamageMultiplier(13)-2.344f)<.001f,"chapter tier13 uses the stronger quadratic curve");
+ for(int level=1;level<=100;level++)
+ {
+  int enemyLevel=ChapterProgression.EnemyLevel(level);
+  C(enemyLevel>=level&&enemyLevel-level<10&&enemyLevel%10==0,"chapter enemy level rounds upward to the nearest ten");
+ }
+ C(ChapterProgression.EnemyLevel(30)==30&&ChapterProgression.EnemyLevel(31)==40&&ChapterProgression.EnemyLevel(99)==100,"chapter level boundaries");
+ C(ChapterProgression.EnemyLevel(int.MinValue)==10&&ChapterProgression.EnemyLevel(int.MaxValue)==100,"invalid levels remain bounded without overflow");
  C(AdventureRewardRules.LegendaryChance(1)==4&&AdventureRewardRules.LegendaryChance(10)==13&&AdventureRewardRules.LegendaryChance(13)==16&&AdventureRewardRules.LegendaryChance(int.MaxValue)==25,"level index and chapter tier improve odds with bounded maximum");
  foreach(bool chapter in new[]{false,true})foreach(int quality in new[]{20,45})
  {

@@ -201,19 +201,23 @@ namespace Emberfall
                 float side=Mathf.Min(art.width,art.height);
                 Rect square=new Rect(art.center.x-side*.5f,art.center.y-side*.5f,side,side);
                 float iconSize=Mathf.Min(64*u,Mathf.Max(32*u,side*.23f)),gap=4*u;
+                if(selected)iconSize*=1.18f;
                 float left=square.center.x-(icons.Count*iconSize+(icons.Count-1)*gap)*.5f;
                 for(int i=0;i<icons.Count;i++)
                 {
                     var item=icons[i];
                     // Each chest owns its inspection key, even when two stacks match.
                     string inspectionKey="chest:"+reward.Id+":"+choice+":"+i;
-                    Rect icon=new Rect(left+i*(iconSize+gap),square.y+side*.48f-iconSize*.5f,iconSize,iconSize);
+                    Rect icon=new Rect(left+i*(iconSize+gap),square.y+side*.55f-iconSize,iconSize,iconSize);
                     Color before=GUI.color;
                     float reveal=Mathf.Clamp01((progress-.42f)/.18f);
                     float pulse=selected?.72f+.28f*Mathf.Sin(Time.unscaledTime*4):1;
-                    GUI.color=new Color(before.r,before.g,before.b,before.a*reveal*pulse);
-                    Fill(icon,card);Border(icon,item.QualityColor,2*u);
-                    DrawIcon(new Rect(icon.x+4*u,icon.y+4*u,icon.width-8*u,icon.height-8*u),item.Icon,Color.white);
+                    float opacity=before.a*reveal*pulse;
+                    DrawChestItemGrounding(icon,item.QualityColor,opacity,selected);
+                    // DrawIcon replaces GUI.color, so pass the pulse directly to its tint.
+                    Color artTint=item.QualityColor;artTint.a=opacity;
+                    DrawIcon(new Rect(icon.x+4*u,icon.y+4*u,icon.width-8*u,icon.height-8*u),item.Icon,artTint);
+                    GUI.color=new Color(before.r,before.g,before.b,opacity);
                     if(item.Quantity>1)DrawOutlinedIconText(new Rect(icon.x,icon.yMax-16*u,icon.width-2*u,16*u),item.Quantity.ToString(),Mathf.RoundToInt(11*u),pale,TextAnchor.MiddleRight);
                     GUI.color=before;
                     // Inspection remains available throughout the pulse, including its dim phase.
@@ -222,6 +226,25 @@ namespace Emberfall
                 }
                 if(side>=80*u)Text(new Rect(square.x,square.yMax-18*u,square.width,18*u),selected?"已获得":"未选中",Mathf.RoundToInt(11*u),selected?gold:muted,true,false,TextAnchor.MiddleCenter);
             }
+        }
+        private void DrawChestItemGrounding(Rect icon,Color rarity,float opacity,bool selected)
+        {
+            if(Event.current.type!=EventType.Repaint)return;
+            Color previous=GUI.color;
+            Texture2D disc=UIIconAtlas.ControlDisc();
+            // Feathered ellipses sit on the chest floor; no card background or rim.
+            for(int layer=0;layer<8;layer++)
+            {
+                float scale=1f-layer*.09f;
+                float w=icon.width*1.06f*scale,h=icon.height*.22f*scale;
+                GUI.color=new Color(.045f,.025f,.008f,.065f*opacity);
+                GUI.DrawTexture(new Rect(icon.center.x-w*.5f,icon.yMax-icon.height*.11f-h*.5f,w,h),disc,ScaleMode.StretchToFill,true);
+                Color light=Color.Lerp(gold,rarity,.22f);light.a=(selected?.035f:.018f)*opacity;
+                GUI.color=light;
+                float glowW=icon.width*1.22f*scale,glowH=icon.height*.70f*scale;
+                GUI.DrawTexture(new Rect(icon.center.x-glowW*.5f,icon.center.y+icon.height*.14f-glowH*.5f,glowW,glowH),disc,ScaleMode.StretchToFill,true);
+            }
+            GUI.color=previous;
         }
         private Rect SettlementChestArt(Rect stage,int choice,float u)
         {
