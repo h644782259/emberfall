@@ -20,6 +20,8 @@ namespace Emberfall
         private static int solidIndexRevision = -1;
         private static uint[] solidMarks = new uint[0];
         private static uint solidQuery;
+        private static bool solidCandidateCellsValid;
+        private static int candidateA,candidateB,candidateC,candidateD;
         private static long SolidKey(int x,int z){return ((long)x<<32)|(uint)z;}
         private static bool SolidCells(double x0,double x1,double z0,double z1,out int a,out int b,out int c,out int d)
         {
@@ -33,7 +35,7 @@ namespace Emberfall
         private static void EnsureSolidIndex()
         {
             if(solidIndexRevision==revision)return;
-            solidBuckets.Clear();broadSolids.Clear();solidCandidates.Clear();
+            solidBuckets.Clear();broadSolids.Clear();solidCandidates.Clear();solidCandidateCellsValid=false;
             if(solidMarks.Length<obstacles.Count)solidMarks=new uint[obstacles.Count];
             System.Array.Clear(solidMarks,0,solidMarks.Length);solidQuery=0;
             for(int i=0;i<obstacles.Count;i++)
@@ -64,9 +66,14 @@ namespace Emberfall
         // triangle tests below still decide whether a candidate blocks the skill.
         private static void CollectSolidCandidatesBounds(double x0,double x1,double z0,double z1)
         {
-            EnsureSolidIndex();solidCandidates.Clear();
+            EnsureSolidIndex();
             if(!SolidCells(x0,x1,z0,z1,out int a,out int b,out int c,out int d))
-            {for(int i=0;i<obstacles.Count;i++)solidCandidates.Add(i);return;}
+            {solidCandidateCellsValid=false;solidCandidates.Clear();for(int i=0;i<obstacles.Count;i++)solidCandidates.Add(i);return;}
+            // Consecutive samples along a route usually occupy the same cells.
+            // Reuse only their candidate list; exact point/height checks still run.
+            if(solidCandidateCellsValid&&a==candidateA&&b==candidateB&&c==candidateC&&d==candidateD)return;
+            candidateA=a;candidateB=b;candidateC=c;candidateD=d;solidCandidateCellsValid=true;
+            solidCandidates.Clear();
             unchecked{solidQuery++;}if(solidQuery==0){System.Array.Clear(solidMarks,0,solidMarks.Length);solidQuery=1;}
             foreach(int i in broadSolids){solidMarks[i]=solidQuery;solidCandidates.Add(i);}
             for(int x=a;x<=b;x++)for(int z=c;z<=d;z++)
@@ -111,6 +118,26 @@ namespace Emberfall
             return height;
         }
         private static readonly Dictionary<int, bool[]> grids = new Dictionary<int, bool[]>();
+        private static readonly Dictionary<float,ushort[]> routeEdges = new Dictionary<float,ushort[]>();
+        private static int routeEdgeRevision=-1;
+        private static bool ClearGridEdge(int node,int candidate,int direction,float radius)
+        {
+            if(routeEdgeRevision!=revision){routeEdges.Clear();routeEdgeRevision=revision;}
+            if(!routeEdges.TryGetValue(radius,out var edges))
+            {
+                // Exact radii retain the existing clearance rules. Bound storage
+                // even if future actors continuously vary their body size.
+                if(routeEdges.Count>=64)return ClearSegment(Point(node),Point(candidate),radius,false);
+                edges=new ushort[Side*Side];routeEdges.Add(radius,edges);
+            }
+            int tested=1<<direction,clear=tested<<8;
+            if((edges[node]&tested)==0)
+            {
+                bool open=ClearSegment(Point(node),Point(candidate),radius,false);
+                edges[node]|=(ushort)(tested|(open?clear:0));
+            }
+            return (edges[node]&clear)!=0;
+        }
         private static Vector3[] river;
         private static float riverHalfWidth;
         private static Rect bridge;
@@ -427,8 +454,10 @@ namespace Emberfall
         private static bool ClearAtHeight(Vector3 point,float radius,float height,ObstacleHandle ignored=null,bool physical=false)
         {
             if(!Finite(point.x)||!Finite(point.z)||!Finite(height)||CombatFx.Flat(point).magnitude>arena-radius)return false;
-            foreach(var o in obstacles)
+            CollectSolidCandidates(point,radius);
+            foreach(int index in solidCandidates)
             {
+                var o=obstacles[index];
                 if(ignored!=null&&object.ReferenceEquals(o.Handle,ignored))continue;
                 if(physical&&o.HasPhysicalBounds)
                 {
@@ -538,8 +567,10 @@ namespace Emberfall
             if(!VisualInsideArena(from,limit)||!VisualInsideArena(to,limit))return false;
             double x0=System.Math.Min(from.x,to.x)-radius-.001,x1=System.Math.Max(from.x,to.x)+radius+.001;
             double z0=System.Math.Min(from.z,to.z)-radius-.001,z1=System.Math.Max(from.z,to.z)+radius+.001;
-            foreach(var o in obstacles)
+            CollectSolidCandidatesBounds(x0,x1,z0,z1);
+            foreach(int index in solidCandidates)
             {
+                var o=obstacles[index];
                 double ex=o.Radius>0?o.Radius:o.Half.x,ez=o.Radius>0?o.Radius:o.Half.y;
                 if(x1>=o.Center.x-ex&&x0<=o.Center.x+ex&&z1>=o.Center.y-ez&&z0<=o.Center.y+ez)return false;
             }
@@ -708,9 +739,9 @@ namespace Emberfall
                     if (!grid[candidate] || closed[candidate]) continue;
                     bool diagonal = NeighborX[i] != 0 && NeighborY[i] != 0;
                     if (diagonal && (!grid[y * Side + nx] || !grid[ny * Side + x])) continue;
-                    if (!ClearSegment(Point(node), Point(candidate), radius, false)) continue;
                     float nextCost = cost[node] + (diagonal ? 1.414214f : 1f);
                     if (nextCost >= cost[candidate]) continue;
+                    if (!ClearGridEdge(node,candidate,i,radius)) continue;
                     cost[candidate] = nextCost; parent[candidate] = node;
                     queue.Add(candidate, nextCost + Vector3.Distance(Point(candidate), Point(end)) / Cell);
                 }

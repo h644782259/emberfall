@@ -51,6 +51,12 @@ namespace Emberfall
         private Vector3 walkingDisplacement;
         private Vector3 wanderGoal;
         private float wanderPause, wanderBlocked, wanderAge;
+        private Vector3 wanderDirection;
+        private float wanderSteerAt,wanderSteerRadius;
+        private int wanderSteerRevision=-1;
+        private int bodyMoveFrame=-1,bodyMoveRevision=-1;
+        private Vector3 bodyMovePosition;
+        private float bodyMoveRadius;
         private bool hasWanderGoal;
         private readonly BossAdvanceBudget advanceBudget = new BossAdvanceBudget();
         private Vector3 origin, targetPoint, knockVelocity, chargeDirection;
@@ -294,6 +300,11 @@ namespace Emberfall
 
         private void Update()
         {
+            using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.Enemies)) UpdateMeasuredEnemy();
+        }
+
+        private void UpdateMeasuredEnemy()
+        {
             if(threatAdmission!=null&&session!=null&&(session.InputBlocked||session.Paused))threatAdmission.Withdraw(threatMember);
             if (session == null || session.Player == null || IsDead || !session.HasStarted || session.Paused || session.IsDead) return;
             if (largeBoss != null && (session.InputBlocked || largeBoss.State.Phase == LargeBossPhase.Finished)) return;
@@ -332,7 +343,7 @@ namespace Emberfall
             attackCooldown = Mathf.Max(0,attackCooldown-dt);
             stunTime = Mathf.Max(0,stunTime-dt);
             // A charging boss follows the warned straight corridor instead of sliding sideways.
-            if (chargeTime <= 0 && pounceRemaining <= 0) transform.position = MoveWithBodies( knockVelocity * dt, NavigationRadius);
+            if (chargeTime <= 0 && pounceRemaining <= 0 && knockVelocity.sqrMagnitude>0) transform.position = MoveWithBodies( knockVelocity * dt, NavigationRadius);
             knockVelocity = Vector3.Lerp(knockVelocity,Vector3.zero,Mathf.Min(1,dt*12f));
             if (!preparing && chargeTime <= 0 && pounceRemaining <= 0)
                 companionTarget = aggro || Tier != ThreatTier.Normal ? SummonedCompanion.ThreatTarget(this, session.Player.transform.position) : null;
@@ -439,6 +450,8 @@ namespace Emberfall
         }
 
         private void Wander(float dt,float effectiveSpeed)
+        { using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.Wander)) MeasuredWander(dt,effectiveSpeed); }
+        private void MeasuredWander(float dt,float effectiveSpeed)
         {
             if(wanderPause>0){wanderPause=Mathf.Max(0,wanderPause-dt);AnimateModel(0,0,false);return;}
             if(!hasWanderGoal)
@@ -450,7 +463,7 @@ namespace Emberfall
                     Vector3 candidate=new Vector3(Mathf.Cos(angle)*extent,0,Mathf.Sin(angle)*extent);
                     if(!WorldTraversal.IsWalkable(candidate,NavigationRadius)||CombatFx.Flat(candidate-transform.position).sqrMagnitude<36)continue;
                     if(!route.TryPlan(transform.position,candidate,NavigationRadius))continue;
-                    wanderGoal=WorldTraversal.NearestWalkable(candidate,NavigationRadius);hasWanderGoal=true;wanderBlocked=wanderAge=0;break;
+                    wanderGoal=WorldTraversal.NearestWalkable(candidate,NavigationRadius);hasWanderGoal=true;wanderBlocked=wanderAge=0;wanderSteerAt=0;break;
                 }
                 if(!hasWanderGoal){wanderPause=Random.Range(.8f,1.8f);AnimateModel(0,0,false);return;}
             }
@@ -458,7 +471,12 @@ namespace Emberfall
             if(delta.sqrMagnitude<.45f*.45f||wanderAge>50f)
             {hasWanderGoal=false;wanderPause=Random.Range(.6f,2.2f);AnimateModel(0,0,false);return;}
             wanderAge+=dt;
-            Vector3 direction=route.Direction(transform.position,wanderGoal,NavigationRadius);
+            // Idle route steering needs 10 Hz, while movement, body collision,
+            // facing and animation still advance every frame. Combat uses the
+            // full-rate Direction path above. Topology changes bypass the timer.
+            if(Time.time>=wanderSteerAt||wanderSteerRevision!=WorldTraversal.Revision||wanderSteerRadius!=NavigationRadius)
+            {wanderDirection=route.Direction(transform.position,wanderGoal,NavigationRadius);wanderSteerAt=Time.time+.1f;wanderSteerRevision=WorldTraversal.Revision;wanderSteerRadius=NavigationRadius;}
+            Vector3 direction=wanderDirection;
             Vector3 before=transform.position;
             transform.position=WalkForAnimation(direction*Mathf.Min(delta.magnitude,effectiveSpeed*.48f*dt));
             Vector3 actual=CombatFx.Flat(transform.position-before);
@@ -469,9 +487,18 @@ namespace Emberfall
         }
 
         private Vector3 MoveWithBodies(Vector3 displacement,float radius)
+        { using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.Movement)) return MeasuredMoveWithBodies(displacement,radius); }
+        private Vector3 MeasuredMoveWithBodies(Vector3 displacement,float radius)
         {
-            Vector3 next=WorldTraversal.Move(transform.position,displacement,radius);
-            return session==null?next:session.ResolveEnemyBodyMove(transform.position,next,this);
+            Vector3 from=transform.position;
+            // ClampPosition immediately follows accepted movement. Repeating
+            // the same zero-length grounding query in that frame adds no work.
+            if(displacement.sqrMagnitude==0&&bodyMoveFrame==Time.frameCount&&bodyMoveRevision==WorldTraversal.Revision&&
+                bodyMoveRadius==radius&&(from-bodyMovePosition).sqrMagnitude==0)return from;
+            Vector3 next=WorldTraversal.Move(from,displacement,radius);
+            Vector3 accepted=session==null?next:session.ResolveEnemyBodyMove(from,next,this);
+            bodyMoveFrame=Time.frameCount;bodyMoveRevision=WorldTraversal.Revision;bodyMoveRadius=radius;bodyMovePosition=accepted;
+            return accepted;
         }
 
         private Vector3 WalkForAnimation(Vector3 displacement)
@@ -489,6 +516,8 @@ namespace Emberfall
             return next;
         }
         private void AnimateModel(float speedHint,float attack,bool hurt)
+        { using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.Animation)) MeasuredAnimateModel(speedHint,attack,hurt); }
+        private void MeasuredAnimateModel(float speedHint,float attack,bool hurt)
         {
             model.SetLocomotion(transform.InverseTransformDirection(walkingDisplacement),Time.deltaTime,Mathf.Max(.1f,speed),true);
             model.SetEnemyAttackPose(EnemyActionPose.Select(preparing,activeChargePose,attackAnimation),

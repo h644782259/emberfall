@@ -89,7 +89,7 @@ namespace Emberfall
         }
         internal Vector3 ResolveEnemyBodyMove(Vector3 from,Vector3 desired,EnemyController enemy)
         {
-            if(enemy==null)return from;
+            if(enemy==null||(desired-from).sqrMagnitude==0)return from;
             int count=Mathf.Clamp(Mathf.CeilToInt((desired-from).magnitude/.08f),1,256);
             Vector3 position=from;
             for(int i=1;i<=count;i++)

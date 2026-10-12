@@ -30,12 +30,13 @@ namespace UnityEngine{
 '''
 fixture = r'''
 using System;using System.Collections.Generic;using System.Diagnostics;using Emberfall;using UnityEngine;using Random=UnityEngine.Random;
-public static class TraversalCounters{public static long ActualVisits,LegacyVisits,Searches;}
+public static class TraversalCounters{public static long ActualVisits,LegacyVisits,Searches,Directions;}
 namespace Emberfall{
  public class WanderSession{public float ArenaRadius=>WorldTraversal.ArenaRadius;}
  public class ActualWander{
   public Transform transform=new Transform();private WanderSession session=new WanderSession();
   private WorldTraversal.Route route=new WorldTraversal.Route();private float wanderPause,wanderBlocked,wanderAge;
+  private Vector3 wanderDirection;private float wanderSteerAt,wanderSteerRadius;private int wanderSteerRevision=-1;
   private bool hasWanderGoal;private Vector3 wanderGoal;private float NavigationRadius=>.45f;
   private void AnimateModel(float a,float b,bool c){}
   private Vector3 WalkForAnimation(Vector3 d)=>WorldTraversal.Move(transform.position,d,NavigationRadius);
@@ -45,6 +46,7 @@ namespace Emberfall{
 class Program{
  static int checks;static void C(bool v,string why){checks++;if(!v)throw new Exception(why);}
  static bool Near(float a,float b)=>Math.Abs(a-b)<.000001f;
+ static void PathParity(Vector3 from,Vector3 to,float radius){var a=WorldTraversal.FindPath(from,to,radius);var b=FullScanTraversal.FindPath(from,to,radius);C(a.Count==b.Count,"cached edges preserve path length");for(int i=0;i<a.Count;i++)C((a[i]-b[i]).sqrMagnitude<.00000001f,"cached edges preserve exact path nodes");}
  static void Reset(float arena=35){WorldTraversal.Reset(ZoneKind.Wilderness);FullScanTraversal.Reset(ZoneKind.Wilderness);WorldTraversal.SetArenaRadius(arena);FullScanTraversal.SetArenaRadius(arena);WorldTerrain.ReliefEnabled=FullScanTerrain.ReliefEnabled=false;WorldTerrain.Configure(ZoneKind.Wilderness,1);FullScanTerrain.Configure(ZoneKind.Wilderness,1);}
  static void Circle(Vector3 p,float radius){WorldTraversal.AddCircle(p,radius);FullScanTraversal.AddCircle(p,radius);}
  static void Box(Vector3 p,Vector2 size){WorldTraversal.AddBox(p,size);FullScanTraversal.AddBox(p,size);}
@@ -82,6 +84,14 @@ class Program{
   WorldTraversal.AddSurfaceTriangle(new Vector3(-2,.03f,-2),new Vector3(2,.09f,-2),new Vector3(0,.06f,2));FullScanTraversal.AddSurfaceTriangle(new Vector3(-2,.03f,-2),new Vector3(2,.09f,-2),new Vector3(0,.06f,2));
   foreach(var p in new[]{Vector3.zero,new Vector3(1,0,1),new Vector3(-2,0,0),new Vector3(3,0,0)})C(Near(WorldTraversal.SurfaceHeight(p),FullScanTraversal.SurfaceHeight(p)),"mesh and raised-platform height preserved");
   C(WorldTraversal.CanStand(new Vector3(0,.8f,0))==FullScanTraversal.CanStand(new Vector3(0,.8f,0)),"height-aware stand semantics unchanged");
+  // Compare cached directional edges against uncached exact segment queries,
+  // including repeated searches, exact radius changes and topology changes.
+  Reset(22);Box(Vector3.zero,new Vector2(1,8));
+  for(int pass=0;pass<2;pass++)for(int i=0;i<12;i++)PathParity(new Vector3(-6,0,i*.2f),new Vector3(6,0,-i*.2f),i%2==0?.45f:.451f);
+  var gate=WorldTraversal.AddDynamicBox(new Vector3(0,0,6),new Vector2(12,1));var referenceGate=FullScanTraversal.AddDynamicBox(new Vector3(0,0,6),new Vector2(12,1));
+  PathParity(new Vector3(-6,0,1),new Vector3(6,0,1),.45f);
+  WorldTraversal.RemoveDynamicObstacle(gate);FullScanTraversal.RemoveDynamicObstacle(referenceGate);
+  PathParity(new Vector3(-6,0,1),new Vector3(6,0,1),.45f);
   // Stationary goals on a valid detour must not force A* every .85 seconds.
   Reset(22);Box(Vector3.zero,new Vector2(1,8));var from=new Vector3(-6,0,0);var to=new Vector3(6,0,0);var route=new WorldTraversal.Route();Time.time=0;TraversalCounters.Searches=0;
   C(route.Direction(from,to).sqrMagnitude>0,"actual static detour available");for(int i=1;i<=600;i++){Time.time=i/60f;C(route.Direction(from,to).sqrMagnitude>0,"cached static path stays reachable");}
@@ -96,20 +106,27 @@ class Program{
   // Execute the real Wander method's successful candidate and Direction chain.
   Reset(22);Box(Vector3.zero,new Vector2(1,8));var wander=new ActualWander();wander.transform.position=new Vector3(-6,0,0);Time.time=0;TraversalCounters.Searches=0;wander.Wander(.016f,3);
   C(TraversalCounters.Searches==1,"actual Wander retains candidate path for same-frame Direction");
+  long steering=TraversalCounters.Directions;Time.time=.01f;wander.Wander(.01f,3);
+  C(TraversalCounters.Directions==steering,"idle steering is reused between 10 Hz decisions");
+  Time.time=.11f;wander.Wander(.1f,3);C(TraversalCounters.Directions==steering+1,"idle steering refreshes after its deadline");
+  WorldTraversal.AddCircle(new Vector3(19,0,19),.1f);Time.time=.12f;wander.Wander(.01f,3);
+  C(TraversalCounters.Directions==steering+2,"changed geometry bypasses idle steering cadence immediately");
   Reset(22);Box(Vector3.zero,new Vector2(1,8));route=new WorldTraversal.Route();from=new Vector3(-6,0,0);to=new Vector3(6,0,0);TraversalCounters.Searches=0;C(route.TryPlan(from,to),"candidate plan reaches destination");route.Direction(from,to);C(TraversalCounters.Searches==1,"committed candidate plan is not rebuilt by Direction");
   // Warm allocation measurement also covers cross-bucket de-duplication.
   WorldTraversal.TestClearOfSolids(new Vector3(4,0,4),2.65f);allocated=GC.GetAllocatedBytesForCurrentThread();for(int i=0;i<10000;i++)WorldTraversal.TestClearOfSolids(new Vector3(4,0,4),2.65f);allocated=GC.GetAllocatedBytesForCurrentThread()-allocated;C(allocated==0,"warmed spatial point queries allocate zero bytes");
   Console.WriteLine("PASS "+checks+" production spatial/full-scan, dynamic door, radius, height, route retry and actual Wander assertions");
  }
 }
-'''.replace('WANDER', member(enemy, 'private void Wander(').replace('private void Wander', 'public void Wander'))
+'''.replace('WANDER', member(enemy, 'private void MeasuredWander(').replace('private void MeasuredWander', 'public void Wander'))
 
 def instrument(code, oracle=False):
     code = code.replace('private static bool ClearOfSolids(', 'public static bool TestClearOfSolids(').replace('ClearOfSolids(', 'TestClearOfSolids(').replace('TestTestClearOfSolids(', 'TestClearOfSolids(')
     if oracle:
+        code = code.replace('if (!ClearGridEdge(node,candidate,i,radius))', 'if (!ClearSegment(Point(node), Point(candidate), radius, false))')
         code = code.replace('CollectSolidCandidates(point,radius);\n            foreach (int index in solidCandidates)\n            {\n                Obstacle obstacle=obstacles[index];', 'foreach (Obstacle obstacle in obstacles)\n            {\n                TraversalCounters.LegacyVisits++;')
         code = code.replace('WorldTraversal', 'FullScanTraversal').replace('WorldTerrain', 'FullScanTerrain')
     else:
+        code = code.replace('public Vector3 Direction(Vector3 from, Vector3 destination, float radius = .45f)\n            {', 'public Vector3 Direction(Vector3 from, Vector3 destination, float radius = .45f)\n            { TraversalCounters.Directions++;')
         code = code.replace('Obstacle obstacle=obstacles[index];', 'Obstacle obstacle=obstacles[index];TraversalCounters.ActualVisits++;')
         code = code.replace('public static List<Vector3> FindPath(Vector3 from, Vector3 target, float radius = .45f)\n        {', 'public static List<Vector3> FindPath(Vector3 from, Vector3 target, float radius = .45f)\n        {\n            TraversalCounters.Searches++;')
     return code

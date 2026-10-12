@@ -23,6 +23,8 @@ public static class OpportunityDurationProductionTests
   owner.CombatEpoch++;s.Poison(owner,3,1);Pair(s.PoisonRemaining,s.PoisonWindowDuration,3,3,"poison epoch replacement new total");C(s.OwnPoisonOpportunityRemaining(owner)==0,"replacement starts at one stack");
   s=Enemy().StatusEffects;s.Burn(owner,6,6);Tick(s,2);Pair(s.OwnBurnRemaining(owner),s.BurnWindowDuration,4,6,"burn grant and decay");s.Burn(owner,1,1);Pair(s.BurnRemaining,s.BurnWindowDuration,4,6,"short burn refresh retains total");s.Burn(owner,8,8);Pair(s.BurnRemaining,s.BurnWindowDuration,8,8,"long burn refresh");
   var consume=Enemy().StatusEffects;consume.Burn(owner,3,3);Time.deltaTime=0;C(consume.ResolveBurnFinale(owner,2,3)>0&&consume.BurnRemaining==0,"burn finale consumes opportunity");consume.Burn(owner,2,2);Pair(consume.BurnRemaining,consume.BurnWindowDuration,2,2,"burn regeneration duration");Tick(consume,2);C(consume.BurnRemaining==0,"burn expires");consume.Burn(owner,5,5);Pair(consume.BurnRemaining,consume.BurnWindowDuration,5,5,"post-expiry new burn total");
+  owner=Setup();Enemy();owner.ElementalOpportunityWindow(1,CombatOpportunityKind.Shatter);
+  C(owner.GroundQueries==0,"idle HUD without status skips terrain queries");
   // Both query and status classes are production. Geometry admission is an explicit managed boundary.
   owner=Setup();var a=Enemy(0);var b=Enemy(1);a.StatusEffects.FrostMark(9);Tick(a.StatusEffects,6);b.StatusEffects.FrostMark(6);Tick(b.StatusEffects,2);
   var result=owner.ElementalOpportunityWindow(1,CombatOpportunityKind.Shatter);Pair(result.Remaining,result.Duration,4,6,"multi target pairs duration with longest remaining");C(Near(result.Fraction,4f/6)&&result.Blocked("缺能").Duration==6,"source fraction and blocked copy retain total");

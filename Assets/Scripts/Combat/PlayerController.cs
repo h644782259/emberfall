@@ -357,6 +357,11 @@ namespace Emberfall
 
         private void Update()
         {
+            using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.Player)) UpdateMeasuredPlayer();
+        }
+
+        private void UpdateMeasuredPlayer()
+        {
             if (session == null || model == null) return;
             if (GameplayCancelAllowed && HasPendingSkillRelease && (Input.GetKeyDown(KeyCode.Escape) || AdventureCamera.CancelSkillRequested)) CancelCombatPose();
             // Ownership cancellation also runs while gameplay time is frozen.
@@ -441,6 +446,9 @@ namespace Emberfall
             // Hardware keyboard uses the same axes and camera-relative movement on every platform.
             // Touch movement has already been projected by MobileControls.
             Vector2 keyboardMove = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
+#if EMBERFALL_VISUAL_VALIDATION
+            if(VisualValidationPlayer.PerformanceRun)keyboardMove=VisualValidationPlayer.PerformanceMove;
+#endif
             Vector3 movement = AdventureCamera.CameraRelativeMovement(keyboardMove, Camera.main == null ? null : Camera.main.transform);
             if(mobile)movement+=new Vector3(MobileControls.Move.x,0,MobileControls.Move.y);
             movement = Vector3.ClampMagnitude(movement,1);

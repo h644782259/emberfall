@@ -9,7 +9,9 @@ namespace Emberfall.Editor
     /// <summary>Builds a separate screenshot-only player; never changes global scripting defines.</summary>
     public static class VisualValidationBuild
     {
-        public static void Build()
+        public static void Build() { BuildPlayer(true); }
+        public static void BuildPerformance() { BuildPlayer(false); }
+        private static void BuildPlayer(bool development)
         {
             ProjectTools.EnsureSettings();
             string originalProduct = PlayerSettings.productName;
@@ -32,7 +34,7 @@ namespace Emberfall.Editor
                     scenes = new[] { "Assets/Scenes/Main.unity" },
                     target = BuildTarget.StandaloneWindows64,
                     locationPathName = output,
-                    options = BuildOptions.Development,
+                    options = development ? BuildOptions.Development : BuildOptions.None,
                     extraScriptingDefines = new[] { "EMBERFALL_VISUAL_VALIDATION" }
                 });
                 if (result.summary.result != BuildResult.Succeeded)

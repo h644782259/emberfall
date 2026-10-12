@@ -62,6 +62,37 @@ namespace Emberfall
         }
         // Slot indices belong to keyboard layout; this receives the learned,
         // remapped skill identity so moving a skill never moves its mechanic.
+        private readonly CombatOpportunityState[] hudOpportunities = new CombatOpportunityState[GameBalance.SkillCount];
+        private readonly bool[] hudAvailability = new bool[GameBalance.SkillCount];
+        private readonly int[] hudOpportunityFrames = new int[GameBalance.SkillCount], hudAvailabilityFrames = new int[GameBalance.SkillCount];
+        private PlayerController hudSkillOwner;
+        private bool hudSkillBlocked;
+        private void ObserveHudSkillOwner()
+        {
+            if (hudSkillOwner == session.Player && hudSkillBlocked == session.InputBlocked) return;
+            hudSkillOwner = session.Player; hudSkillBlocked = session.InputBlocked;
+            for (int i = 0; i < GameBalance.SkillCount; i++) hudOpportunityFrames[i] = hudAvailabilityFrames[i] = -1;
+        }
+        private CombatOpportunityState HudSkillOpportunity(int skill)
+        { using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.HudQueries)) return QueryHudOpportunity(skill); }
+        private CombatOpportunityState QueryHudOpportunity(int skill)
+        {
+            ObserveHudSkillOwner();
+            if (hudSkillOwner == null || skill < 0 || skill >= GameBalance.SkillCount) return default;
+            if (hudOpportunityFrames[skill] != Time.frameCount)
+            { hudOpportunities[skill] = hudSkillOwner.SkillOpportunityWindow(skill); hudOpportunityFrames[skill] = Time.frameCount; }
+            return hudOpportunities[skill];
+        }
+        private bool HudSkillAvailable(int skill)
+        { using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.HudQueries)) return QueryHudAvailable(skill); }
+        private bool QueryHudAvailable(int skill)
+        {
+            ObserveHudSkillOwner();
+            if (hudSkillOwner == null || skill < 0 || skill >= GameBalance.SkillCount) return false;
+            if (hudAvailabilityFrames[skill] != Time.frameCount)
+            { hudAvailability[skill] = hudSkillOwner.IsSkillAvailable(skill); hudAvailabilityFrames[skill] = Time.frameCount; }
+            return hudAvailability[skill];
+        }
         private string DesktopSkillOpportunityCaption(int skill,bool locked,bool lacksEnergy,float cooldown,out bool actionable)
         {
             actionable=false;var hero=session.Player;
@@ -72,7 +103,7 @@ namespace Emberfall
             if(pending!=null&&(pending.IsCharging||pending.ConsumedThisFrame))return pending.IsCharging&&pending.SkillIndex==skill?"蓄力":"";
             if(cooldown>.01f)return ""; // Preserve the existing central cooldown overlay.
             if(lacksEnergy)return "缺能";
-            var opportunity=hero.SkillOpportunityWindow(skill);actionable=opportunity.Actionable;
+            var opportunity=HudSkillOpportunity(skill);actionable=opportunity.Actionable;
             // The dedicated row owns the live window label and clock. This
             // in-slot channel only explains why the action cannot run now.
             return opportunity.Window?opportunity.BlockReason:"";

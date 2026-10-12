@@ -23,7 +23,18 @@ namespace Emberfall
         public static void CycleInterfaceTextScale()
         {InterfaceTextScale=InterfaceTextScale>=1.19f?1f:1.2f;}
         public static float CombatTextScale { get { return Mathf.Clamp(PlayerPrefs.GetFloat("Emberfall.CombatTextScale", 1.25f), 1f, 1.8f); } set { PlayerPrefs.SetFloat("Emberfall.CombatTextScale", Mathf.Clamp(value, 1f, 1.8f)); PlayerPrefs.Save(); } }
-        public static float EffectsScale { get { return Mathf.Clamp(PlayerPrefs.GetFloat("Emberfall.EffectsScale", 1f), .25f, 1f); } set { PlayerPrefs.SetFloat("Emberfall.EffectsScale", Mathf.Clamp(value, .25f, 1f)); PlayerPrefs.Save(); } }
+        private static int effectsFrame=-1;
+        private static float effectsScale=1;
+        public static float EffectsScale
+        {
+            get
+            {
+                if(effectsFrame!=Time.frameCount)
+                {effectsFrame=Time.frameCount;effectsScale=Mathf.Clamp(PlayerPrefs.GetFloat("Emberfall.EffectsScale",1f),.25f,1f);}
+                return effectsScale;
+            }
+            set { PlayerPrefs.SetFloat("Emberfall.EffectsScale",Mathf.Clamp(value,.25f,1f));effectsFrame=-1;PlayerPrefs.Save(); }
+        }
         public static bool CameraShake { get { return PlayerPrefs.GetInt("Emberfall.CameraShake", 1) != 0; } set { PlayerPrefs.SetInt("Emberfall.CameraShake", value ? 1 : 0); PlayerPrefs.Save(); } }
         public static int TouchPosition {get{return Mathf.Clamp(PlayerPrefs.GetInt("Emberfall.TouchPosition",0),-1,1);}set{PlayerPrefs.SetInt("Emberfall.TouchPosition",Mathf.Clamp(value,-1,1));PlayerPrefs.Save();}}
         public static float TouchOpacity {get{return FiniteControlSetting(PlayerPrefs.GetFloat("Emberfall.TouchOpacity",1),.5f);}set{PlayerPrefs.SetFloat("Emberfall.TouchOpacity",FiniteControlSetting(value,.5f));PlayerPrefs.Save();}}

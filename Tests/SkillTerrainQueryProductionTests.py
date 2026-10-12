@@ -18,7 +18,7 @@ def member(code, marker):
     return code[start:end]
 
 def instrument(code, oracle=False):
-    for marker in ['public static float SurfaceHeight(', 'public static bool HasClearVisualTriangle(']:
+    for marker in ['public static float SurfaceHeight(', 'public static bool HasClearVisualTriangle(', 'private static bool ClearAtHeight(', 'private static bool OpenSightBounds(']:
         old = member(code, marker)
         changed = old
         if oracle:
@@ -34,6 +34,7 @@ def instrument(code, oracle=False):
         loop = 'foreach(var obstacle in obstacles)' if oracle else 'foreach(int index in solidCandidates)'
         changed = changed.replace(loop + '\n            {', loop + '\n            {\n                QueryCounters.' + ('Legacy' if oracle else 'Actual') + '++;')
         code = code.replace(old, changed)
+    code = code.replace('private static bool ClearAtHeight(', 'public static bool ClearAtHeight(')
     if oracle:
         code = code.replace('(t.Terrain?terrainHeight:0)', '(t.Terrain?WorldTerrain.Height(point):0)')
         code = code.replace('WorldTraversal', 'FullScanTraversal').replace('WorldTerrain', 'FullScanTerrain')
@@ -48,7 +49,7 @@ public static class QueryCounters{public static long Actual,Legacy;}
 class Program{
  static int checks;static void C(bool v,string m){checks++;if(!v)throw new Exception(m);}
  static void Reset(float arena=80){WorldTraversal.Reset(ZoneKind.Wilderness);FullScanTraversal.Reset(ZoneKind.Wilderness);WorldTraversal.SetArenaRadius(arena);FullScanTraversal.SetArenaRadius(arena);WorldTerrain.ReliefEnabled=FullScanTerrain.ReliefEnabled=true;WorldTerrain.Configure(ZoneKind.Wilderness,73);FullScanTerrain.Configure(ZoneKind.Wilderness,73);}
- static void Height(Vector3 p,float r){float a=WorldTraversal.SurfaceHeight(p,r),b=FullScanTraversal.SurfaceHeight(p,r);C(a==b||(float.IsNaN(a)&&float.IsNaN(b)),"surface exactly matches full scan");}
+ static void Height(Vector3 p,float r){float a=WorldTraversal.SurfaceHeight(p,r),b=FullScanTraversal.SurfaceHeight(p,r);C(a==b||(float.IsNaN(a)&&float.IsNaN(b)),"surface exactly matches full scan");C(WorldTraversal.ClearAtHeight(p,r,p.y+.9f)==FullScanTraversal.ClearAtHeight(p,r,p.y+.9f),"height collision exactly matches full scan");C(WorldTraversal.HasLineOfSight(p,p+new Vector3(3,0,2))==FullScanTraversal.HasLineOfSight(p,p+new Vector3(3,0,2)),"sight exactly matches full scan");}
  static void Face(Vector3 o,Vector3 a,Vector3 b,Vector3 c){C(WorldTraversal.HasClearVisualTriangle(o,a,b,c)==FullScanTraversal.HasClearVisualTriangle(o,a,b,c),"visual face exactly matches full scan");}
  static void Box(Vector3 p,Vector2 s){WorldTraversal.AddBox(p,s);FullScanTraversal.AddBox(p,s);}
  static void Circle(Vector3 p,float r){WorldTraversal.AddCircle(p,r);FullScanTraversal.AddCircle(p,r);}

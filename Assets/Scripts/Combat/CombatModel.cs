@@ -122,6 +122,11 @@ namespace Emberfall
 
         private void LateUpdate()
         {
+            using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.Models)) UpdateMeasuredModel();
+        }
+
+        private void UpdateMeasuredModel()
+        {
             if (isHero) { SampleVanguardDeath(); return; }
             if (dying)
             {

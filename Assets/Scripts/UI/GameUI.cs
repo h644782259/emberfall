@@ -135,6 +135,7 @@ namespace Emberfall
 
         public void Initialize(GameSession gameSession)
         {
+            useGUILayout = false; // Every control uses an explicit Rect.
             session = gameSession;
             BindLootNotices();
             var targetFeedback=GetComponent<CombatTargetFeedback>();
@@ -175,6 +176,12 @@ namespace Emberfall
 
         private void Update()
         {
+            using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.InterfaceUpdate)) UpdateMeasuredInterface();
+        }
+
+        private void UpdateMeasuredInterface()
+        {
+            UpdateFrameRateDisplay();
             if (session == null) return;
             if (session.BackgroundPaused) { ReleaseCollectionModel(); return; }
             if (session.SceneLoading) return;
@@ -270,7 +277,62 @@ namespace Emberfall
             GameFont.Release(ref font);
         }
 
+        internal string PerformancePanel { get { return session.SceneLoading ? "Loading" : !session.HasStarted ? "Title" : session.DungeonSelectionOpen ? "DungeonSelection" : session.Paused ? "Pause" : panel.ToString(); } }
+        private double fpsPreviousTime, fpsElapsed;
+        private int fpsFrames;
+        private string fpsLabel = "FPS --";
+        private Color fpsColor = Color.white;
+        private GUIStyle fpsStyle;
+
+        private void UpdateFrameRateDisplay()
+        {
+            if (session == null || session.BackgroundPaused)
+            {
+                fpsPreviousTime = fpsElapsed = 0; fpsFrames = 0; fpsLabel = "FPS --";
+                return;
+            }
+            double now = Time.realtimeSinceStartupAsDouble;
+            if (fpsPreviousTime == 0) { fpsPreviousTime = now; return; }
+            fpsElapsed += now - fpsPreviousTime; fpsPreviousTime = now; fpsFrames++;
+            if (fpsElapsed < .5) return;
+            double fps = fpsFrames / fpsElapsed;
+            fpsLabel = string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                "{0:0} FPS  |  {1:0.0} ms", fps, fpsElapsed * 1000 / fpsFrames);
+            fpsColor = fps >= 55 ? new Color(.55f, 1f, .7f) : fps >= 30 ? new Color(1f, .83f, .4f) : new Color(1f, .45f, .4f);
+            fpsElapsed = 0; fpsFrames = 0;
+        }
+
+        private void DrawFrameRateDisplay()
+        {
+            if (Event.current.type != EventType.Repaint || session == null || session.BackgroundPaused) return;
+            if (fpsStyle == null) fpsStyle = new GUIStyle { font = GameFont.Shared, alignment = TextAnchor.MiddleCenter };
+            // Read-only overlay occupies the unused right end of the bottom XP rail.
+            Rect safe = Screen.safeArea;
+            float unit = Mathf.Clamp(Screen.height / 720f, 1f, 2f);
+            Rect box = new Rect(safe.xMax - 160 * unit, Screen.height - safe.yMin - 20 * unit, 158 * unit, 18 * unit);
+            Matrix4x4 oldMatrix = GUI.matrix; Color oldColor = GUI.color;
+            Color oldContent = GUI.contentColor; bool oldEnabled = GUI.enabled;
+            GUI.matrix = Matrix4x4.identity; GUI.color = Color.white; GUI.contentColor = Color.white; GUI.enabled = true;
+            fpsStyle.fontSize = Mathf.RoundToInt(11 * unit); fpsStyle.normal.textColor = fpsColor;
+            GUI.color = new Color(.015f, .025f, .04f, .88f);
+            GUI.DrawTexture(box, Texture2D.whiteTexture); GUI.color = Color.white;
+            GUI.Label(box, fpsLabel, fpsStyle);
+            GUI.matrix = oldMatrix; GUI.color = oldColor; GUI.contentColor = oldContent; GUI.enabled = oldEnabled;
+        }
+
         private void OnGUI()
+        {
+            using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.Interface)) DrawMeasuredInterface();
+        }
+
+        private void DrawMeasuredInterface()
+        {
+            if (Event.current.type == EventType.Layout) return;
+            DrawGameInterface();
+            DrawFrameRateDisplay();
+        }
+
+        private void DrawGameInterface()
         {
             if (session == null || session.Progression == null || session.BackgroundPaused) return;
             RefreshLayout();
@@ -396,9 +458,17 @@ namespace Emberfall
         }
 
         private float interfaceStyleScale=-1;
+        private int interfacePreferenceFrame=-1;
+        private float interfacePreferenceScale=1;
         private GUIStyle Style(int size, bool bold = false, bool wrap = false, TextAnchor align = TextAnchor.UpperLeft)
         {
+#if UNITY_EDITOR
             float scale=EffectPreferences.InterfaceTextScale;
+#else
+            if(interfacePreferenceFrame!=Time.frameCount)
+            {interfacePreferenceFrame=Time.frameCount;interfacePreferenceScale=EffectPreferences.InterfaceTextScale;}
+            float scale=interfacePreferenceScale;
+#endif
             if(interfaceStyleScale!=scale){styles.Clear();interfaceStyleScale=scale;}
             size=Mathf.Max(1,Mathf.RoundToInt(size*scale));
             int key = size + (bold ? 100 : 0) + (wrap ? 200 : 0) + (int)align * 1000;
@@ -411,26 +481,32 @@ namespace Emberfall
         }
 
         private void Text(Rect rect, string value, int size, Color color, bool bold = false, bool wrap = false, TextAnchor align = TextAnchor.UpperLeft)
+        { using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.Text)) DrawMeasuredText(rect,value,size,color,bold,wrap,align); }
+        private void DrawMeasuredText(Rect rect, string value, int size, Color color, bool bold = false, bool wrap = false, TextAnchor align = TextAnchor.UpperLeft)
         {
+            if (Event.current.type != EventType.Repaint) return;
+            var preparation=PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.TextSetup);
             Color previous = GUI.contentColor;
             bool previousEnabled = GUI.enabled;
             GUIStyle style = Style(size, bold, wrap, align);
-            Color previousTextColor = style.normal.textColor;
-            // Keep the global tint neutral; the style owns the intended text color.
-            GUI.contentColor = Color.white;
+            // Tint at draw time instead of invalidating the shared text style
+            // for every label and its shadow.
             // Labels have no input: keep them readable while gameplay input is blocked.
             if (!MobileControls.Active) {
                 GUI.enabled = true;
                 if (color == muted) color = new Color(.80f,.85f,.91f,color.a);
             }
             color.a*=controlOpacity;
-            if (!MobileControls.Active && color.r+color.g+color.b>.5f) {
-                style.normal.textColor=new Color(.005f,.008f,.012f,color.a*.9f);
-                GUI.Label(new Rect(rect.x+1,rect.y+1,rect.width,rect.height),value??"",style);
+            preparation.Dispose();
+            using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.TextDraw))
+            {
+                if (!MobileControls.Active && color.r+color.g+color.b>.5f) {
+                    GUI.contentColor=new Color(.005f,.008f,.012f,color.a*.9f);
+                    GUI.Label(new Rect(rect.x+1,rect.y+1,rect.width,rect.height),value??"",style);
+                }
+                GUI.contentColor = color;
+                GUI.Label(rect, value ?? "", style);
             }
-            style.normal.textColor = color;
-            GUI.Label(rect, value ?? "", style);
-            style.normal.textColor = previousTextColor;
             GUI.contentColor = previous;
             GUI.enabled = previousEnabled;
         }
@@ -852,8 +928,8 @@ namespace Emberfall
             float railHeight=18*u,railY=(Screen.height-guiOffset.y)/scale-railHeight;
             Rect rail=new Rect(-guiOffset.x/scale,railY,Screen.width/scale,railHeight);
             Bar(rail,capped?1:p.xp/(float)GameBalance.XpToNext(p.level),gold);
-            var labelStyle=new GUIStyle(Style(Mathf.RoundToInt(11*u),true,false,TextAnchor.MiddleLeft));
-            labelStyle.padding=new RectOffset(0,0,0,0);labelStyle.normal.textColor=Color.white;
+            var labelStyle=Style(Mathf.RoundToInt(11*u),true,false,TextAnchor.MiddleLeft);
+            labelStyle.normal.textColor=Color.white;
             Fill(new Rect(0,railY,width,railHeight),new Color(.012f,.025f,.04f,.62f));
             GUI.Label(new Rect(8*u,railY,width-16*u,railHeight),"Lv."+p.level+"   "+(capped?"满级":p.xp+" / "+GameBalance.XpToNext(p.level)),labelStyle);
 
@@ -1030,6 +1106,8 @@ namespace Emberfall
         }
 
         private void DrawHotbar()
+        { using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.Hotbar)) DrawMeasuredHotbar(); }
+        private void DrawMeasuredHotbar()
         {
             GameProfile p = session.Progression.Profile;
             bool mobile = MobileControls.Active;
@@ -1063,12 +1141,12 @@ namespace Emberfall
                 string actionCaption=mobile?"":DesktopSkillOpportunityCaption(skill,locked,lacksEnergy,cooldown,out actionable);
                 Rect slot = hotbarSlots[slotIndex];
                 // Dedicated clock row is never replaced by cooldown/failure/result captions.
-                var window=mobile||locked||session.Player==null?default(CombatOpportunityState):session.Player.SkillOpportunityWindow(skill);
+                var window=mobile||locked||session.Player==null?default(CombatOpportunityState):HudSkillOpportunity(skill);
                 if(window.Window)Text(new Rect(slot.x,slot.y-12,slot.width,11),window.Caption,8,window.Actionable?jade:muted,true,false,TextAnchor.MiddleCenter);
 
                 Color accent = empty ? muted : potion ? gold : UIIconAtlas.SkillColor(p.heroClass, skill);
                 Fill(slot,new Color(accent.r*.15f,accent.g*.15f,accent.b*.15f,locked?.35f:.5f));
-                bool ready=session.Player!=null&&(potion?!session.InputBlocked&&!session.Player.IsDead&&!locked&&session.Player.Health<session.Player.MaxHealth-.5f:skill>=0&&session.Player.IsSkillAvailable(skill));
+                bool ready=session.Player!=null&&(potion?!session.InputBlocked&&!session.Player.IsDead&&!locked&&session.Player.Health<session.Player.MaxHealth-.5f:skill>=0&&HudSkillAvailable(skill));
                 if (!empty)
                 {
                     // Artwork fills the slot; counts are drawn on top of it.

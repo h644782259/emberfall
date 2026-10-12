@@ -38,12 +38,16 @@ namespace Emberfall
             {if(targeting.TargetedSkillIndex!=skill)return default;point=targeting.TargetPoint;}
             else if(MobileControls.Active)ResolveMobileSkillAim(skill,out selected,out point);
             float range=GameBalance.SkillRangeMultiplier(session.Progression.Profile.skillRanks[skill]);
-            Vector3 center=ResolveSkillGroundTarget(point,range);float radius=(skill==9?GameBalance.ArcanistFinaleRadius:3f)*range,remaining=0,duration=0;
+            Vector3 center=default;bool resolvedCenter=false;float radius=(skill==9?GameBalance.ArcanistFinaleRadius:3f)*range,remaining=0,duration=0;
             foreach(var enemy in session.Enemies)
             {
-                if(!ValidAimTarget(enemy)||enemy.StatusEffects==null||CombatFx.Flat(enemy.transform.position-center).magnitude>radius+(enemy.IsBoss?.85f:.4f)+enemy.HitFootprintBonus||!CombatSight.Area(center,enemy.transform.position))continue;
+                if(!ValidAimTarget(enemy)||enemy.StatusEffects==null)continue;
                 var status=enemy.StatusEffects;
                 float expiry=kind==CombatOpportunityKind.Shatter?status.FrostRemaining:kind==CombatOpportunityKind.BurnFinale?status.OwnBurnRemaining(this):status.BurnRemaining;
+                // No active status means this enemy cannot contribute a window; avoid terrain/sight queries.
+                if(expiry<=remaining)continue;
+                if(!resolvedCenter){center=ResolveSkillGroundTarget(point,range);resolvedCenter=true;}
+                if(CombatFx.Flat(enemy.transform.position-center).magnitude>radius+(enemy.IsBoss?.85f:.4f)+enemy.HitFootprintBonus||!CombatSight.Area(center,enemy.transform.position))continue;
                 if(expiry>remaining){remaining=expiry;duration=kind==CombatOpportunityKind.Shatter?status.FrostWindowDuration:status.BurnWindowDuration;}
             }
             return new CombatOpportunityState(kind,remaining,duration:duration);

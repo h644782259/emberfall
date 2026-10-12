@@ -19,19 +19,22 @@ fixture+='''namespace Emberfall{
  public class Progression{public float MechanicRangeMultiplier(EquipmentMechanic m)=>1;public float MechanicPowerMultiplier(EquipmentMechanic m)=>1;public Profile Profile=new Profile();}public class Profile{public int[] skillRanks=new int[10];}
  public class SkillTargetingController{public bool IsTargeting;public int TargetedSkillIndex;public Vector3 TargetPoint;}
  public static class MobileControls{public static bool Active;}
- public static class GameBalance{public static float SkillRangeMultiplier(int rank)=>1;public static Color ClassColor(HeroClass hero)=>new Color();}
+ public static class GameBalance{public const float ArcanistFinaleRadius=9.5f;public static float SkillRangeMultiplier(int rank)=>1;public static Color ClassColor(HeroClass hero)=>new Color();}
  public static class AdvancedSkillVfx{public static void Beam(PlayerController player,Vector3 a,Vector3 b,Color c,float d,float w){}}
  public static class SummonedCompanion{public static void OnPerfectDodge(PlayerController p){}}
+ public class RelicBoundary{public int PerfectDodge()=>0;}
  public class Runtime{public void RestoreEnergy(float amount){}}
  public class Mastery{public float PerfectDodge()=>0;}
  public sealed partial class PlayerController{
  public HeroClass HeroClass=HeroClass.Vanguard;public Vector3 aimPoint;public SkillTargetingController targeting;public bool ReturningCounterVariant,OwnReturningBlade=true;
  public EnemyController BounceTarget;public float CombatAttack=1,Energy=100;Runtime skillRuntime=new Runtime();Mastery masteryCore=new Mastery();
  float counterTime,perfectDodgeCounterTime,perfectDodgeWindow,coreWardTime,classDodgeTime;bool perfectDodgeAwarded;private float counterWindowDuration;
+ RelicBoundary relicGems=new RelicBoundary();private void ApplyRelicProc(int proc,Vector3 target){}
+ public int GroundQueries;
  CombatProcCooldown returningBladeProc=new CombatProcCooldown();
  private bool HasMechanic(EquipmentMechanic mechanic)=>OwnReturningBlade;
  private EnemyController NearestOtherEnemy(Vector3 at,EnemyController excluded,float radius)=>BounceTarget;
- private Vector3 ResolveSkillGroundTarget(Vector3 point,float range)=>point;
+ private Vector3 ResolveSkillGroundTarget(Vector3 point,float range){GroundQueries++;return point;}
  private void ResolveMobileSkillAim(int skill,out EnemyController enemy,out Vector3 point){enemy=null;point=aimPoint;}
  public void GrantPerfect(bool variant){ReturningCounterVariant=variant;perfectDodgeAwarded=false;perfectDodgeWindow=.1f;NotifyPerfectDodge();}
  public void ResetBounceProc(){returningBladeProc=new CombatProcCooldown();}

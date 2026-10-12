@@ -26,6 +26,8 @@ namespace Emberfall
         private int requestedWidth;
         private int requestedHeight;
         private bool movingPreview;
+        internal static bool PerformanceRun;
+        internal static Vector2 PerformanceMove;
         private EnemyController hitPreview;
 
         [Serializable]
@@ -52,6 +54,8 @@ namespace Emberfall
             public int assertions;
             public int consoleErrors;
             public float elapsedSeconds;
+            public float stationaryFps,walkingFps;
+            public bool performanceTargetMet;
             public string failure = "";
             public List<string> errors = new List<string>();
             public List<Screenshot> screenshots = new List<Screenshot>();
@@ -62,6 +66,7 @@ namespace Emberfall
             get
             {
                 ConfigurePaths();
+                PerformanceRun = Array.IndexOf(Environment.GetCommandLineArgs(),"--camp-performance") >= 0;
                 return saveDirectory;
             }
         }
@@ -135,6 +140,7 @@ namespace Emberfall
         private void LateUpdate()
         {
             Application.runInBackground = true;
+            if (PerformanceRun) return;
             if (session == null || !session.HasStarted || session.SceneLoading || finished) return;
             if (session.Player != null) session.Player.enabled = false;
             if (session.Player != null)
@@ -179,6 +185,36 @@ namespace Emberfall
             if (!finished) Finish(null);
         }
 
+        private IEnumerator VerifyCampPerformance()
+        {
+            PerformanceRun = true;
+            result.captureScope = "Real player loop with enemy AI enabled; isolated level-100 Arcanist, stationary and keyboard-vector walking samples. Performance target: both averages >=55 FPS.";
+            yield return SetResolution(1920,1017);
+            SetField("selectedClass",HeroClass.Arcanist); Invoke("StartSelectedHero"); yield return WaitForSceneReady();
+            int experience=0;
+            for(int level=session.Progression.Profile.level;level<ProgressionService.MaximumLevel;level++)experience+=GameBalance.XpToNext(level);
+            session.Progression.GrantExperience(experience); session.Player.RefreshStats(true);
+            Check(session.Progression.Profile.level==100,"Performance character reaches level 100");
+            Check(session.Player.enabled,"Performance sample keeps player simulation enabled");
+            Debug.Log("PERF PHASE warmup"); yield return new WaitForSecondsRealtime(10);
+            Debug.Log("PERF PHASE stationary");
+            int phaseFrame=Time.frameCount;double phaseTime=Time.realtimeSinceStartupAsDouble;
+            yield return new WaitForSecondsRealtime(20);
+            result.stationaryFps=(float)((Time.frameCount-phaseFrame)/(Time.realtimeSinceStartupAsDouble-phaseTime));
+            Check(!session.InputBlocked && !session.BackgroundPaused,"Stationary sample has active simulation");
+            yield return Capture("performance-stationary");
+            Debug.Log("PERF PHASE walking");
+            phaseFrame=Time.frameCount;phaseTime=Time.realtimeSinceStartupAsDouble;
+            float walked=0;
+            for(int i=0;i<10;i++) { Vector3 before=session.Player.transform.position; PerformanceMove = i%2==0?Vector2.right:Vector2.left; yield return new WaitForSecondsRealtime(2); walked+=(session.Player.transform.position-before).magnitude; }
+            Check(walked>1 && !session.InputBlocked,"Walking sample actually moves through the player controller");
+            result.walkingFps=(float)((Time.frameCount-phaseFrame)/(Time.realtimeSinceStartupAsDouble-phaseTime));
+            result.performanceTargetMet=result.stationaryFps>=55&&result.walkingFps>=55;
+            PerformanceMove=Vector2.zero; yield return Capture("performance-walking");
+            OpenPanel("Inventory"); yield return Capture("performance-inventory"); ResetPanels();
+            Check(session.Player.enabled,"Real movement remains enabled after HUD and inventory checks");
+        }
+
         private IEnumerator Run()
         {
             // The player loop can start before Unity's splash overlay is gone;
@@ -195,6 +231,7 @@ namespace Emberfall
             ui = session.GetComponent<GameUI>();
             Check(ui != null, "Runtime IMGUI component exists");
             Check(Path.GetFullPath(session.Progression.SaveDirectory) == SaveDirectory, "Test player uses its isolated save directory");
+            if(System.Array.IndexOf(System.Environment.GetCommandLineArgs(),"--camp-performance")>=0){yield return VerifyCampPerformance();yield break;}
             if(System.Array.IndexOf(System.Environment.GetCommandLineArgs(),"--reward-presentation")>=0){yield return VerifyRewardPresentation();yield break;}
             if(System.Array.IndexOf(System.Environment.GetCommandLineArgs(),"--adventure-rework")>=0){yield return VerifyAdventureRework();yield break;}
             if(System.Array.IndexOf(System.Environment.GetCommandLineArgs(),"--windows-handoff")>=0){yield return VerifyWindowsHandoff();yield break;}

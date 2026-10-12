@@ -282,6 +282,11 @@ namespace Emberfall
 
         private void Update()
         {
+            using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.Session)) UpdateMeasuredSession();
+        }
+
+        private void UpdateMeasuredSession()
+        {
             UpdateMobileFrameRate();
             if (BackgroundPaused) return;
             if (SceneLoading) return;
@@ -960,6 +965,11 @@ namespace Emberfall
         }
         private void OnApplicationFocus(bool focus)
         {
+#if EMBERFALL_VISUAL_VALIDATION
+            // The isolated performance runner must keep simulating while the
+            // developer inspects logs in another window.
+            if (VisualValidationPlayer.PerformanceRun) focus = true;
+#endif
             pauseState.SetFocus(focus);
             GameAudio.SetBackgroundPaused(pauseState.BackgroundPaused);
             if (!focus) SuspendInputs();
@@ -1060,7 +1070,7 @@ namespace Emberfall
             if (canStart && canContinue) distance = Mathf.Clamp(distance - scroll * 1.5f, 13f, 25f);
         }
 
-        private void LateUpdate() { MoveCamera(false); }
+        private void LateUpdate() { using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.Camera)) MoveCamera(false); }
         private void MoveCamera(bool snap)
         {
             Vector3 desired = DesiredTarget();
