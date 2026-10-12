@@ -34,34 +34,27 @@ namespace Emberfall
    bool compact=CompactRewardItem(entryRewardPopup);
    float w=Mathf.Min((comparing?(IsWornReward(entryRewardPopup)?340:620):compact?InventoryGridGeometry.ItemPopupWidth:320)*u,width-24*u),textWidth=w-40*u;
    float contentHeight=DrawRewardDetailRows(entryRewardPopup,textWidth/u,u,false)*u;
-   float headerHeight=comparing?0:compact?72:98;
-   float h=Mathf.Min(compact?InventoryGridGeometry.ItemPopupHeight*u:contentHeight+(headerHeight+10)*u,height-24*u);
+   float headerHeight=comparing?0:92;
+   float h=Mathf.Min(contentHeight+(headerHeight+10)*u,height-24*u);
    float x=entryRewardAnchor.xMax+10*u;
    if(x+w>width-12*u)x=entryRewardAnchor.x-w-10*u;
    x=Mathf.Clamp(x,12*u,Mathf.Max(12*u,width-w-12*u));
    float y=Mathf.Clamp(entryRewardAnchor.y,12*u,Mathf.Max(12*u,height-h-12*u));
    Rect box=new Rect(x,y,w,h);entryRewardPopupRect=box;blockedRects.Add(box);
    if(!comparing){Fill(box,ink);Border(box,entryRewardPopup.QualityColor,2*u);}
-   if(compact)
+   if(!comparing)
    {
-    var quantity=System.Text.RegularExpressions.Regex.Match(entryRewardPopup.Description??"",@"数量[ ：]*(.+)");
-    string quantityText="数量："+(quantity.Success?quantity.Groups[1].Value:entryRewardPopup.Quantity.ToString());
-    float quantityWidth=Mathf.Min(90*u,Style(Mathf.RoundToInt(11*u),true).CalcSize(new GUIContent(quantityText)).x+8*u);
-    float quantityX=box.xMax-52*u-quantityWidth;
-    Text(new Rect(x+8*u,y+4*u,Mathf.Max(0,quantityX-x-12*u),44*u),entryRewardPopup.Name,Mathf.RoundToInt(13*u),pale,true,false,TextAnchor.MiddleLeft);
-    Text(new Rect(quantityX,y+4*u,quantityWidth,44*u),quantityText,Mathf.RoundToInt(11*u),pale,true,false,TextAnchor.MiddleRight);
-    DrawIcon(new Rect(x+10*u,y+46*u,22*u,22*u),entryRewardPopup.Icon,entryRewardPopup.QualityColor);
-    DrawDetailTag(new Rect(x+40*u,y+46*u,62*u,21*u),GameBalance.RarityName(entryRewardPopup.Rarity),entryRewardPopup.QualityColor,u);
-   }
-   else if(!comparing)
-   {
-   DrawEntryRewardIcon(new Rect(x+12*u,y+12*u,48*u,48*u),entryRewardPopup,u);
-   Text(new Rect(x+70*u,y+10*u,w-122*u,44*u),entryRewardPopup.Name,Mathf.RoundToInt(14*u),entryRewardPopup.QualityColor,true,true);
-   string level=System.Text.RegularExpressions.Regex.Match(entryRewardPopup.Description,@"Lv\.?\d+").Value;
-   string[] tags={EntryRewardKind(entryRewardPopup),GameBalance.RarityName(entryRewardPopup.Rarity),level};
-   float tagX=x+12*u;
-   foreach(string tag in tags)if(tag.Length>0)
-   {float tagW=Mathf.Max(48,tag.Length*12+16)*u;Rect chip=new Rect(tagX,y+66*u,tagW,23*u);Fill(chip,new Color(entryRewardPopup.QualityColor.r,entryRewardPopup.QualityColor.g,entryRewardPopup.QualityColor.b,.18f));Text(chip,tag,Mathf.RoundToInt(10*u),pale,true,false,TextAnchor.MiddleCenter);tagX+=tagW+6*u;}
+    float closeInset=(MobileControls.Active||(entryRewardSelection??"").StartsWith("merchant:"))?40*u:0;
+    DrawEntryRewardIcon(new Rect(x+w-56*u-closeInset,y+8*u,40*u,40*u),entryRewardPopup,u);
+    Text(new Rect(x+8*u,y+4*u,w-76*u-closeInset,28*u),(entryRewardPopup.Name??"").Split('\n')[0],Mathf.RoundToInt(14*u),pale,true,false);
+    if(compact)
+    {
+     var quantity=System.Text.RegularExpressions.Regex.Match(entryRewardPopup.Description??"",@"数量[ ：]*(.+)");
+     var lines=(entryRewardPopup.Name??"").Split('\n');
+     string amount=quantity.Success?quantity.Groups[1].Value:lines.Length>1?lines[1]:entryRewardPopup.Quantity.ToString();
+     Text(new Rect(x+8*u,y+32*u,w-76*u-closeInset,22*u),"数量："+amount,Mathf.RoundToInt(11*u),muted,false);
+    }
+    DrawItemDetailTags(new Rect(x+8*u,y+60*u,w-24*u,22*u),entryRewardPopup,u);
    }
    entryRewardPopupScroll=BeginTouchScroll("entry-reward-popup",new Rect(x+12*u,y+headerHeight*u,w-24*u,h-(headerHeight+10)*u),entryRewardPopupScroll,new Rect(0,0,textWidth,contentHeight),showScrollbar:false);
    DrawRewardDetailRows(entryRewardPopup,textWidth/u,u,true);
@@ -98,28 +91,15 @@ namespace Emberfall
    return new EntryRewardPreview{Key="obtained:"+item.id,Equipment=item,GearSlot=item.slot,Name=ItemTitle(item),Description=description,Rarity=item.rarity,Tint=GameBalance.RarityColor(item.rarity),Icon=UIIconAtlas.EquipmentCardIcon(item,session.Progression.Profile.heroClass)};
   }
   private string EntryRewardKind(EntryRewardPreview item)
-  {return item.Key.StartsWith("fashion:")?"时装":item.Key.Contains("gem:")?"宝石":item.Key=="shard"||item.Key=="thread"||(item.Key.Contains("refinement")||item.Key.Contains("affix-reforge"))?"材料":item.Key=="gold"?"货币":item.Key.Contains("potion")?"药剂":"装备";}
+  {return item.AppearanceSlot.HasValue?"时装":(item.Key??"").Contains("gem:")?"宝石":item.Key=="shard"||item.Key=="thread"||((item.Key??"").Contains("refinement")||(item.Key??"").Contains("affix-reforge"))?"材料":item.Key=="experience"?"经验":item.Key=="gold"?"货币":(item.Key??"").Contains("potion")?"药剂":"装备";}
   private void DrawEntryRewardIcon(Rect icon,EntryRewardPreview item,float u,bool compact=false)
   {
-   bool fashion=item.Key.StartsWith("fashion:");
-   if(fashion){DrawIcon(icon,UIIconAtlas.ControlDisc(),card);DrawIcon(icon,UIIconAtlas.ControlRing(),item.QualityColor);}
-   else {Fill(icon,card);Border(icon,item.QualityColor,2*u);}
-   float labelHeight=compact?12:14,labelFont=compact?8:9;
-   if(fashion)
-   {
-    float side=Mathf.Min(icon.width,icon.height),art=side*.48f;
-    DrawIcon(new Rect(icon.center.x-art*.5f,icon.y+side*.10f,art,art),item.Icon,Color.white);
-    Rect caption=new Rect(icon.center.x-side*.34f,icon.y+side*.59f,side*.68f,side*.25f);
-    DrawOutlinedIconText(caption,EntryRewardKind(item),Mathf.RoundToInt((compact?7:8)*u),item.QualityColor,TextAnchor.MiddleCenter);
-    return;
-   }
-   float artSize=Mathf.Max(1,Mathf.Min(icon.width-(compact?6:12)*u,icon.height-(compact?14:22)*u));
-   DrawIcon(new Rect(icon.center.x-artSize*.5f,icon.y+(icon.height-labelHeight*u-artSize)*.5f,artSize,artSize),item.Icon,item.QualityColor);
-   Rect label=new Rect(icon.x+2*u,icon.yMax-labelHeight*u,icon.width-4*u,(compact?labelHeight:labelHeight-2)*u);Fill(label,new Color(.08f,.15f,.19f));
-   Text(label,EntryRewardKind(item),Mathf.RoundToInt(labelFont*u),item.QualityColor,true,false,TextAnchor.MiddleCenter);
+   Fill(icon,card);
+   DrawIcon(new Rect(icon.x+3*u,icon.y+3*u,icon.width-6*u,icon.height-6*u),item.Icon,Color.white);
+   Border(icon,item.QualityColor,2*u);
   }
   private bool CompactRewardItem(EntryRewardPreview item)
-  {return (item.Key.Contains("refinement")||item.Key.Contains("affix-reforge"))||item.Key=="shard"||item.Key=="thread"||item.Key=="gold"||item.Key=="experience"||item.Key.Contains("potion");}
+  {return ((item.Key??"").Contains("refinement")||(item.Key??"").Contains("affix-reforge"))||item.Key=="shard"||item.Key=="thread"||item.Key=="gold"||item.Key=="experience"||(item.Key??"").Contains("potion");}
   private float DrawEntryRewardRows(EntryRewardPreview item,float available,float u,bool draw)
   {
    float y=0;string[] lines=item.Description.Split('\n');
@@ -188,7 +168,7 @@ namespace Emberfall
      Border(equipmentIcon,accent,2*u);
     }
     Text(new Rect((x+10)*u,24*u,headingWidth*u,32*u),name,Mathf.RoundToInt(15*u),pale,true,true);
-    if(value!=null){DrawDetailTag(new Rect((x+8)*u,60*u,60*u,22*u),GameBalance.RarityName(value.Rarity),accent,u);DrawDetailTag(new Rect((x+74)*u,60*u,Mathf.Max(36,cardWidth-82)*u,22*u),item.GearSlot.HasValue?GameBalance.SlotName(item.GearSlot.Value):item.AppearanceSlot==FashionSlot.Wings?"羽翼":"兵装",jade,u);}
+    if(value!=null)DrawItemDetailTags(new Rect((x+8)*u,60*u,(cardWidth-16)*u,22*u),value,u);
    }
    FashionData ownedFashion=item.AppearanceSlot.HasValue&&item.Key!=null&&item.Key.StartsWith("fashion:")?progression.Profile.fashions.Find(v=>v!=null&&"fashion:"+v.id==item.Key):null;
    FashionData currentFashion=item.AppearanceSlot.HasValue?progression.EquippedFashion(item.AppearanceSlot.Value):null;
@@ -247,6 +227,15 @@ namespace Emberfall
     y+=48;
    }
    return y;
+  }
+  private void DrawItemDetailTags(Rect row,EntryRewardPreview item,float u)
+  {
+   string slot=item.GearSlot.HasValue?GameBalance.SlotName(item.GearSlot.Value):item.AppearanceSlot.HasValue?(item.AppearanceSlot==FashionSlot.Wings?"羽翼":"兵装"):"";
+   float gap=6*u,first=Mathf.Min(60*u,(row.width-gap*2)/3),remaining=row.width-first-gap;
+   DrawDetailTag(new Rect(row.x,row.y,first,row.height),GameBalance.RarityName(item.Rarity),item.QualityColor,u);
+   int count=slot.Length>0?2:1;float cell=Mathf.Min(80*u,(remaining-gap*(count-1))/count);
+   DrawDetailTag(new Rect(row.x+first+gap,row.y,cell,row.height),EntryRewardKind(item),jade,u);
+   if(count==2)DrawDetailTag(new Rect(row.x+first+cell+gap*2,row.y,cell,row.height),slot,jade,u);
   }
   private void DrawDetailTag(Rect r,string label,Color tint,float u)
   {Fill(r,new Color(.02f,.035f,.055f,1));Border(r,new Color(tint.r,tint.g,tint.b,.85f));Text(r,label,Mathf.RoundToInt(12*u),Color.Lerp(tint,Color.white,.78f),true,false,TextAnchor.MiddleCenter);}

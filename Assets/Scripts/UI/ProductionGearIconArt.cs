@@ -211,7 +211,7 @@ namespace Emberfall
                         halfWidth = Mathf.Max(halfWidth, Mathf.Abs(point.x)); halfHeight = Mathf.Max(halfHeight, Mathf.Abs(point.y));
                     }
                 }
-                lens.aspect = 1; lens.orthographicSize = Mathf.Max(.08f, Mathf.Max(halfWidth, halfHeight) * 1.13f);
+                lens.aspect = 1; lens.orthographicSize = Mathf.Max(.08f, Mathf.Max(halfWidth, halfHeight) * 1.04f);
                 target = new RenderTexture(RasterSize, RasterSize, 16, RenderTextureFormat.ARGB32) { name = "Production gear photograph target", hideFlags = HideFlags.HideAndDontSave };
                 target.Create(); lens.targetTexture = target;
                 if (!target.IsCreated()) throw new InvalidOperationException("Gear icon render target allocation failed.");

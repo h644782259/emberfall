@@ -159,7 +159,7 @@ namespace Emberfall
         {
             Color rarity=GameBalance.RarityColor(item.rarity);
             Fill(tile,card);Border(tile,rarity);
-            DrawIcon(new Rect(tile.x+6*u,tile.y+5*u,tile.width-10*u,tile.height-14*u),UIIconAtlas.EquipmentCardIcon(item,session.Progression.Profile.heroClass),rarity);
+            DrawIcon(new Rect(tile.x+3*u,tile.y+3*u,tile.width-6*u,tile.height-17*u),UIIconAtlas.EquipmentCardIcon(item,session.Progression.Profile.heroClass),rarity);
             // Counted pips encode rarity without relying on color alone.
             for(int pip=0;pip<=(int)item.rarity;pip++)Fill(new Rect(tile.x+3*u+pip*5*u,tile.y+3*u,3*u,3*u),pale);
             Text(new Rect(tile.x+2*u,tile.yMax-15*u,tile.width-4*u,14*u),"Lv"+item.level,Mathf.RoundToInt(9*u),item.level>session.Progression.Profile.level?new Color(1f,.35f,.3f):pale,true,false,TextAnchor.MiddleRight);
@@ -236,7 +236,7 @@ namespace Emberfall
             if(item!=null){DrawEquipmentSheet(item,u);return;}
             var area=InventoryGridGeometry.Popup(new MobilePanelLayout.Area(bounds.x/u,bounds.y/u,bounds.width/u,bounds.height/u),new MobilePanelLayout.Area(inventoryPopupAnchor.x/u,inventoryPopupAnchor.y/u,inventoryPopupAnchor.width/u,inventoryPopupAnchor.height/u),inventoryPopupCompare||item!=null);
             Rect r=inventoryPopupRect=new Rect(area.X*u,area.Y*u,area.Width*u,area.Height*u);
-            if(fashion){float fw=Mathf.Min(420*u,width-24*u),fh=Mathf.Min(320*u,height-24*u);r=inventoryPopupRect=MobileControls.Active?new Rect((width-fw)*.5f,(height-fh)*.5f,fw,fh):DesktopInventorySheet(fw,fh);}
+            if(fashion){float fw=Mathf.Min(620*u,width-24*u),fh=Mathf.Min(320*u,height-24*u);r=inventoryPopupRect=MobileControls.Active?new Rect((width-fw)*.5f,(height-fh)*.5f,fw,fh):DesktopInventorySheet(fw,fh);}
             if(!fashion){Fill(r,new Color(.025f,.055f,.075f,.99f));Border(r,jade);}
             bool prior=GUI.enabled;GUI.enabled=prior&&Time.frameCount!=inventoryPopupOpened;
             if(potion)
@@ -261,7 +261,7 @@ namespace Emberfall
             if(fashion)
             {
                 float statsTop=0;
-                var detail=new EntryRewardPreview{AllowActions=MobileControls.Active,Key="fashion:"+appearance.id,Name=appearance.name,Rarity=appearance.rarity,AppearanceSlot=appearance.slot,Description=ProgressionService.FashionBonus(appearance)};
+                var detail=new EntryRewardPreview{AllowActions=MobileControls.Active,Key="fashion:"+appearance.id,Name=ProgressionService.FashionName(appearance.slot,appearance.AppearanceRarity,session.Progression.Profile.heroClass),Icon=UIIconAtlas.FashionCardIcon(appearance,session.Progression.Profile.heroClass,session.Progression.Equipped(ItemSlot.Weapon)),Rarity=appearance.rarity,AppearanceSlot=appearance.slot,Description=ProgressionService.FashionBonus(appearance)};
                 inventoryDetailScroll=BeginTouchScroll("fashion-detail",new Rect(r.x+12*u,r.y+statsTop*u,r.width-24*u,r.height-(statsTop+8)*u),inventoryDetailScroll,new Rect(0,0,r.width-32*u,DrawRewardDetailRows(detail,r.width/u-32,u,false)*u));
                 DrawRewardDetailRows(detail,r.width/u-32,u,true);
                 EndTouchScroll();

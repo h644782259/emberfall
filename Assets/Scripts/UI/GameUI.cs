@@ -1237,8 +1237,9 @@ namespace Emberfall
             bool hover = r.Contains(Mouse) && GUI.enabled;
             Fill(r, hover ? new Color(.11f, .18f, .21f) : ink);
             Border(r, new Color(accent.r, accent.g, accent.b, hover ? .9f : .35f));
-            float inset=MobileControls.Active?2:7;
-            DrawIcon(new Rect(r.x + inset, r.y + inset, r.width - inset - 2, r.height - inset - 2), UIIconAtlas.Utility(icon), Color.white);
+            float inset=3;
+            float top=MobileControls.Active?inset:12;
+            DrawIcon(new Rect(r.x+inset,r.y+top,r.width-inset*2,r.height-top-inset),UIIconAtlas.Utility(icon),Color.white);
             Badge(r,icon=="inventory"?NewEquipmentAttention||Attention.LootPending:icon=="skills"?Attention.Skills:icon=="camp"?Attention.Rewards:icon=="achievement"?session.Progression.ClaimableAchievements>0:false);
             if (!MobileControls.Active) DrawFunctionKey(r,key);
             if (!string.IsNullOrEmpty(badge))

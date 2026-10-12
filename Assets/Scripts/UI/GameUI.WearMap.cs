@@ -118,19 +118,33 @@ namespace Emberfall
             {
                 FashionSlot slot=i==0?FashionSlot.Weapon:FashionSlot.Wings;
                 var item=session.Progression.EquippedFashion(slot);
-                float cell=(area.width-8*u)*.5f;
-                Rect r=new Rect(area.x+i*(cell+8*u),area.yMax-(MobileControls.Active?InventoryGridGeometry.MobileCellSize:InventoryGridGeometry.DesktopCellSize)*u,cell,(MobileControls.Active?InventoryGridGeometry.MobileCellSize:InventoryGridGeometry.DesktopCellSize)*u);
+                float cell=MobileControls.Active?Mathf.Min(InventoryGridGeometry.MobileCellSize,(area.width/u-8)/3):InventoryGridGeometry.DesktopCellSize;
+                Rect r=new Rect(area.center.x-(cell*2+4)*u*.5f+i*(cell+4)*u,area.yMax-cell*u,cell*u,cell*u);
                 Color tint=item==null?muted:GameBalance.RarityColor(item.rarity);
-                Fill(r,card);Border(r,tint,item==null?1:2);
-                DrawIcon(new Rect(r.x+3*u,r.center.y-20*u,40*u,40*u),item!=null?UIIconAtlas.FashionCardIcon(item,session.Progression.Profile.heroClass,session.Progression.Equipped(ItemSlot.Weapon)):UIIconAtlas.FashionCardIcon(slot,3,session.Progression.Profile.heroClass),tint);
-                string label=item==null?(slot==FashionSlot.Weapon?"兵装":"羽翼")+"\n未穿戴":ProgressionService.FashionName(item.slot,item.AppearanceRarity,session.Progression.Profile.heroClass);
-                Text(new Rect(r.x+46*u,r.y,r.width-49*u,r.height),label,Mathf.RoundToInt(10*u),item==null?muted:pale,item!=null,true,TextAnchor.MiddleCenter);
+                Fill(r,card);Border(r,tint,(item==null?1:2)*u);
+                DrawIcon(new Rect(r.x+3*u,r.y+2*u,r.width-6*u,r.height-17*u),item!=null?UIIconAtlas.FashionCardIcon(item,session.Progression.Profile.heroClass,session.Progression.Equipped(ItemSlot.Weapon)):UIIconAtlas.FashionCardIcon(slot,3,session.Progression.Profile.heroClass),tint);
+                Text(new Rect(r.x,r.yMax-15*u,r.width,14*u),slot==FashionSlot.Weapon?"兵装":"羽翼",Mathf.RoundToInt(10*u),item==null?muted:pale,true,false,TextAnchor.MiddleCenter);
+                if(item!=null)DrawFashionSlotFlow(r,tint,u);
                 if(item!=null)
                 {
                     Text(new Rect(r.xMax-18*u,r.y+2*u,16*u,16*u),"✓",Mathf.RoundToInt(11*u),jade,true);
                     DesktopInventoryGesture(r,r,"@fashion:"+item.id);
                     if(QuietAction(r,"",!MobileControls.Active||!inventoryComparisonOpen,""))WornSlotClick(item.id,null,item.slot);
                 }
+            }
+        }
+        private void DrawFashionSlotFlow(Rect r,Color tint,float u)
+        {
+            float perimeter=2*(r.width+r.height),head=Mathf.Repeat(Time.unscaledTime*50*u,perimeter);
+            for(int i=0;i<16;i++)
+            {
+                float distance=Mathf.Repeat(head-i*2*u,perimeter),x=r.x,y=r.y;
+                if(distance<r.width)x+=distance;
+                else if(distance<r.width+r.height){x=r.xMax-2*u;y+=distance-r.width;}
+                else if(distance<2*r.width+r.height){x=r.xMax-(distance-r.width-r.height)-2*u;y=r.yMax-2*u;}
+                else y=r.yMax-(distance-2*r.width-r.height)-2*u;
+                Color light=Color.Lerp(tint,Color.white,.7f);light.a=(1-i/16f)*.85f;
+                Fill(new Rect(Mathf.Clamp(x,r.x,r.xMax-2*u),Mathf.Clamp(y,r.y,r.yMax-2*u),2*u,2*u),light);
             }
         }
         private void DrawBagFashion(MobilePanelLayout.Area area)
@@ -147,7 +161,7 @@ namespace Emberfall
                 var f=owned[i];var cell=grid.Tile(i);Rect tile=new Rect(cell.X*u,cell.Y*u,cell.Width*u,cell.Height*u);
                 if(tile.yMax<mobileFashionScroll.y||tile.y>mobileFashionScroll.y+bounds.height)continue;
                 Color rarity=GameBalance.RarityColor(f.rarity);Fill(tile,card);Border(tile,rarity);
-                DrawIcon(new Rect(tile.x+5*u,tile.y+5*u,tile.width-10*u,tile.height-17*u),UIIconAtlas.FashionCardIcon(f,session.Progression.Profile.heroClass,session.Progression.Equipped(ItemSlot.Weapon)),rarity);
+                DrawIcon(new Rect(tile.x+3*u,tile.y+3*u,tile.width-6*u,tile.height-17*u),UIIconAtlas.FashionCardIcon(f,session.Progression.Profile.heroClass,session.Progression.Equipped(ItemSlot.Weapon)),rarity);
                 for(int pip=0;pip<=(int)f.rarity;pip++)Fill(new Rect(tile.x+(3+pip*5)*u,tile.y+3*u,3*u,3*u),pale);
                 var worn=session.Progression.EquippedFashion(f.slot);bool equipped=worn!=null&&worn.id==f.id;
                 Text(new Rect(tile.x+2*u,tile.yMax-14*u,tile.width-4*u,14*u),(f.slot==FashionSlot.Wings?"翼":"刃"),Mathf.RoundToInt(9*u),pale,true,false,TextAnchor.MiddleRight);
