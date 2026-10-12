@@ -582,7 +582,7 @@ namespace Emberfall
 
     public static class GameBalance
     {
-        public const float ArcanistFinaleRadius=9.5f,ArcanistPulseRadius=8f;
+        public const float ArcanistFinaleRadius=16f,ArcanistPulseRadius=13.6f;
         public const int SkillCount = 10;
         public const int HotbarSize = 10;
         public const int HotbarPotion = -2;
@@ -752,7 +752,7 @@ namespace Emberfall
         public static float SkillEnergyCost(HeroClass hero, int skill)
         {
             ValidateSkillBudget(hero, skill);
-            return skill==9?0:ClassSkillEnergyCosts[(int)hero, skill];
+            return skill==9?0:(float)Math.Floor(ClassSkillEnergyCosts[(int)hero, skill]*2d/3d);
         }
         public static float EffectiveCooldown(HeroClass hero, int skill, int rank)
         {

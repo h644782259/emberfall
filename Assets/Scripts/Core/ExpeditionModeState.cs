@@ -249,14 +249,14 @@ namespace Emberfall
             int pressure=Math.Min(3,(Tier-1)/3);
             if(Mode==ExpeditionModeKind.BossGauntlet)
             {
-                int adds=3+phase+(Tier>=7?1:0);
+                int adds=(4+phase+(Tier>=7?1:0))*3-1;
                 var roles=new ExpeditionEnemyRole[1+adds];roles[0]=ExpeditionEnemyRole.Boss;
                 for(int i=1;i<roles.Length;i++)roles[i]=i%2==1?ExpeditionEnemyRole.Ranged:ExpeditionEnemyRole.Guardian;
                 return new ExpeditionPhasePlan(phase,phaseSeed,roles,Math.Min(7,roles.Length),0,(ExpeditionBossPattern)(phase+1));
             }
-            int count=Math.Min(24,(Mode==ExpeditionModeKind.HoldPoint?14:16)+phase*3+pressure);
+            int count=3*Math.Min(24,(Mode==ExpeditionModeKind.HoldPoint?14:16)+phase*3+pressure);
             var enemies=new ExpeditionEnemyRole[count];
-            int ranged=Math.Max(1,count/3),elites=2+phase+(Tier>=4?1:0);
+            int ranged=Math.Max(1,count/3),elites=3*(2+phase+(Tier>=4?1:0));
             for(int i=0;i<count;i++)enemies[i]=i<elites?ExpeditionEnemyRole.Guardian:i<elites+ranged?ExpeditionEnemyRole.Ranged:ExpeditionEnemyRole.Melee;
             uint random=unchecked((uint)phaseSeed);
             for(int i=count-1;i>0;i--)

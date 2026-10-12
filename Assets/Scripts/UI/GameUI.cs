@@ -938,7 +938,7 @@ namespace Emberfall
         {
             DrawComboCounter();
             DrawScreenExperience();
-            if(MobileControls.Active){DrawMobileHUD();return;}
+            if(MobileControls.Active){DrawMobileHUD();DrawBossCombatWarning();return;}
             GameProfile p = session.Progression.Profile;
             Color accent = GameBalance.ClassColor(p.heroClass);
             Rect playerRect = new Rect(16, 16, 240, 88);
@@ -1017,6 +1017,7 @@ namespace Emberfall
                 Text(targetInfo, target.DisplayName + " · " + state + (string.IsNullOrEmpty(effects) ? "" : " · " + effects), 11, tint, true, false, TextAnchor.MiddleCenter);
                 if (targetInfo.Contains(Mouse) && GUI.enabled) tooltip = target.DisplayName + "\n" + target.TraitDescription;
             }
+            DrawBossCombatWarning();
         }
 
         private void DrawChargeProgress()

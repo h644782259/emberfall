@@ -61,7 +61,6 @@ namespace Emberfall
         private float respawnTimer;
         private float autosaveTimer;
         private readonly SaveLifecycleGate lifecycleSave=new SaveLifecycleGate();
-        private float portalHintTimer;
         private Coroutine waveRoutine;
         private Coroutine wildernessPopulationRoutine;
         private readonly List<GameObject> transientObjects = new List<GameObject>();
@@ -322,8 +321,6 @@ namespace Emberfall
                     SpawnWildernessEnemy();
                     respawnTimer = 1.8f;
                 }
-                portalHintTimer -= Time.deltaTime;
-                if (!MobileControls.Active && NearPortal() && portalHintTimer <= 0) { Notify("沉星遗迹传送门 · 按 E 开始副本挑战"); portalHintTimer = 16f; }
             }
             if(InDungeon)return;
             autosaveTimer += Time.deltaTime;

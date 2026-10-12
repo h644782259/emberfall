@@ -5,9 +5,25 @@ root=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('cv',root/'Tools/cloud-validation.py');cv=importlib.util.module_from_spec(spec);spec.loader.exec_module(cv)
 program=r'''using System;using System.IO;using System.Linq;using System.Text.Json.Nodes;using Emberfall;
 class Program{static int n;static void C(bool v,string s){n++;if(!v)throw new Exception(s);}static ProgressionService New(string root){var p=new ProgressionService(Path.Combine(root,Guid.NewGuid().ToString("N")));C(p.CreateNewSlot(HeroClass.Arcanist),"new");p.Profile.level=100;p.Save();return p;}
-static void Register(ProgressionService p,ChapterRunReceipt r){for(int room=0;room<ChapterDefinition.RoomCount(r.Node);room++)for(int i=0;i<(r.Node==ChapterNode.StarPlatform?7:10);i++)C(p.RegisterChapterEnemy(r,room,i,r.Node==ChapterNode.StarPlatform&&i==0),"actual experience registration");}
+static void Register(ProgressionService p,ChapterRunReceipt r){for(int room=0;room<ChapterDefinition.RoomCount(r.Node);room++)for(int i=0;i<(r.Node==ChapterNode.StarPlatform?21:30);i++)C(p.RegisterChapterEnemy(r,room,i,r.Node==ChapterNode.StarPlatform&&i==0),"actual experience registration");}
 static void Collect(ProgressionService p){C(p.OpenChosenDungeonChest(0)!=null,"collect chest");C(p.AcknowledgeChestReward(),"ack chest");}
 static void Main(string[] args){
+var smith=New(Path.Combine(args[0],"refinement"));smith.Profile.refinementStones=5;smith.Profile.affixReforgeStones=5;
+var gear=new ItemData{id="balance-refinement",name="test",slot=ItemSlot.Weapon,rarity=Rarity.Legendary,level=100,attack=500,criticalChance=.04f,criticalDamageBonus=.13f,attackPercent=.07f};smith.Profile.inventory.Add(gear);
+C(smith.RefineEquipment(gear.id,true),"refinement succeeds");var refined=smith.Profile.inventory.Find(x=>x.id==gear.id);
+C(refined.attack>500&&refined.criticalChance>.04f&&refined.criticalDamageBonus>.13f&&refined.attackPercent>.07f,"refinement improves base and existing random affixes together");
+int refinedAttack=refined.attack,refinedBase=refined.baseAttack;
+C(smith.ReforgeAffixes(gear.id,true),"random affix reforge succeeds");refined=smith.Profile.inventory.Find(x=>x.id==gear.id);
+C(refined.attack==refinedAttack&&refined.baseAttack==refinedBase&&refined.upgradeLevel==0,"random affix reforge preserves base and enhancement");
+int[,] costs={{8,13,22,0,20,16,18,25,0,0},{12,18,25,0,16,18,20,28,0,0},{9,13,22,0,14,20,18,28,0,0},{10,18,20,0,18,21,24,26,0,0}};
+for(int hero=0;hero<4;hero++)for(int skill=0;skill<10;skill++){
+C(GameBalance.SkillEnergyCost((HeroClass)hero,skill)==costs[hero,skill],"all class costs reduced and floored");
+if(GameBalance.IsPassive(skill))continue;
+var runtime=new SkillRuntime((HeroClass)hero);C(runtime.TryConsume(skill,1),"cast with reduced cost");C(Math.Abs(runtime.Energy-(SkillRuntime.MaximumEnergy-costs[hero,skill]))<.001f,"runtime spends exact reduced energy");}
+C(ElementalistFieldTuning.UltimatePulseRadius==13.6f&&ElementalistFieldTuning.UltimateFinalRadius==16f&&ElementalistFieldTuning.UltimateTailRadius==13.6f,"double actual ultimate coverage and synchronize preview");
+for(int tier=1;tier<=100;tier++){double oldStep=(tier-1)*10d;C(Math.Abs(ChapterProgression.TierHealthMultiplier(tier)-(1+.18*oldStep+.003*oldStep*oldStep))<.01,"ten old tiers of health per new tier");C(Math.Abs(ChapterProgression.TierDamageMultiplier(tier)-(1+.10*oldStep+.001*oldStep*oldStep))<.01,"ten old tiers of damage per new tier");}
+foreach(ChapterNode node in Enum.GetValues(typeof(ChapterNode))){var run=new ChapterCombatRun(node,ChapterDifficulty.Heroic,42);run.BindRoom(1);for(int i=0;i<run.EnemyCount;i++)C(run.Register(0,1,i),"expanded chapter registration");for(int i=0;i<run.EnemyCount;i++)C(run.Defeat(0,1,i),"expanded chapter defeat");C(run.LivingRegisteredEnemies==0,"expanded chapter cleared");}
+
 for(int level=1;level<30;level++)C(CombatBalance.DungeonHealthMultiplier(level)==1&&CombatBalance.DungeonDamageMultiplier(level)==1,"under30 unchanged");
 for(int level=30;level<=100;level++){C(CombatBalance.DungeonHealthMultiplier(level)>1&&CombatBalance.DungeonHealthMultiplier(level)<=1.50001f&&CombatBalance.DungeonDamageMultiplier(level)>1&&CombatBalance.DungeonDamageMultiplier(level)<=1.35001f,"bounded dungeon strengthening");C(GameBalance.XpToNext(level)==4*(60+(level-1)*30),"XP cost doubles again from the current curve");}
 foreach(ChapterNode node in Enum.GetValues(typeof(ChapterNode))){var admission=New(args[0]);admission.Profile.level=ChapterProgression.UnlockLevel(node)-1;C(!ChapterProgression.CanEnter(admission.Profile,node,ChapterDifficulty.Heroic),"node level gate retained");admission.Profile.level++;C(ChapterProgression.CanEnter(admission.Profile,node,ChapterDifficulty.Heroic)&&!ChapterProgression.CanEnter(admission.Profile,node,ChapterDifficulty.Normal)&&!ChapterProgression.CanEnter(admission.Profile,node,ChapterDifficulty.Hard),"unlocked node has one ruleset");admission.Profile.chapterDifficultyBestTiers[(int)node*3]=9;C(ChapterProgression.AvailableTier(admission.Profile,node,ChapterDifficulty.Heroic)==10,"legacy tier preserved across unified rules");}
@@ -57,7 +73,7 @@ class Mathf {public static int Min(int a,int b)=>Math.Min(a,b);}
 class NextRun {public bool Failed;public ChapterNode Node=ChapterNode.ForestCourt;public ChapterDifficulty Difficulty=ChapterDifficulty.Heroic;}
 class NextPause {public bool BackgroundPaused;}
 class NextRooms {public bool Failed;}
-class NextTierSession {
+class NextTierSession {public bool SceneLoading;
  public bool HasStarted=true,InDungeon=true,IsDead,DungeonResultsReady=true,changingZone,ModeRewardPending,DungeonRewardPending,ChapterActive=true,ChapterFinished=true,ChapterRewardPending,enteringChapter,Paused;
  public ProgressionService Progression;public ChapterRunReceipt chapterReceipt;public NextRun ChapterRun;public int chapterRetryTier;
  public int DungeonTier,MaximumDungeonTier,SelectedDungeonTier,StartedTier;public bool RestartSucceeds=true;public NextPause pauseState=new NextPause();public NextRooms RoomChainRun;public string ModeName;
@@ -66,11 +82,11 @@ class NextTierSession {
  MEMBERS
 }
 '''
-next_source='Assets/Scripts/Core/GameSession.NextChallenge.cs' if (root/'Assets/Scripts/Core/GameSession.NextChallenge.cs').exists() else 'Assets/Scripts/Core/GameSession.Expedition.cs'
+next_source='Assets/Scripts/Core/GameSession.Expedition.cs'
 program=program.replace('MEMBERS',member(next_source,'public bool CanChallengeNextTier')+'\n'+member(next_source,'public bool ChallengeNextTier()')+'\n'+member('Assets/Scripts/Core/GameSession.Chapter.cs','private bool CanAdvanceChapterTier')).replace('using System;using System.IO;','using UnityEngine;using System;using System.IO;')
 with tempfile.TemporaryDirectory(prefix='chapter-tiers-') as tmp:
  p=Path(tmp);(p/'NuGet.Config').write_text('<configuration><packageSources><clear/></packageSources></configuration>')
- names=['SkillRuntime','GameTypes','ProgressionService','ProgressionService.Attachments','ProgressionService.AutomaticGrowth','ProgressionService.Trading','ProgressionService.Smith','CombatBalance','SkillDamageBudgets','HubTravelRules','MasteryCoreRuntime','TierRewardRules','TierRewardBand','ProgressionGoalState','ChapterProgression','ProgressionService.Chapter','ProgressionService.Reforge','ReforgeQuote','RoomTactics','CombatImpactBatch','SafeSaveFlow']
+ names=['ElementalistFieldTuning','ChapterCombatRun','SkillRuntime','GameTypes','ProgressionService','ProgressionService.Attachments','ProgressionService.AutomaticGrowth','ProgressionService.Trading','ProgressionService.Smith','CombatBalance','SkillDamageBudgets','HubTravelRules','MasteryCoreRuntime','TierRewardRules','TierRewardBand','ProgressionGoalState','ChapterProgression','ProgressionService.Chapter','ProgressionService.Reforge','ReforgeQuote','RoomTactics','CombatImpactBatch','SafeSaveFlow']
  sources=[root/('Assets/Scripts/Core/'+name+'.cs') for name in names]+[root/'Tests/ProgressionTests.cs']
  project=cv.write_project(p/'project',sources,program)
  subprocess.run([sys.argv[1] if len(sys.argv)>1 else '/Applications/Unity/Hub/Editor/6000.6.4f1/Unity.app/Contents/Resources/Scripting/DotNetSdk/dotnet','run','--project',str(project),'--',str(p/'saves')],check=True,env=dict(os.environ,DOTNET_CLI_HOME=str(p/'cli'),DOTNET_NOLOGO='1'))

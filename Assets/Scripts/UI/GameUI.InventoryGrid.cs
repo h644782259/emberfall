@@ -165,6 +165,7 @@ namespace Emberfall
             Text(new Rect(tile.x+2*u,tile.yMax-15*u,tile.width-4*u,14*u),"Lv"+item.level,Mathf.RoundToInt(9*u),item.level>session.Progression.Profile.level?new Color(1f,.35f,.3f):pale,true,false,TextAnchor.MiddleRight);
 
             if(showWorn&&IsEquipped(item))DrawWornIconBadge(tile,u,"已穿戴");
+            if(item.rarity==Rarity.Legendary)DrawFashionSlotFlow(tile,rarity,u);
             if(UnreviewedEquipmentUpgrade(item))DrawIcon(new Rect(tile.xMax-18*u,tile.yMax-31*u,18*u,18*u),UIIconAtlas.EquipmentUpgradeArrow(),new Color(.25f,1f,.4f));
         }
         private void DrawEquipmentIconGrid(Rect viewport,ref Vector2 scroll,float u)
@@ -236,11 +237,18 @@ namespace Emberfall
             if(item!=null){DrawEquipmentSheet(item,u);return;}
             var area=InventoryGridGeometry.Popup(new MobilePanelLayout.Area(bounds.x/u,bounds.y/u,bounds.width/u,bounds.height/u),new MobilePanelLayout.Area(inventoryPopupAnchor.x/u,inventoryPopupAnchor.y/u,inventoryPopupAnchor.width/u,inventoryPopupAnchor.height/u),inventoryPopupCompare||item!=null);
             Rect r=inventoryPopupRect=new Rect(area.X*u,area.Y*u,area.Width*u,area.Height*u);
+            if(potion){r.height=178*u;r.y=Mathf.Clamp(r.y,12*u,Mathf.Max(12*u,height-r.height-12*u));inventoryPopupRect=r;}
             if(fashion){float fw=Mathf.Min(620*u,width-24*u),fh=Mathf.Min(320*u,height-24*u);r=inventoryPopupRect=MobileControls.Active?new Rect((width-fw)*.5f,(height-fh)*.5f,fw,fh):DesktopInventorySheet(fw,fh);}
-            if(!fashion){Fill(r,new Color(.025f,.055f,.075f,.99f));Border(r,jade);}
+            if(!fashion){Fill(r,ink);Border(r,potion?GameBalance.RarityColor(Rarity.Common):jade);}
             bool prior=GUI.enabled;GUI.enabled=prior&&Time.frameCount!=inventoryPopupOpened;
             if(potion)
-                Text(new Rect(r.x+8*u,r.y+4*u,r.width-56*u,36*u),potion?"生命药剂 × "+session.Progression.Profile.potions:ProgressionService.FashionName(appearance.slot,appearance.AppearanceRarity,session.Progression.Profile.heroClass),Mathf.RoundToInt(14*u),pale,true,true);
+            {
+                var detail=new EntryRewardPreview{Key="potion",Name="生命药剂",Rarity=Rarity.Common,Icon=UIIconAtlas.Utility("potion"),Quantity=session.Progression.Profile.potions,Description="生命药剂\n恢复50%生命"};
+                Text(new Rect(r.x+8*u,r.y+4*u,r.width-70*u,28*u),detail.Name,Mathf.RoundToInt(14*u),pale,true);
+                Text(new Rect(r.x+8*u,r.y+32*u,r.width-70*u,22*u),"数量："+detail.Quantity,Mathf.RoundToInt(11*u),muted);
+                DrawEntryRewardIcon(new Rect(r.xMax-56*u,r.y+8*u,40*u,40*u),detail,u);
+                DrawItemDetailTags(new Rect(r.x+8*u,r.y+60*u,r.width-24*u,22*u),detail,u);
+            }
             else if(!fashion)
             {
                 Color rarity=GameBalance.RarityColor(item.rarity);
@@ -257,7 +265,7 @@ namespace Emberfall
             }
 
 
-            if(potion)Text(new Rect(r.x+8*u,r.y+42*u,r.width-16*u,22*u),potion?"恢复50%生命":"时装 · "+GameBalance.RarityName(appearance.rarity),Mathf.RoundToInt(12*u),muted);
+            if(potion)Text(new Rect(r.x+8*u,r.y+94*u,r.width-16*u,22*u),"恢复50%生命",Mathf.RoundToInt(12*u),muted);
             if(fashion)
             {
                 float statsTop=0;
@@ -271,7 +279,7 @@ namespace Emberfall
             if(potion)
             {
                 bool usable=session.Progression.Profile.potions>0&&session.Player!=null&&session.Player.Health<session.Player.MaxHealth-.5f;
-                if(InventoryPictogramAction(new Rect(r.x+8*u,r.y+68*u,r.width-16*u,44*u),"使用",UIIconAtlas.Utility("potion"),usable,false,true)){session.DrinkPotion();inventoryPopupOpened=Time.frameCount;}
+                if(InventoryPictogramAction(new Rect(r.x+8*u,r.y+126*u,r.width-16*u,44*u),"使用",UIIconAtlas.Utility("potion"),usable,false,true)){session.DrinkPotion();inventoryPopupOpened=Time.frameCount;}
             }
             else if(!fashion)
             {

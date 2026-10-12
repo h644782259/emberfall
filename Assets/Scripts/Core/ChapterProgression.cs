@@ -57,9 +57,9 @@ namespace Emberfall
         public static int EnemyLevel(int characterLevel)
         {int level=Math.Max(1,Math.Min(100,characterLevel));return ((level+9)/10)*10;}
         public static float TierHealthMultiplier(int tier)
-        {double step=Math.Max(1,tier)-1d;return (float)(1d+.18d*step+.003d*step*step);}
+        {double step=(Math.Max(1,tier)-1d)*10d;return (float)(1d+.18d*step+.003d*step*step);}
         public static float TierDamageMultiplier(int tier)
-        {double step=Math.Max(1,tier)-1d;return (float)(1d+.10d*step+.001d*step*step);}
+        {double step=(Math.Max(1,tier)-1d)*10d;return (float)(1d+.10d*step+.001d*step*step);}
         public static ChapterDifficulty LevelDifficulty(ChapterNode node,int level)
         {return ChapterDifficulty.Heroic;}
         public static bool IsUnlocked(GameProfile profile,ChapterNode node){return profile!=null&&Valid(node)&&profile.level>=UnlockLevel(node);}

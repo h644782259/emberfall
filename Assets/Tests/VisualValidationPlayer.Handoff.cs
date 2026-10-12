@@ -124,7 +124,7 @@ namespace Emberfall
                         Check(session.ChallengeNextTier()&&session.DungeonTier==16&&!session.RoomChainRun.Failed,"Next tier re-enters same expedition after durable rewards");
                     SessionInvoke("ChangeZone",false);yield return WaitForSceneReady();yield return WaitForSceneReady();
                 }
-                Check(GameBalance.ArcanistFinaleRadius==9.5f&&GameBalance.ArcanistPulseRadius==8f,"Shared ultimate radii");
+                Check(GameBalance.ArcanistFinaleRadius==16f&&GameBalance.ArcanistPulseRadius==13.6f,"Shared ultimate radii");
             }
             finally {EffectPreferences.InterfaceTextScale=savedScale;}
         }

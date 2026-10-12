@@ -97,9 +97,7 @@ namespace Emberfall
             else CreateAnchors();
             EnsureBeam();
             game.SpawnMechanismText(transform.position+Vector3.up*(3.6f*boss.BodyScale),State.IsFollowup?"追加扫射预警 · 打断可中止":"断能蓄力 · 摧毁供能锚",new Color(.35f,.92f,1));
-            game.LogSystem("星环执政官 · 地面发热与碎石隆起表示危险，青色晶核可打断，摧毁供能锚可中止扫射并暴露核心"+
-                (chapterConfigured&&chapterDifficulty!=ChapterDifficulty.Normal?" · 完整扫射后追加锁向预警；打断止连扫，断锚暴露核心":"")+
-                (heroic?(sweepSign>0?" · 本轮顺时针扫射":" · 本轮逆时针扫射"):""));
+
         }
         private bool unprovenAnchorRemoval;
         private void ReconcileAnchors()

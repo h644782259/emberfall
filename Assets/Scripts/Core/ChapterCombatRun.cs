@@ -20,10 +20,10 @@ namespace Emberfall
         public bool Failed {get;private set;}
         public bool RewardClaimed {get;private set;}
         public RoomObjective Objective {get{return ChapterDefinition.RoomKind(Node,RoomIndex);}}
-        public int EnemyCount {get{return Objective==RoomObjective.Rest?0:Objective==RoomObjective.Boss?7:10;}}
+        public int EnemyCount {get{return Objective==RoomObjective.Rest?0:Objective==RoomObjective.Boss?21:30;}}
         public int LivingRegisteredEnemies {get{return registered-kills;}}
         private int registered,kills;
-        private readonly bool[] spawned=new bool[10],defeated=new bool[10];
+        private readonly bool[] spawned=new bool[30],defeated=new bool[30];
         public ChapterCombatRun(ChapterNode node,ChapterDifficulty difficulty,int seed)
         {ChapterDefinition.Get(node);if((int)difficulty<0||(int)difficulty>2)throw new ArgumentOutOfRangeException(nameof(difficulty));Node=node;Difficulty=difficulty;Seed=seed;Epoch=-1;}
         public void BindRoom(int epoch)

@@ -47,12 +47,12 @@ public static class EncounterPlanTests
                         Check(types.Count == 4, "each wave mixes all four enemy families");
                         if (wave < EncounterPlan.FinalWave)
                         {
-                            Check(plan.Count >= 26 && plan.Count <= EncounterPlan.MaximumWavePopulation && bosses == 0, "ordinary waves scale within 26–32 total enemies, with bounded reinforcements");
+                            Check(plan.Count >= 78 && plan.Count <= EncounterPlan.MaximumWavePopulation && bosses == 0, "ordinary waves scale within 78–96 total enemies, with bounded reinforcements");
                             Check(plan.Exists(value => value.Kind == EnemyKind.Guardian && !value.Boss), "ordinary mixed waves include a real non-boss guardian");
                         }
                         else
                         {
-                            Check(plan.Count >= 15 && plan.Count <= 17 && bosses == 1, "final wave has exactly one boss and 14–16 escorts");
+                            Check(plan.Count >= 45 && plan.Count <= 51 && bosses == 1, "final wave has exactly one boss and 44–50 escorts");
                             finalCounts.Add(plan.Count);
                         }
                     }
@@ -60,7 +60,7 @@ public static class EncounterPlanTests
             }
             List<EncounterSpawn> wide = EncounterPlan.Create(1, 1, 0, seed);
             List<EncounterSpawn> narrow = EncounterPlan.Create(1, 1, 1, seed);
-            Check(wide.Count >= 26 && wide.Count <= 29, "first wide wave includes 26–29 enemies across reinforcement groups");
+            Check(wide.Count >= 78 && wide.Count <= 87, "first wide wave includes 78–87 enemies across reinforcement groups");
             lowCounts.Add(wide.Count);
             Check(!Same(wide, narrow), "environment layout changes the encounter");
             Check(!Same(wide, EncounterPlan.Create(1, 1, 0, seed + 1)), "changing seed changes positions or composition");

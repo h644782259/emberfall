@@ -202,12 +202,12 @@ namespace Emberfall
                 case 7:
                     if(step<steps-1)
                     {
-                        owner.HitArea(target,ElementalistFieldTuning.GravityRadius*range,damage*SkillDamageBudgets.AdvancedImpact(heroClass,skill,rank,step),0,.12f,castId:castId);
+                        owner.HitArea(target,ElementalistFieldTuning.GravityDamageRadius*range,damage*SkillDamageBudgets.AdvancedImpact(heroClass,skill,rank,step),0,.12f,castId:castId,strictRadius:true);
                     }
                     else
                     {
                         SkillPerformanceVfx.CollapseGravity(owner,target,ElementalistFieldTuning.GravityRadius*range);
-                        owner.HitArea(target,ElementalistFieldTuning.GravityCollapseRadius*range,damage*SkillDamageBudgets.AdvancedImpact(heroClass,skill,rank,step),1.1f,.7f,castId:castId);
+                        owner.HitArea(target,ElementalistFieldTuning.GravityCollapseRadius*range,damage*SkillDamageBudgets.AdvancedImpact(heroClass,skill,rank,step),1.1f,.7f,castId:castId,strictRadius:true);
                     }
                     break;
                 case 9:

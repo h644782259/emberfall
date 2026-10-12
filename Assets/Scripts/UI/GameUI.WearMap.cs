@@ -91,13 +91,12 @@ namespace Emberfall
             if(current!=null)GUI.DrawTexture(viewport,current,ScaleMode.ScaleToFit,false);
             else Text(viewport,wearModel.LastError==null?"角色预览正在恢复":"预览暂不可用，其他操作可继续",Mathf.RoundToInt(11*u),muted,false,true);
             Rect levelBadge=new Rect(viewport.x+6*u,viewport.y+6*u,76*u,26*u);
-            Fill(levelBadge,new Color(.02f,.035f,.055f,.98f));Border(levelBadge,new Color(.45f,.56f,.64f));
             Text(levelBadge,"Lv."+p.Profile.level,Mathf.RoundToInt(14*u),pale,true,false,TextAnchor.MiddleCenter);
             if(fashion){DrawFashionWearSlots(area,u);return;}
             for(int slot=0;slot<3;slot++)
             {
                 var item=p.Equipped((ItemSlot)slot);Rect r=new Rect(area.center.x-(equipmentSize*3+8)*u*.5f+slot*(equipmentSize+4)*u,area.yMax-equipmentSize*u,equipmentSize*u,equipmentSize*u);
-                if(item!=null){Fill(r,new Color(.035f,.095f,.11f));Border(r,GameBalance.RarityColor(item.rarity),2*u);DrawIcon(new Rect(r.x+4*u,r.y+2*u,r.width-8*u,r.height-16*u),UIIconAtlas.EquipmentCardIcon(item,p.Profile.heroClass),GameBalance.RarityColor(item.rarity));Text(new Rect(r.x,r.yMax-15*u,r.width,14*u),GameBalance.SlotName(item.slot),Mathf.RoundToInt(10*u),pale,true,false,TextAnchor.MiddleCenter);}
+                if(item!=null){Fill(r,new Color(.035f,.095f,.11f));Border(r,GameBalance.RarityColor(item.rarity),2*u);DrawIcon(new Rect(r.x+4*u,r.y+2*u,r.width-8*u,r.height-16*u),UIIconAtlas.EquipmentCardIcon(item,p.Profile.heroClass),GameBalance.RarityColor(item.rarity));Text(new Rect(r.x,r.yMax-15*u,r.width,14*u),GameBalance.SlotName(item.slot),Mathf.RoundToInt(10*u),pale,true,false,TextAnchor.MiddleCenter);if(item.rarity==Rarity.Legendary)DrawFashionSlotFlow(r,GameBalance.RarityColor(item.rarity),u);}
                 else
                 {
                     Fill(r,card);Border(r,new Color(jade.r,jade.g,jade.b,.35f));
@@ -135,16 +134,16 @@ namespace Emberfall
         }
         private void DrawFashionSlotFlow(Rect r,Color tint,float u)
         {
-            float perimeter=2*(r.width+r.height),head=Mathf.Repeat(Time.unscaledTime*50*u,perimeter);
-            for(int i=0;i<16;i++)
+            float perimeter=2*(r.width+r.height),head=Mathf.Repeat(Time.unscaledTime*90*u,perimeter),size=3*u;
+            for(int trail=0;trail<2;trail++)for(int i=0;i<28;i++)
             {
-                float distance=Mathf.Repeat(head-i*2*u,perimeter),x=r.x,y=r.y;
+                float distance=Mathf.Repeat(head+trail*perimeter*.5f-i*perimeter*.006f,perimeter),x=r.x,y=r.y;
                 if(distance<r.width)x+=distance;
-                else if(distance<r.width+r.height){x=r.xMax-2*u;y+=distance-r.width;}
-                else if(distance<2*r.width+r.height){x=r.xMax-(distance-r.width-r.height)-2*u;y=r.yMax-2*u;}
-                else y=r.yMax-(distance-2*r.width-r.height)-2*u;
-                Color light=Color.Lerp(tint,Color.white,.7f);light.a=(1-i/16f)*.85f;
-                Fill(new Rect(Mathf.Clamp(x,r.x,r.xMax-2*u),Mathf.Clamp(y,r.y,r.yMax-2*u),2*u,2*u),light);
+                else if(distance<r.width+r.height){x=r.xMax-size;y+=distance-r.width;}
+                else if(distance<2*r.width+r.height){x=r.xMax-(distance-r.width-r.height)-size;y=r.yMax-size;}
+                else y=r.yMax-(distance-2*r.width-r.height)-size;
+                Color light=Color.Lerp(tint,Color.white,.82f);light.a=(1-i/28f)*.95f;
+                Fill(new Rect(Mathf.Clamp(x,r.x,r.xMax-size),Mathf.Clamp(y,r.y,r.yMax-size),size,size),light);
             }
         }
         private void DrawBagFashion(MobilePanelLayout.Area area)
@@ -161,6 +160,7 @@ namespace Emberfall
                 var f=owned[i];var cell=grid.Tile(i);Rect tile=new Rect(cell.X*u,cell.Y*u,cell.Width*u,cell.Height*u);
                 if(tile.yMax<mobileFashionScroll.y||tile.y>mobileFashionScroll.y+bounds.height)continue;
                 Color rarity=GameBalance.RarityColor(f.rarity);Fill(tile,card);Border(tile,rarity);
+                if(f.rarity==Rarity.Legendary)DrawFashionSlotFlow(tile,rarity,u);
                 DrawIcon(new Rect(tile.x+3*u,tile.y+3*u,tile.width-6*u,tile.height-17*u),UIIconAtlas.FashionCardIcon(f,session.Progression.Profile.heroClass,session.Progression.Equipped(ItemSlot.Weapon)),rarity);
                 for(int pip=0;pip<=(int)f.rarity;pip++)Fill(new Rect(tile.x+(3+pip*5)*u,tile.y+3*u,3*u,3*u),pale);
                 var worn=session.Progression.EquippedFashion(f.slot);bool equipped=worn!=null&&worn.id==f.id;
@@ -212,6 +212,7 @@ namespace Emberfall
                 Rect hit=new Rect(bounds.x+cell.X*u,bounds.y+cell.Y*u,cell.Width*u,cell.Height*u);
                 var item=ResourceItemPreview(keys[i],quantities[i]);
                 Fill(hit,card);Border(hit,item.QualityColor);
+                if(item.Rarity==Rarity.Legendary)DrawFashionSlotFlow(hit,item.QualityColor,u);
                 DrawIcon(new Rect(hit.x+5*u,hit.y+3*u,hit.width-10*u,hit.height-17*u),item.Icon,item.QualityColor);
                 Text(new Rect(hit.x+2*u,hit.yMax-16*u,hit.width-5*u,16*u),quantities[i].ToString(),Mathf.RoundToInt(10*u),pale,true,false,TextAnchor.MiddleRight);
                 InspectRewardItem(hit,item);

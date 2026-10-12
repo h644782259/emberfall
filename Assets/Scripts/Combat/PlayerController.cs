@@ -1135,7 +1135,7 @@ namespace Emberfall
             session.SpawnMechanismText(transform.position+Vector3.up*2.7f,GameBalance.SkillName(HeroClass,8),tint);
         }
 
-        internal void HitArea(Vector3 at, float radius, CombatDamage damage, float knockback = 0, float stun = 0, int castId = 0, ProjectileVolleyBudget<EnemyController> volley = null)
+        internal void HitArea(Vector3 at, float radius, CombatDamage damage, float knockback = 0, float stun = 0, int castId = 0, ProjectileVolleyBudget<EnemyController> volley = null, bool strictRadius = false)
         {
             CombatImpactBatch.Begin();
             try
@@ -1148,7 +1148,7 @@ namespace Emberfall
                 EnemyController enemy = session.Enemies[i];
                 if (enemy == null || enemy.IsDead) continue;
                 Vector3 delta = CombatFx.Flat(enemy.transform.position - at);
-                if (delta.magnitude <= radius + (enemy.IsBoss ? .85f : .4f) + enemy.HitFootprintBonus && CombatSight.Area(at,enemy.transform.position))
+                if (delta.magnitude <= radius + (strictRadius?0:(enemy.IsBoss ? .85f : .4f) + enemy.HitFootprintBonus) && CombatSight.Area(at,enemy.transform.position))
                 {
                     var impact=volley==null?damage:volley.Apply(enemy,damage,true);if(impact.Amount<=0)continue;
                     if(confirmedSkillCast)RegisterSkillHit(castId);ApplySpellDodgeBoon(enemy);

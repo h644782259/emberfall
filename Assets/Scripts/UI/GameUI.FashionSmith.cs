@@ -50,6 +50,7 @@ namespace Emberfall
             {
                 var fashion=p.Profile.fashions[i];Rect tile=new Rect(i%columns*(cw+12)*u,i/columns*rowHeight*u,cw*u,(rowHeight-12)*u);
                 Fill(tile,card);Border(tile,GameBalance.RarityColor(fashion.rarity));
+                if(fashion.rarity==Rarity.Legendary)DrawFashionSlotFlow(tile,GameBalance.RarityColor(fashion.rarity),u);
                 Rect fashionIcon=new Rect(tile.x+10*u,tile.y+10*u,48*u,48*u);
                 DrawIcon(fashionIcon,UIIconAtlas.FashionCardIcon(fashion,p.Profile.heroClass,p.Equipped(ItemSlot.Weapon)),GameBalance.RarityColor(fashion.rarity));
                 var equippedFashion=p.EquippedFashion(fashion.slot);bool worn=equippedFashion!=null&&equippedFashion.id==fashion.id;

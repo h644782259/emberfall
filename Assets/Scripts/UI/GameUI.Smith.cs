@@ -104,6 +104,7 @@ namespace Emberfall
                 var slot=(ItemSlot)i;var item=p.Equipped(slot);
                 Rect tile=new Rect((columns==3?i*(cardWidth+12):0)*u,(columns==3?0:top)*u,cardWidth*u,(columns==3?rowHeight:cardHeights[i])*u);
                 Fill(tile,card);Border(tile,item==null?muted:GameBalance.RarityColor(item.rarity));
+                if(item!=null&&item.rarity==Rarity.Legendary)DrawFashionSlotFlow(tile,GameBalance.RarityColor(item.rarity),u);
                 GUI.BeginGroup(new Rect(tile.x+8*u,tile.y+8*u,tile.width-16*u,tile.height-16*u));
                 if(item==null)
                 {
@@ -121,9 +122,9 @@ namespace Emberfall
                         float aw=(cardWidth-28)*.5f,buttonHeight=44;
                         Rect action=new Rect(4*u,tile.height-68*u,aw*u,buttonHeight*u);
                         Rect reroll=new Rect(action.xMax+4*u,action.y,aw*u,buttonHeight*u);
-                        if(SmithMaterialAction(action,reason=="数值已满"?"已满":"洗练",GameBalance.RarityColor(Rarity.Epic),u,reason.Length==0,reason))
+                        if(SmithMaterialAction(action,reason=="数值已满"?"已满":"洗练",GameBalance.RarityColor(Rarity.Epic),u,reason.Length==0,"提升基础词条和已有随机词条数值，只升不降，不新增词条。"+(reason.Length==0?"":"\n"+reason)))
                             Feedback(p.RefineEquipment(item.id,SmithServiceActive),"洗练已保存");
-                        if(SmithMaterialAction(reroll,"词条重铸",GameBalance.RarityColor(Rarity.Rare),u,rerollReason.Length==0,rerollReason))
+                        if(SmithMaterialAction(reroll,"词条重铸",GameBalance.RarityColor(Rarity.Rare),u,rerollReason.Length==0,"仅重铸随机词条；数值可能降低或词条消失，基础词条与强化等级不变。"+(rerollReason.Length==0?"":"\n"+rerollReason)))
                             smithAffixQuote=p.PrepareAffixReforge(item.id,SmithServiceActive);
                     }
                     if(smithCategory==0)
@@ -202,6 +203,7 @@ namespace Emberfall
                 var gem=index<gems.Count?gems[index]:null;float top=28+index*rowHeight;
                 float size=Mathf.Clamp(rowHeight-64,28,44);Rect socket=new Rect(8*u,(top+4)*u,size*u,size*u);
                 Fill(socket,card);Border(socket,gem==null?jade:GameBalance.RarityColor(gem.rarity),2);
+                if(gem!=null&&gem.rarity==Rarity.Legendary)DrawFashionSlotFlow(socket,GameBalance.RarityColor(gem.rarity),u);
                 if(gem==null)Text(socket,"+",Mathf.RoundToInt(24*u),jade,false,false,TextAnchor.MiddleCenter);
                 else {DrawIcon(socket,UIIconAtlas.Utility("gem"),GameBalance.RarityColor(gem.rarity));DrawWornIconBadge(socket,u,"已镶嵌");}
                 if(QuietAction(socket,"",SmithServiceActive)){smithSocketPrevious=gem==null?EquipmentMechanic.None:gem.mechanic;smithSocketPicker=true;smithSocketScroll=Vector2.zero;}
@@ -317,6 +319,7 @@ namespace Emberfall
             {
                 var a=candidates[i];Rect tile=new Rect((i%2)*(cw+10)*u,(i/2)*178*u,cw*u,168*u);
                 Fill(tile,new Color(.06f,.09f,.13f));Border(tile,a.mounted?jade:GameBalance.RarityColor(a.rarity));
+                if(a.rarity==Rarity.Legendary)DrawFashionSlotFlow(tile,GameBalance.RarityColor(a.rarity),u);
                 Rect gemIcon=new Rect(tile.center.x-24*u,tile.y+12*u,48*u,48*u);
                 DrawIcon(gemIcon,UIIconAtlas.Utility("gem"),GameBalance.RarityColor(a.rarity));
                 if(a.mounted)DrawWornIconBadge(gemIcon,u,"已镶嵌");
@@ -369,6 +372,16 @@ namespace Emberfall
                 float[] maxima={upper.attack,upper.defense,upper.health,cap.criticalChance,cap.criticalDamageBonus,cap.attackPercent};
                 for(int stat=0;stat<6;stat++)
                 {
+                    if(stat==0||stat==3)
+                    {
+                        if(stat==3)y+=8;
+                        float headingY=y;
+                        GoalParagraph(ref y,width,u,stat==0?"基础词条":"随机词条",12,stat==0?jade:gold,true,draw);
+                        if(draw&&new Rect(0,headingY*u,width*u,(y-headingY)*u).Contains(Event.current.mousePosition))
+                            tooltip=stat==0?"显示数值包含强化加成。洗练可提升基础属性，词条重铸不影响基础属性。":"洗练提升已有随机词条数值；词条重铸会重新随机这些词条，数值可能降低或词条消失。";
+                        if(stat==3&&item.criticalChance<=0&&item.criticalDamageBonus<=0&&item.attackPercent<=0)
+                            GoalParagraph(ref y,width,u,"暂无随机词条",11,muted,false,draw);
+                    }
                     bool present=stat==0?item.attack>0:stat==1?item.defense>0:stat==2?item.health>0:stat==3?item.criticalChance>0:stat==4?item.criticalDamageBonus>0:item.attackPercent>0;if(!present)continue;
                     if(draw){
                         float progress=maxima[stat]>0?Mathf.Clamp01(values[stat]/maxima[stat]):1;
@@ -428,6 +441,7 @@ namespace Emberfall
                     float size=64,socketX=(width-size)*.5f;
                     Rect socket=new Rect(socketX*u,(y)*u,size*u,size*u);
                     Fill(socket,card);Border(socket,mounted==null?jade:GameBalance.RarityColor(mounted.rarity),2);
+                    if(mounted!=null&&mounted.rarity==Rarity.Legendary)DrawFashionSlotFlow(socket,GameBalance.RarityColor(mounted.rarity),u);
                     if(mounted==null)Text(socket,"+",Mathf.RoundToInt(32*u),jade,false,false,TextAnchor.MiddleCenter);
                     else {Rect gemIcon=new Rect(socket.x+8*u,socket.y+8*u,48*u,48*u);DrawIcon(gemIcon,UIIconAtlas.Utility("gem"),GameBalance.RarityColor(mounted.rarity));DrawWornIconBadge(gemIcon,u,"已镶嵌");}
                     if(QuietAction(socket,"",SmithServiceActive)){smithSelectedSlot=(int)item.slot;smithSocketPrevious=mounted==null?EquipmentMechanic.None:mounted.mechanic;smithSocketPicker=true;smithSocketScroll=Vector2.zero;}
@@ -497,7 +511,7 @@ namespace Emberfall
             Text(new Rect(box.x+16*u,box.y+12*u,w-76*u,32*u),"确认词条重铸",Mathf.RoundToInt(17*u),gold,true);
             if(PopupCloseButton(new Rect(box.xMax-48*u,box.y+8*u,44*u,36*u))){smithAffixQuote=null;return;}
             bool fresh=quote.Owner==p&&quote.Slot==p.CurrentSlotId&&quote.Fingerprint==p.BuildStateFingerprint();
-            Text(new Rect(box.x+16*u,box.y+60*u,w-32*u,80*u),fresh?"消耗词条重铸石 ×1\n词条数值可能降低或者词条消失":"装备或材料已变化，请取消后重新确认。",Mathf.RoundToInt(15*u),pale,false,true);
+            Text(new Rect(box.x+16*u,box.y+60*u,w-32*u,80*u),fresh?"消耗词条重铸石 ×1\n随机词条数值可能降低或者词条消失":"装备或材料已变化，请取消后重新确认。",Mathf.RoundToInt(15*u),pale,false,true);
             if(Button(new Rect(box.x+16*u,box.yMax-54*u,(w-40*u)*.5f,44*u),"取消",muted)){smithAffixQuote=null;return;}
             if(Button(new Rect(box.center.x+4*u,box.yMax-54*u,(w-40*u)*.5f,44*u),"确认重铸",gold,fresh&&p.AffixReforgeLockReason(quote.Id,SmithServiceActive).Length==0))
             {bool saved=p.ApplyAffixReforge(quote,SmithServiceActive);Feedback(saved,"词条已重铸");if(saved)smithAffixQuote=null;}

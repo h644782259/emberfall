@@ -281,11 +281,11 @@ namespace Emberfall
                 Vector3 p = new Vector3(i % 2 == 0 ? -4.4f : 4.4f, 0, i < 2 ? -8 : -12);
                 Material stone = r.Material(new Color(.18f,.22f,.28f));
                 Material glow = r.Material(colors[i] * (progress > i ? 1f : .6f), true);
-                Primitive(facilities, names[i] + " plinth", PrimitiveType.Cylinder, p + Vector3.up*.35f, new Vector3(i==2?.96f:i==1?.74f:.9f,.35f,i==2?.65f:i==1?.96f:.9f), stone);
+                GameObject plinth=Primitive(facilities, names[i] + " plinth", PrimitiveType.Cylinder, p + Vector3.up*.35f, new Vector3(i==2?.96f:i==1?.74f:.9f,.35f,i==2?.65f:i==1?.96f:.9f), stone);
                 AuthoredFixedScenery.Crest(facilities,names[i],p+Vector3.up*.76f,stone);
                 Crystal(facilities, r, p + Vector3.up * (1.1f + Mathf.Min(progress,5)*.06f), .35f + Mathf.Min(progress,5)*.025f, glow);
                 Label(facilities, names[i], labels[i], p + Vector3.up*2.1f, .055f, colors[i], false);
-                WorldTraversal.AddJumpPlatform(p,i==2?.325f:i==1?.37f:.45f,.7f);
+                RegisterSceneryCircle(NavigationScenePoint(facilities,p),NavigationSceneRadius(facilities,.85f),plinth);
             }
         }
 
