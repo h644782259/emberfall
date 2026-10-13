@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 namespace Emberfall
 {
@@ -13,6 +13,20 @@ namespace Emberfall
         {var a=Attachment(mechanic);return a!=null&&a.mounted?BuildCatalog.AscensionPower(a.ascensionRank):1f;}
         public float MechanicRangeMultiplier(EquipmentMechanic mechanic)
         {var a=Attachment(mechanic);return a!=null&&a.mounted?BuildCatalog.AscensionRange(a.ascensionRank):1f;}
+        private static void RetirePresetMechanisms(BuildPreset[] presets)
+        {
+            if(presets==null)return;
+            foreach(var preset in presets)if(preset!=null)
+            {
+                if(preset.equipmentMechanics!=null)for(int i=0;i<preset.equipmentMechanics.Length;i++)
+                    if(!BuildCatalog.IsAttributeGem(preset.equipmentMechanics[i])){preset.equipmentMechanics[i]=EquipmentMechanic.None;preset.equipmentMechanicKnownMask&=~(1<<i);if(preset.equipmentVariants!=null&&i<preset.equipmentVariants.Length)preset.equipmentVariants[i]=-1;}
+                if(preset.mountedAttachments==null)continue;
+                var gems=new List<EquipmentMechanic>();var variants=new List<int>();
+                for(int i=0;i<preset.mountedAttachments.Length;i++)if(BuildCatalog.IsAttributeGem(preset.mountedAttachments[i]))
+                {gems.Add(preset.mountedAttachments[i]);variants.Add(preset.attachmentVariants!=null&&i<preset.attachmentVariants.Length?preset.attachmentVariants[i]:0);}
+                preset.mountedAttachments=gems.ToArray();preset.attachmentVariants=variants.ToArray();
+            }
+        }
         private static void NormalizeAttachments(GameProfile profile)
         {
             if(profile.attachmentRevision<0||profile.attachmentRevision>1)throw new ArgumentException("宝石存档版本不受支持，原文件保留。");
@@ -50,6 +64,18 @@ namespace Emberfall
                     {a.level=Math.Max(a.level,item.level);a.rarity=(Rarity)Math.Max((int)a.rarity,(int)item.rarity);if(profile.attachmentRevision==0&&worn){a.mounted=true;a.variant=item.mechanicVariant;}a.variantUnlocked|=item.mechanicVariantUnlocked;}
                 }
             }
+            // Retire obsolete mechanism gems once. Preserve every paid fragment, including overflow.
+            for(int i=result.Count-1;i>=0;i--)if(!BuildCatalog.IsAttributeGem(result[i].mechanic))
+            {
+                var old=result[i];profile.retiredGemRefundShards=(int)Math.Min(int.MaxValue,(long)Math.Max(0,profile.retiredGemRefundShards)+BuildCatalog.GemPrice(old.rarity)+old.upgradeRank*AttachmentUpgradeCost+Math.Max(0,old.ascensionRank)*AscensionCost);result.RemoveAt(i);
+            }
+            int refund=Math.Min(Math.Max(0,999999-profile.mechanicMaterials),Math.Max(0,profile.retiredGemRefundShards));
+            profile.mechanicMaterials+=refund;profile.retiredGemRefundShards-=refund;
+            foreach(var list in new[]{profile.inventory,profile.pendingLoot,profile.recoveryLoot,profile.dungeonLoot})if(list!=null)foreach(var item in list)
+                if(item!=null&&item.mechanic!=EquipmentMechanic.None&&!BuildCatalog.IsAttributeGem(item.mechanic)){item.mechanic=EquipmentMechanic.None;item.mechanicVariant=0;item.mechanicVariantUnlocked=false;}
+            RetirePresetMechanisms(profile.buildPresets);
+            if(profile.classStates!=null)foreach(var state in profile.classStates)if(state!=null)
+            {if(state.mountedGems!=null)state.mountedGems=Array.FindAll(state.mountedGems,BuildCatalog.IsAttributeGem);RetirePresetMechanisms(state.buildPresets);}
             profile.quarryWorkLevel=Clamp(profile.quarryWorkLevel,0,100);profile.starChartTier=Clamp(profile.starChartTier,0,Math.Max(profile.highestAdventureTier,profile.bestFloor));
             foreach(var a in result)
             {

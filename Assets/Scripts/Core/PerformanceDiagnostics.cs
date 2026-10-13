@@ -9,8 +9,8 @@ namespace Emberfall
     // Bounded ten-second summaries, written off the main thread. No gameplay/save changes.
     internal sealed class PerformanceDiagnostics : MonoBehaviour
     {
-        internal enum Section { Interface, InterfaceUpdate, Player, Enemies, Models, Camera, Session, Text, Hotbar, HudQueries, Wander, Movement, Animation, TextSetup, TextDraw }
-        private static readonly double[] sectionTicks = new double[15], sectionMaxTicks = new double[15];
+        internal enum Section { Interface, InterfaceUpdate, Player, Enemies, Models, Camera, Session, Text, Hotbar, HudQueries, Wander, Movement, Animation, TextSetup, TextDraw, EnemySpawn, EnemyMesh, CombatEffects, SurfaceBuild }
+        private static readonly double[] sectionTicks = new double[19], sectionMaxTicks = new double[19];
         internal readonly struct Scope : IDisposable
         {
             private readonly int section;

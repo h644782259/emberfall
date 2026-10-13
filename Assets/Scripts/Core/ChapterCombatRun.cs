@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 namespace Emberfall
 {
     // Per-attempt combat only; durable unlocks and reward receipts belong to ProgressionService.
@@ -59,8 +59,8 @@ namespace Emberfall
         public bool FinishBoss(){if(Finished||Objective!=RoomObjective.Boss||!DoorUnlocked)return false;Finished=true;return true;}
         public bool FinishClearedFinalRoom()
         {
-            if(Finished||Node!=ChapterNode.ForestCourt||RoomIndex!=ChapterDefinition.RoomCount(Node)-1||
-                registered!=EnemyCount||kills!=EnemyCount)return false;
+            if(Finished||RoomIndex!=ChapterDefinition.RoomCount(Node)-1||
+                (!DoorUnlocked&&(registered!=EnemyCount||kills!=EnemyCount)))return false;
             DoorUnlocked=true;Finished=true;return true;
         }
         public void ClaimReward(){if(Finished&&!Failed)RewardClaimed=true;}

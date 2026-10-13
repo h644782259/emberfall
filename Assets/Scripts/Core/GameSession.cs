@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -40,10 +40,12 @@ namespace Emberfall
                 if (!HasStarted) return "踏入星烬纪元";
                 if (IsDead) return "旅途尚未结束 · 返回营地重整旗鼓";
                 if(SpecialAdventure)return ModeName+" · "+ModeObjectiveStatus;
+                if(wavePreparing)return "第 "+DungeonWave+" 波 · 整波敌人正在集结…";
                 if (InDungeon) return DungeonCleared ? "遗迹已肃清 · 前往南侧传送点返回营地" :
                     "肃清遗迹 " + DungeonWave + "/" + TotalWaves + " · 剩余 " + Enemies.Count + " 个敌人";
                 if (Progression.Profile.level < 2) return "击败原野怪物，升至 2 级 · 按 K 查看职业技能";
                 if (Progression.Profile.skillRanks[0] == 0) return "你已获得技能点！按 K 学习第一个职业技能";
+                if(IsNearChapterEntrance)return "按 E 进入星路章节 · 主线副本";
                 if (NearPortal()) return "按 E 进入沉星遗迹 · 三波挑战 / 首领 / 稀有装备";
                 return "探索原野收集装备 · 前往北方发光的遗迹传送门";
             }
@@ -240,7 +242,7 @@ namespace Emberfall
             changingZone = true;
             FloatingNumber.ClearForWorldTransition();
             CancelScenePreparation();
-            StopAllCoroutines(); waveRoutine = null; wildernessPopulationRoutine = null;
+            StopAllCoroutines(); waveRoutine = null; wildernessPopulationRoutine = null; wavePreparing=false;wavePreparationRoutine=null;ClearPreparedWaveActors();
             foreach (PendingLoot loot in pendingLoot.Values)
                 if (loot.Pickup != null) loot.Pickup.Retire();
             pendingLoot.Clear(); collectedGroundLoot.Clear();
@@ -254,7 +256,7 @@ namespace Emberfall
             if (world != null) { world.SetActive(false); Destroy(world); world = null; }
             // In particular, unclaimed old-mode rewards cannot settle into target.
             ResetExpedition(false);
-            InDungeon = false; DungeonCleared = false; IsDead = false;
+            InDungeon = false; DungeonCleared = false; IsDead = false; RevivalPending=false;
             equipmentFingerprint = null;
             changingZone = false;
             UpdateTimeScale();
@@ -289,10 +291,12 @@ namespace Emberfall
             UpdateMobileFrameRate();
             if (BackgroundPaused) return;
             if (SceneLoading) return;
+            if(!Paused&&VictoryTransitionPresenting)victoryTransitionRemaining=Mathf.Max(0,victoryTransitionRemaining-Time.unscaledDeltaTime);
             if(activeHubNpc!=HubNpcKind.None&&ActiveHubNpc==HubNpcKind.None)EndHubNpcConversation();
             if((ModeFinished||DungeonCleared)&&!FinishedResultDismissed)UpdateTimeScale();
             if(PracticeActive){TickPractice();return;} // Practice owns its guarded potion input too.
             if(HasStarted)TickSideEvent();
+            TickWaveTerrain();
             if (InputBlocked) return;
             if(ModeRun!=null){TickArenaRun();if(InputBlocked)return;}
             if(RoomChainRun!=null)TickRoomTactics();
@@ -312,7 +316,6 @@ namespace Emberfall
                 if (Input.GetKeyDown(KeyCode.F) || touchPotionRequested) DrinkPotion();
                 if (Input.GetKeyDown(KeyCode.H)) {if(InDungeon&&DungeonReturnAvailable){if(NearDungeonReturn)ui.OpenDungeonExit();else Notify("靠近传送点后交互。");}else ReturnToOrigin();}
             }
-            if(InDungeon && reinforcementQueue.Count>0 && Enemies.Count<=9)TrySpawnReinforcements();
             if (!InDungeon && CurrentHub==0)
             {
                 respawnTimer -= Time.deltaTime;
@@ -355,10 +358,12 @@ namespace Emberfall
         }
         private void UpdateTimeScale()
         {
-            Time.timeScale = pauseState.CanAdvance(HasStarted, Paused, SceneLoading || uiBlocking || RunChoices.AwaitingChoice || RoomBranchChoiceOpen || DungeonSelectionOpen || (FinishedResultReady&&!FinishedResultDismissed), IsDead) ? 1 : 0;
+            Time.timeScale = pauseState.CanAdvance(HasStarted, Paused, SceneLoading || uiBlocking || RunChoices.AwaitingChoice || RoomBranchChoiceOpen || DungeonSelectionOpen || (FinishedResultReady&&!FinishedResultDismissed), IsDead&&!RevivalPending) ? 1 : 0;
             UpdateMobileFrameRate();
         }
 
+        public static readonly Vector3 ChapterEntrancePosition=new Vector3(-9,0,-8);
+        public bool IsNearChapterEntrance => !InDungeon&&Player!=null&&PortalInteractionPolicy.IsNear((Player.transform.position-ChapterEntrancePosition).sqrMagnitude);
         public bool IsNearDungeonEntrance {get{return NearPortal();}}
         private bool NearPortal() { return Player != null && PortalInteractionPolicy.IsNear((Player.transform.position-new Vector3(0,0,11)).sqrMagnitude); }
 
@@ -367,6 +372,7 @@ namespace Emberfall
             if (!HasStarted || IsDead || InDungeon || DungeonSelectionOpen || InputBlocked) return;
             if (!Progression.CanEnterDungeon) { Notify("先领取营地恢复栏的装备，并为珍贵战利品腾出位置。"); return; }
             if (Progression.Profile.pendingFashionChest || Progression.Profile.pendingChestReveal) { Notify("请先开启上次通关的宝箱。"); return; }
+            if(IsNearChapterEntrance){ui.OpenChapterEntrance();return;}
             if (!NearPortal()) { Notify("请前往原野北方发光的传送门（小地图菱形），靠近后按 E。"); return; }
             if (Progression.Profile.level < 2) { Notify("遗迹需要 2 级。先在原野战斗，并学习第一个职业技能。"); return; }
             ResetAdventureEntryTiers();
@@ -454,6 +460,7 @@ namespace Emberfall
             int previousCombatEpoch = Player.CombatEpoch;
             if(wildernessPopulationRoutine!=null){StopCoroutine(wildernessPopulationRoutine);wildernessPopulationRoutine=null;}
             if (waveRoutine != null) { StopCoroutine(waveRoutine); waveRoutine = null; }
+            if(wavePreparationRoutine!=null){StopCoroutine(wavePreparationRoutine);wavePreparationRoutine=null;}wavePreparing=false;ClearPreparedWaveActors();
             foreach (EnemyController enemy in Enemies) if (enemy != null) { enemy.gameObject.SetActive(false); Destroy(enemy.gameObject); }
             Enemies.Clear();
             foreach (GameObject obj in transientObjects) if (obj != null) { obj.SetActive(false); Destroy(obj); }
@@ -506,26 +513,77 @@ namespace Emberfall
             }
         }
 
+        public bool WavePreparing {get{return wavePreparing;}}
+        private bool wavePreparing;
+        private readonly List<EnemyController> preparedWaveActors=new List<EnemyController>();
+        private void ClearPreparedWaveActors()
+        {foreach(var enemy in preparedWaveActors)if(enemy!=null)Destroy(enemy.gameObject);preparedWaveActors.Clear();}
+        private Coroutine wavePreparationRoutine;
         private void SpawnDungeonWave()
         {
-            int level = DungeonEntryLevel;
-            List<EncounterSpawn> plan=EncounterPlan.Create(DungeonTier,DungeonWave,DungeonLayout,runSeed);
+            if(wavePreparationRoutine!=null)StopCoroutine(wavePreparationRoutine);
+            ClearPreparedWaveActors();wavePreparing=true;UpdateTimeScale();
+            wavePreparationRoutine=StartCoroutine(PrepareWholeDungeonWave());
+        }
+        private IEnumerator PrepareWholeDungeonWave()
+        {
+            ResetWaveTerrain();
+            var owner=world;
+            var plan=EncounterPlan.Create(DungeonTier,DungeonWave,DungeonLayout,runSeed);
             wavePopulation=plan.Count;
-            int initial=0;
-            foreach(EncounterSpawn spawn in plan)
+            var prepared=new List<EnemyController>(plan.Count);
+            double slice=Time.realtimeSinceStartupAsDouble;
+            // Build hidden actors over several frames, then expose the entire wave together.
+            // Hidden actors reserve positions but do not participate in combat queries.
+            foreach(var spawn in plan)
             {
-                if(initial>=10 && !spawn.Boss) { reinforcementQueue.Enqueue(spawn); continue; }
-                Vector3 preferred=DungeonPoint(new Vector3(spawn.X,0,spawn.Z));
-                Vector3 position;
-                if(TrySafeSpawn(preferred,spawn.Boss?BossSpawnRadius:spawn.Kind==EnemyKind.Guardian?.65f:.5f,5.5f,out position)) { SpawnEnemy(spawn.Kind,level,position,spawn.Boss); initial++; }
-                else reinforcementQueue.Enqueue(spawn);
+                if(world!=owner||!InDungeon)yield break;
+                Vector3 preferred=DungeonPoint(new Vector3(spawn.X,0,spawn.Z)),position;
+                float radius=spawn.Boss?BossSpawnRadius:spawn.Kind==EnemyKind.Guardian?.65f:.5f;
+                bool placed=TrySafeSpawn(preferred,radius,5.5f,out position);
+                if(!placed)placed=TrySafeSpawn(preferred,radius,3.5f,out position,spacing:.15f);
+                if(!placed)
+                {
+                    // Search the full arena rather than deferring enemies until after kills.
+                    for(int ring=0;ring<24&&!placed;ring++)
+                    {
+                        float angle=ring*2.39996f;
+                        placed=TrySafeSpawn(new Vector3(Mathf.Sin(angle),0,Mathf.Cos(angle))*(ArenaRadius*.65f),radius,3.5f,out position,spacing:.15f);
+                        if(Time.realtimeSinceStartupAsDouble-slice>.004){yield return null;slice=Time.realtimeSinceStartupAsDouble;}
+                    }
+                }
+                if(!placed)
+                {
+                    Debug.LogError("Whole wave has no safe spawn: "+DungeonWave+" / "+spawn.Kind);
+                    Notify("本波出生点不可用，请返回营地重试");
+                    FailWavePreparation(prepared);yield break;
+                }
+                SpawnEnemy(spawn.Kind,DungeonEntryLevel,position,spawn.Boss);
+                var enemy=Enemies[Enemies.Count-1];enemy.gameObject.SetActive(false);Enemies.Remove(enemy);prepared.Add(enemy);preparedWaveActors.Add(enemy);
+                if(Time.realtimeSinceStartupAsDouble-slice>.004){yield return null;slice=Time.realtimeSinceStartupAsDouble;}
             }
-            // A wave can never auto-clear into a dead end because all sampled tiles failed.
-            if(Enemies.Count==0) SpawnEnemy(EnemyKind.Guardian,level,WorldTraversal.NearestWalkable(DungeonPoint(new Vector3(0,0,8)),DungeonWave==TotalWaves?BossSpawnRadius:1),DungeonWave==TotalWaves);
-            objectiveHealedThisWave=false;
+            // A short shared warning precedes the single visible arrival.
+            Notify("第 "+DungeonWave+" 波 · "+prepared.Count+" 个敌人即将出现");
+            yield return new WaitForSecondsRealtime(.35f);
+            while(!SceneLoading&&InputBlocked&&world==owner&&InDungeon)yield return null;
+            if(world!=owner||!InDungeon)yield break;
+            // The player can move while actors prepare. Revalidate only nearby births.
+            foreach(var enemy in prepared)
+            {
+                if(enemy==null||Player==null||Vector3.Distance(enemy.transform.position,Player.transform.position)>=3.5f)continue;
+                Vector3 position;
+                if(TrySafeSpawn(enemy.transform.position,enemy.NavigationRadius,3.5f,out position,spacing:.15f))enemy.transform.position=position;
+            }
+            preparedWaveActors.Clear();
+            foreach(var enemy in prepared)if(enemy!=null){Enemies.Add(enemy);enemy.gameObject.SetActive(true);}
+            objectiveHealedThisWave=false;wavePreparing=false;wavePreparationRoutine=null;UpdateTimeScale();
+        }
+        private void FailWavePreparation(List<EnemyController> prepared)
+        {
+            wavePreparing=false;wavePreparationRoutine=null;ClearPreparedWaveActors();Paused=true;UpdateTimeScale();
         }
 
-        private bool TrySafeSpawn(Vector3 preferred,float radius,float playerDistance,out Vector3 position,Vector3? reservedPosition=null,float reservedClearance=0f)
+        private bool TrySafeSpawn(Vector3 preferred,float radius,float playerDistance,out Vector3 position,Vector3? reservedPosition=null,float reservedClearance=0f,float spacing=1.1f)
         {
             for(int attempt=0;attempt<48;attempt++)
             {
@@ -540,7 +598,8 @@ namespace Emberfall
                 Vector3 approach=InDungeon?Vector3.zero:new Vector3(0,0,-10);
                 if(!WorldTraversal.HasGroundPath(candidate,approach,radius)&&WorldTraversal.FindPath(candidate,approach,radius).Count==0)continue;
                 bool crowded=false;
-                foreach(EnemyController enemy in Enemies)if(enemy!=null&&!enemy.IsDead&&Vector3.Distance(candidate,enemy.transform.position)<radius+enemy.NavigationRadius+1.1f){crowded=true;break;}
+                foreach(EnemyController enemy in Enemies)if(enemy!=null&&!enemy.IsDead&&Vector3.Distance(candidate,enemy.transform.position)<radius+enemy.NavigationRadius+spacing){crowded=true;break;}
+                if(!crowded)foreach(var enemy in preparedWaveActors)if(enemy!=null&&Vector3.Distance(candidate,enemy.transform.position)<radius+enemy.NavigationRadius+spacing){crowded=true;break;}
                 if(crowded)continue;
                 position=candidate;return true;
             }
@@ -555,8 +614,9 @@ namespace Emberfall
             GameObject go = new GameObject(boss ? "Sentinel · Boss" : "Enemy · " + kind);
             go.transform.position = WorldTraversal.NearestWalkable(position, boss ? BossSpawnRadius : .45f);
             EnemyController enemy = go.AddComponent<EnemyController>();
-            enemy.Initialize(this, kind, level, boss);
+            using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.EnemySpawn)) enemy.Initialize(this, kind, level, boss);
             Enemies.Add(enemy);
+            if (UsesWaveTactics && !boss) enemy.ConfigureDungeonRole(DungeonWaveTactics.Role(CurrentWaveTactic, kind));
         }
 
         public void OnEnemyKilled(EnemyController enemy)
@@ -604,8 +664,8 @@ namespace Emberfall
             if(ModeRun!=null)FinalizeArenaResult();
             if (InDungeon && !ChapterActive && ModeRun==null && RoomChainRun==null && !changingZone && Enemies.Count == 0 && !DungeonCleared)
             {
-                TrySpawnReinforcements();
-                if(Enemies.Count==0 && reinforcementQueue.Count==0) waveRoutine=StartCoroutine(NextWave());
+                // Advancing is deferred until the finishing combat action has returned.
+                if(Enemies.Count==0 && !wavePreparing) waveRoutine=StartCoroutine(NextWave());
             }
         }
 
@@ -651,7 +711,7 @@ namespace Emberfall
             else
             {
                 DungeonCleared = true;
-                GameAudio.Play(SoundCue.Victory);
+                BeginVictoryTransition();GameAudio.Play(SoundCue.Victory);
                 QueueDungeonCompletion();
                 bool settled=TrySettleDungeonReward();
                 LastRunSummary = BuildRunSummary(true);
@@ -661,14 +721,30 @@ namespace Emberfall
             waveRoutine = null;
         }
 
+        public bool RevivalPending {get;private set;}
+        public bool CanSuspendForRevival => InDungeon&&!DungeonCleared&&!ModeFinished&&!PracticeActive;
+        private void FinalizeDeathRun()
+        {
+            RevivalPending=false;
+            if(ModeRun!=null)ModeRun.Fail(ExpeditionModeFailure.PlayerDefeated);
+            if(RoomChainRun!=null)RoomChainRun.Fail(RoomFailureReason.Death);
+            if(ChapterActive)FailChapter("角色倒下：本次章节挑战失败。");
+        }
+        public void EndDeathBattle(){if(!IsDead||!RevivalPending)return;FinalizeDeathRun();Player.EndGhost();LastRunSummary=BuildRunSummary(false);UpdateTimeScale();}
+        public bool ReviveInDungeon()
+        {
+            if(!IsDead||!RevivalPending||Player==null||!InDungeon)return false;
+            if(!Progression.ConsumeRevivalStone()){Notify(Progression.LastError);return false;}
+            Player.ReviveAtCurrentPosition();IsDead=false;RevivalPending=false;Paused=false;uiBlocking=false;
+            LastRunSummary=null;UpdateTimeScale();Notify("已复活");return true;
+        }
         public void OnPlayerDied()
         {
             if(PracticeActive){PracticeRecord.PlayerDefeated();return;}
             if (IsDead) return;
             IsDead = true;
-            if(ModeRun!=null)ModeRun.Fail(ExpeditionModeFailure.PlayerDefeated);
-            if(RoomChainRun!=null)RoomChainRun.Fail(RoomFailureReason.Death);
-            if(ChapterActive)FailChapter("角色倒下：本次章节挑战失败。");
+            RevivalPending=CanSuspendForRevival;
+            if(!RevivalPending)FinalizeDeathRun();else Player.BeginGhost();
             pendingRoomChoice.Cancel();
             DungeonSelectionOpen = false;
             LastRunSummary = BuildRunSummary(false);
@@ -685,6 +761,7 @@ namespace Emberfall
         {
             if (!IsDead) return;
             if (!PreserveWorldLoot()) return;
+            if(RevivalPending)FinalizeDeathRun();
             if (!ChangeZone(false)) return;
             IsDead = false;
             Paused = false;
@@ -718,7 +795,7 @@ namespace Emberfall
             SuspendInputs();
             CancelScenePreparation();
             StopAllCoroutines();
-            waveRoutine = null; wildernessPopulationRoutine = null;
+            waveRoutine = null; wildernessPopulationRoutine = null; wavePreparing=false;wavePreparationRoutine=null;ClearPreparedWaveActors();
             HasStarted = false;
             Paused = false;
             uiBlocking = false;
@@ -965,7 +1042,7 @@ namespace Emberfall
 #if EMBERFALL_VISUAL_VALIDATION
             // The isolated performance runner must keep simulating while the
             // developer inspects logs in another window.
-            if (VisualValidationPlayer.PerformanceRun) focus = true;
+            focus = true;
 #endif
             pauseState.SetFocus(focus);
             GameAudio.SetBackgroundPaused(pauseState.BackgroundPaused);
@@ -1017,7 +1094,7 @@ namespace Emberfall
         private float yaw, pitch = DefaultPitch;
         private float smoothYaw, smoothPitch = DefaultPitch, smoothDistance = 19f;
         private Vector3 lookTarget;
-        private float manualCameraUntil, assistTargetSince;
+        private float manualCameraUntil, assistTargetSince, assistYawVelocity;
         private EnemyController assistTarget;
         public static bool CancelSkillRequested { get { return !MobileControls.Active && active != null && active.inputFrame == Time.frameCount && active.orbitInput.Clicked; } }
         public static bool IsOrbitDragging { get { return !MobileControls.Active && active != null && active.orbitInput.IsDragging; } }
@@ -1029,7 +1106,8 @@ namespace Emberfall
         {
             HitFeedback.ClearCamera();
             ResetOrbitInput();
-            assistTarget=null;
+            assistTarget=null;assistYawVelocity=0;
+            yaw=smoothYaw=0;pitch=smoothPitch=DefaultPitch;distance=smoothDistance=19f;
             manualCameraUntil=Time.unscaledTime+1f;
             lookTarget = DesiredTarget();
             MoveCamera(true);
@@ -1052,7 +1130,7 @@ namespace Emberfall
         private void Update()
         {
             GameSession game = GameSession.Instance;
-            bool canContinue = !MobileControls.Active && Application.isFocused && game != null && !game.InputBlocked;
+            bool canContinue = !MobileControls.Active && Application.isFocused && game != null && (!game.InputBlocked||game.RevivalPending&&!game.Paused&&!game.BackgroundPaused);
             bool canStart = canContinue && !game.PointerOverUI;
             ProcessOrbitInput(Input.mousePosition, Input.GetMouseButtonDown(1), Input.GetMouseButton(1), Input.GetMouseButtonUp(1), canStart, canContinue, Input.mouseScrollDelta.y);
         }
@@ -1076,30 +1154,39 @@ namespace Emberfall
             }
         }
 
+        private void StopCombatAssist(bool holdView)
+        {
+            if(holdView)yaw=smoothYaw;
+            assistTarget=null;assistYawVelocity=0;
+        }
         private void AssistCombatView()
         {
             var game=GameSession.Instance;
-            if(!Application.isFocused||game==null||game.InputBlocked||!game.InCombat||game.Player==null)
-            {assistTarget=null;return;}
+            bool focused=Application.isFocused;
+#if EMBERFALL_VISUAL_VALIDATION
+            focused |= VisualValidationPlayer.PerformanceRun;
+#endif
+            if(!focused||game==null||game.InputBlocked&&!game.RevivalPending||game.Player==null)
+            {StopCombatAssist(true);return;}
             // A held orbit gesture owns the camera even when the mouse stops moving.
-            if(orbitInput.IsHeld){manualCameraUntil=Time.unscaledTime+4f;assistTarget=null;return;}
-            if(Time.unscaledTime<manualCameraUntil)return;
+            if(orbitInput.IsHeld){manualCameraUntil=Time.unscaledTime+4f;StopCombatAssist(false);return;}
+            if(Time.unscaledTime<manualCameraUntil){StopCombatAssist(false);return;}
+            if(!game.InCombat||game.RevivalPending){StopCombatAssist(true);return;}
             var targeting=game.Player.GetComponent<SkillTargetingController>();
-            if(targeting!=null&&targeting.IsTargeting){assistTarget=null;return;}
+            if(targeting!=null&&targeting.IsTargeting){StopCombatAssist(true);return;}
             var target=game.Player.FocusTarget!=null?game.Player.FocusTarget:game.Player.AimTarget;
             if(target==null||target.IsDead||!target.isActiveAndEnabled||!target.gameObject.activeInHierarchy)
-            {assistTarget=null;return;}
+            {StopCombatAssist(true);return;}
             Vector3 direction=Vector3.ProjectOnPlane(target.transform.position-game.Player.transform.position,Vector3.up);
-            if(direction.sqrMagnitude<2.25f||direction.sqrMagnitude>18f*18f||!CombatSight.Direct(game.Player.transform.position,target.transform.position))
-            {assistTarget=null;return;}
-            if(assistTarget!=target){assistTarget=target;assistTargetSince=Time.unscaledTime;return;}
-            if(Time.unscaledTime-assistTargetSince<.45f)return;
+            if(direction.sqrMagnitude<.16f||direction.sqrMagnitude>18f*18f||!CombatSight.Direct(game.Player.transform.position,target.transform.position))
+            {StopCombatAssist(true);return;}
+            if(assistTarget!=target){assistTarget=target;assistYawVelocity=0;assistTargetSince=Time.unscaledTime;return;}
+            if(Time.unscaledTime-assistTargetSince<.2f)return;
             float desiredYaw=Mathf.Atan2(direction.x,direction.z)*Mathf.Rad2Deg;
             float error=Mathf.DeltaAngle(yaw,desiredYaw);
-            // Leave comfortable framing alone; never force a hard target lock.
-            if(Mathf.Abs(error)<=20f)return;
-            float speed=Mathf.Min(30f,(Mathf.Abs(error)-20f)*1.8f);
-            yaw=Mathf.Repeat(yaw+Mathf.Sign(error)*Mathf.Min(Mathf.Abs(error)-20f,speed*Mathf.Min(Time.deltaTime,.05f)),360f);
+            // Damped angular velocity eases into and out of a restrained turn.
+            if(Mathf.Abs(error)<=4f){assistYawVelocity=0;return;}
+            yaw=Mathf.Repeat(Mathf.SmoothDampAngle(yaw,desiredYaw-Mathf.Sign(error)*4f,ref assistYawVelocity,.65f,55f,Mathf.Min(Time.deltaTime,.05f)),360f);
         }
 
         private void LateUpdate() { using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.Camera)) MoveCamera(false); }

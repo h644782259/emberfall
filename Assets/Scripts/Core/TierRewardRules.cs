@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 namespace Emberfall
 {
     /// <summary>Bounded rewards from the tier actually completed, never the menu selection.</summary>
@@ -12,15 +12,9 @@ namespace Emberfall
         public static int OrdinaryMechanicChance(int tier) { return 12 + 2 * Band(ClampTier(tier)); }
         public static Rarity DropRarity(bool boss, int tier, int roll)
         {
-            if(tier>0)return boss||roll>=70?Rarity.Rare:Rarity.Common;
-            int band = Band(ClampTier(tier)); roll = Math.Max(0, Math.Min(99, roll));
-            if (boss)
-            {
-                int legendary = 2 + band, epic = 10 + 2 * band;
-                return roll < 100 - legendary - epic ? Rarity.Rare : roll < 100 - legendary ? Rarity.Epic : Rarity.Legendary;
-            }
-            int common = 70 - band, ordinaryLegendary = 1;
-            return roll < common ? Rarity.Common : roll < 95 - band ? Rarity.Rare : roll < 100 - ordinaryLegendary ? Rarity.Epic : Rarity.Legendary;
+            roll=Math.Max(0,Math.Min(99,roll));
+            if(boss)return roll<80?Rarity.Rare:roll<98?Rarity.Epic:Rarity.Legendary;
+            return roll<65?Rarity.Common:roll<90?Rarity.Rare:roll<99?Rarity.Epic:Rarity.Legendary;
         }
     }
 
@@ -42,7 +36,7 @@ namespace Emberfall
 
         public static int EquipmentCount(int mode){Validate(mode);return mode==3?2:1;}
         public static int EquipmentCount(int mode,int tier){return EquipmentCount(mode)+TierRewardBand.Of(tier)/2;}
-        public static int EnemyEquipmentChance(bool boss,bool elite){return boss?100:elite?35:8;}
+        public static int EnemyEquipmentChance(bool boss,bool elite){return boss?100:5;}
         public static int PotionChance(int tier){return 12+3*TierRewardBand.Of(tier);}
         public const int LegendaryPityChests=30;
         // Ordinary saves store a level index (1 = Lv10); chapters store their tier.

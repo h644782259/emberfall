@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 
 namespace Emberfall
@@ -7,6 +7,19 @@ namespace Emberfall
     /// <summary>Eight bounded effect voices plus one quiet, seamless background loop.</summary>
     public sealed partial class GameAudio : MonoBehaviour
     {
+        private AudioSource playerHurtVoice;
+        public static void PlayPlayerHurt(bool heavy)
+        {
+            if(muted||quitting||lifecycle.BackgroundPaused||!Application.isPlaying)return;
+            EnsureInstance();
+            if(instance.playerHurtVoice==null)
+            {
+                instance.playerHurtVoice=instance.gameObject.AddComponent<AudioSource>();
+                instance.playerHurtVoice.playOnAwake=false;instance.playerHurtVoice.spatialBlend=0;
+                instance.playerHurtVoice.clip=Synthesize(SoundCue.Hit);
+            }
+            var voice=instance.playerHurtVoice;voice.Stop();voice.pitch=heavy?.60f:.78f;voice.volume=masterVolume*.65f;voice.Play();
+        }
         private const int VoiceCount = 8;
         private const int CueCount = 11;
         private const int SampleRate = 22050;
@@ -117,6 +130,7 @@ namespace Emberfall
             EnsureInstance();int index=(int)hero*10+skill;
             if(instance.skillClips[index]==null)instance.skillClips[index]=SynthesizeSkill(hero,skill);
             instance.PlayInternal((int)SoundCue.Cast,instance.skillClips[index]);
+            instance.PlayChant(hero,skill);
         }
 
         public static void PlayBasicAttack(HeroClass hero)
@@ -217,6 +231,7 @@ namespace Emberfall
 
         private void Update()
         {
+            if(instance==this)TickSkillAudio();
             if (instance != this || lifecycle.BackgroundPaused) return;
             if (Time.unscaledTime >= nextListenerCheck)
             {
@@ -526,6 +541,8 @@ namespace Emberfall
 
         private void StopVoices()
         {
+            if(playerHurtVoice!=null)playerHurtVoice.Stop();
+            StopSkillAudio();
             StopNpcGreeting();
             ambientPaused=false;ambientResumeSample=-1;
             if (voices == null) return;

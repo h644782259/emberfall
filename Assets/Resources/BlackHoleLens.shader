@@ -39,7 +39,7 @@ Shader "Emberfall/Black Hole Lens"
     float3 light=hot*(ring*uneven+halo*.35+disk*(.35+.85*noise(float2(p.x*21-_Phase*7,p.y*17))));
     float3 color=float3(.001,.001,.002)*shadow;
     color+=light;
-    float coverage=max(shadow,max(ring,max(halo,disk)));
+    float coverage=max(shadow*.90,max(ring,max(halo,disk)));
     return fixed4(color,saturate(coverage)*_Opacity);
    }
    ENDCG

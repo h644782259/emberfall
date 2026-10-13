@@ -1,10 +1,10 @@
-using System;
+﻿using System;
 namespace Emberfall
 {
     public partial class ProgressionService
     {
 
-        public const int AffixReforgeStonePrice=5000;
+        public const int AffixReforgeStonePrice=20000;
         public string AffixReforgeLockReason(string id,bool inCamp)
         {
             if(IsPracticeOnly||!inCamp)return "请在铁匠处重铸";

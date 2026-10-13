@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 namespace Emberfall
 {
     public sealed partial class GameUI
@@ -83,12 +83,14 @@ namespace Emberfall
             float equipmentSize=MobileControls.Active?Mathf.Min(InventoryGridGeometry.MobileCellSize,(area.width/u-8)/3):InventoryGridGeometry.DesktopCellSize;
             Rect viewport=new Rect(area.x,area.y,area.width,Mathf.Max(64*u,area.height-(equipmentSize+8)*u));
             HandleWearRotation(viewport);
+            DrawHeroStage(viewport,p.Profile.heroClass);
+            wearModel.TransparentBackground=true;wearModel.MaximumFrameRate=30;wearModel.HideTurnRing=true;
             // Fit the complete silhouette, including worn weapons and wings, in any aspect ratio.
             wearModel.SetEquipmentFraming(false,false);wearModel.SetCenterOnAvatar(true);
             wearModel.SetComposition(CollectionPreviewComposition.Full);wearModel.SetYaw(wearPreviewYaw);
             wearModel.SetViewport(viewport.width*Mathf.Abs(GUI.matrix.m00),viewport.height*Mathf.Abs(GUI.matrix.m11),MobileControls.Active);
             Texture current=wearModel.RenderSafe(p.Profile.heroClass,p.Equipped(ItemSlot.Weapon),p.Equipped(ItemSlot.Armor),p.Equipped(ItemSlot.Relic),p.EquippedFashion(FashionSlot.Wings),p.EquippedFashion(FashionSlot.Weapon));
-            if(current!=null)GUI.DrawTexture(viewport,current,ScaleMode.ScaleToFit,false);
+            if(current!=null)GUI.DrawTexture(viewport,current,ScaleMode.ScaleToFit,true);
             else Text(viewport,wearModel.LastError==null?"角色预览正在恢复":"预览暂不可用，其他操作可继续",Mathf.RoundToInt(11*u),muted,false,true);
             Rect levelBadge=new Rect(viewport.x+6*u,viewport.y+6*u,76*u,26*u);
             Text(levelBadge,"Lv."+p.Profile.level,Mathf.RoundToInt(14*u),pale,true,false,TextAnchor.MiddleCenter);
@@ -177,6 +179,7 @@ namespace Emberfall
 
         private string ResourceDescription(string key)
         {
+            if(key=="revival")return "副本中倒下时消耗1个，原地恢复生命并获得3秒保护。";
             if(key.Contains("affix-reforge"))return "重新生成装备随机词条的种类、数量和数值。";
             if(key.Contains("refinement"))return "用于铁匠处洗练装备属性。";
             if(key=="shard")return "用于兑换宝石，以及宝石升阶与升华。";
@@ -187,35 +190,37 @@ namespace Emberfall
         }
         private EntryRewardPreview ResourceItemPreview(string key,int count)
         {
-            string name=key=="affix-reforge"?"词条重铸石":key=="thread"?"星纹":key=="shard"?"星烬碎片":key=="refinement"?"装备洗练石":"金币";
-            Rarity rarity=key=="affix-reforge"?Rarity.Legendary:key=="refinement"?Rarity.Epic:key=="gold"?Rarity.Common:Rarity.Rare;
+            string name=key=="revival"?"复活石":key=="affix-reforge"?"词条重铸石":key=="thread"?"星纹":key=="shard"?"星烬碎片":key=="refinement"?"装备洗练石":"金币";
+            Rarity rarity=key=="affix-reforge"?Rarity.Legendary:key=="revival"||key=="refinement"?Rarity.Epic:key=="gold"?Rarity.Common:Rarity.Rare;
             return new EntryRewardPreview{Key=key,Name=name,Quantity=count,Rarity=rarity,
-                Icon=key=="thread"?UIIconAtlas.Reward(2):UIIconAtlas.Utility(key=="refinement"||key=="affix-reforge"?"gem":key=="gold"?"coin":"shard"),
+                Icon=key=="thread"?UIIconAtlas.Reward(2):UIIconAtlas.Utility(key=="revival"?"core":key=="refinement"||key=="affix-reforge"?"gem":key=="gold"?"coin":"shard"),
                 Description=name+"\n数量  "+count};
         }
         private void DrawBagSupplies(MobilePanelLayout.Area area)
         {
             float u=MobileControls.Active?TouchRatio:1;Rect bounds=MobilePanelRect(area);
             float cellSize=MobileControls.Active?InventoryGridGeometry.MobileCellSize:InventoryGridGeometry.DesktopCellSize;
-            Rect tile=new Rect(bounds.x,bounds.y,cellSize*u,cellSize*u);Fill(tile,card);Border(tile,GameBalance.RarityColor(Rarity.Common));
-            DrawIcon(new Rect(tile.x+5*u,tile.y+3*u,tile.width-10*u,tile.height-17*u),UIIconAtlas.Utility("potion"),GameBalance.RarityColor(Rarity.Common));
-            Text(new Rect(tile.x,tile.yMax-14*u,tile.width-2*u,14*u),session.Progression.Profile.potions.ToString(),Mathf.RoundToInt(9*u),pale,true,false,TextAnchor.MiddleRight);
+            var grid=new InventoryGridGeometry(bounds.width/u,cellSize);int position=0;
             bool prior=GUI.enabled;GUI.enabled=prior&&(!MobileControls.Active||!inventoryComparisonOpen)&&inventoryPopupDismissed!=Time.frameCount;
-            DesktopInventoryGesture(tile,tile,"@potion");
-            if(GUI.Button(tile,GUIContent.none,invisibleButton)){if(MobileControls.Active)OpenInventoryPopup("@potion",tile);else DesktopInventoryClick("@potion");}
-            var grid=new InventoryGridGeometry(bounds.width/u,cellSize);
-            string[] keys={"refinement","shard","thread","affix-reforge"};
-            int[] quantities={session.Progression.Profile.refinementStones,session.Progression.Profile.mechanicMaterials,session.Progression.Profile.fashionThreads,session.Progression.Profile.affixReforgeStones};
-            for(int i=0;i<keys.Length;i++)
+            if(session.Progression.Profile.potions>0)
             {
-                var cell=grid.Tile(i+1);
-                Rect hit=new Rect(bounds.x+cell.X*u,bounds.y+cell.Y*u,cell.Width*u,cell.Height*u);
-                var item=ResourceItemPreview(keys[i],quantities[i]);
-                Fill(hit,card);Border(hit,item.QualityColor);
-                if(item.Rarity==Rarity.Legendary)DrawFashionSlotFlow(hit,item.QualityColor,u);
-                DrawIcon(new Rect(hit.x+5*u,hit.y+3*u,hit.width-10*u,hit.height-17*u),item.Icon,item.QualityColor);
-                Text(new Rect(hit.x+2*u,hit.yMax-16*u,hit.width-5*u,16*u),quantities[i].ToString(),Mathf.RoundToInt(10*u),pale,true,false,TextAnchor.MiddleRight);
-                InspectRewardItem(hit,item);
+                var cell=grid.Tile(position++);Rect tile=new Rect(bounds.x+cell.X*u,bounds.y+cell.Y*u,cell.Width*u,cell.Height*u);
+                Fill(tile,card);Border(tile,GameBalance.RarityColor(Rarity.Common));
+                DrawIcon(new Rect(tile.x+5*u,tile.y+3*u,tile.width-10*u,tile.height-17*u),UIIconAtlas.Utility("potion"),Color.white);
+                Text(new Rect(tile.x,tile.yMax-14*u,tile.width-2*u,14*u),session.Progression.Profile.potions.ToString(),Mathf.RoundToInt(9*u),pale,true,false,TextAnchor.MiddleRight);
+                DesktopInventoryGesture(tile,tile,"@potion");
+                if(GUI.Button(tile,GUIContent.none,invisibleButton)){if(MobileControls.Active)OpenInventoryPopup("@potion",tile);else DesktopInventoryClick("@potion");}
+            }
+            string[] keys={"refinement","shard","thread","affix-reforge","revival"};
+            int[] quantities={session.Progression.Profile.refinementStones,session.Progression.Profile.mechanicMaterials,session.Progression.Profile.fashionThreads,session.Progression.Profile.affixReforgeStones,session.Progression.Profile.revivalStones};
+            for(int i=0;i<8;i++)
+            {
+                int quantity=i<5?quantities[i]:session.Progression.Profile.gemBags[i-5];if(quantity<=0)continue;
+                var cell=grid.Tile(position++);Rect hit=new Rect(bounds.x+cell.X*u,bounds.y+cell.Y*u,cell.Width*u,cell.Height*u);
+                var item=i<5?ResourceItemPreview(keys[i],quantity):GemBagPreview((ItemSlot)(i-5),true);
+                DrawEntryRewardIcon(hit,item,u);
+                Text(new Rect(hit.x+2*u,hit.yMax-16*u,hit.width-5*u,16*u),quantity.ToString(),Mathf.RoundToInt(10*u),pale,true,false,TextAnchor.MiddleRight);
+                InspectRewardItem(hit,item,i>=5);
             }
             GUI.enabled=prior;DrawInventoryPopup(bounds,u);
         }

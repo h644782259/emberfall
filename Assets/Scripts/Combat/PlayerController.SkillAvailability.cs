@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 namespace Emberfall
 {
     public sealed partial class PlayerController
@@ -22,7 +22,7 @@ namespace Emberfall
         }
         private bool SkillBudgetReady(int skill)
         {
-            if(session==null||session.Player!=this||skillRuntime==null||IsDead||!session.HasStarted||session.CombatEffectsEnded||session.InputBlocked||jumping||SkillReleaseInputBlocked||skill<0||skill>=GameBalance.SkillCount||GameBalance.IsPassive(skill)||
+            if(session==null||session.Player!=this||skillRuntime==null||IsDead||!session.HasStarted||session.CombatEffectsEnded||session.InputBlocked||ImpactControlled||jumping||SkillReleaseInputBlocked||skillBasicRecovery.Blocked||skill<0||skill>=GameBalance.SkillCount||GameBalance.IsPassive(skill)||
                 charge!=null&&(charge.IsCharging||charge.ConsumedThisFrame))return false;
             int rank=session.Progression.Profile.skillRanks[skill];
             return rank>0&&skillRuntime.Remaining(skill)<=0&&Energy>=GameBalance.SkillEnergyCost(HeroClass,skill)&&SkillHealingHasEffect(skill,rank)&&StockTargetReady(skill,rank)&&

@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 namespace Emberfall
 {
     public sealed partial class GameUI
@@ -10,6 +10,7 @@ namespace Emberfall
         private string chapterEntryError;
         private bool ChapterSelectionIsCurrent()
         {return (panel==Panel.Chapter||session.DungeonSelectionOpen&&adventureChapterSelected)&&session.OpenChapterSelectionAllowed&&ReferenceEquals(chapterSelectionOwner,session.Progression.Profile);}
+        public bool OpenChapterEntrance(){return OpenChapterSelection();}
         private bool OpenChapterSelection()
         {
             if(UITransitionBlocked||!session.OpenChapterSelectionAllowed)return false;
@@ -70,21 +71,19 @@ namespace Emberfall
             bool mobile=MobileControls.Active;float u=mobile?TouchRatio:1;
             var layout=ChapterPanelGeometry();
             Box(ChapterRect(new MobilePanelLayout.Area(8,4,layout.Width-16,layout.Height-8),u),jade,false);
-            Text(ChapterRect(new MobilePanelLayout.Area(16,10,112,40),u),"星路纪事",Mathf.RoundToInt(20*u),pale,true);
+            Text(ChapterRect(new MobilePanelLayout.Area(28,24,112,40),u),"星路章节",Mathf.RoundToInt(20*u),pale,true);
             var profile=session.Progression.Profile;var node=session.SelectedChapterNode;var difficulty=session.SelectedChapterDifficulty;
-            float cardWidth=(layout.Width-150)/3;
+            float cardWidth=(layout.Width-180)/3;
             for(int i=0;i<3;i++)
             {
                 var choice=(ChapterNode)i;bool unlocked=ChapterProgression.IsUnlocked(profile,choice);
-                Rect card=ChapterRect(new MobilePanelLayout.Area(136+i*(cardWidth+4),8,cardWidth-4,44),u);
+                Rect card=ChapterRect(new MobilePanelLayout.Area(148+i*cardWidth,24,cardWidth-8,44),u);
                 if(Button(card,ChapterDefinition.Get(choice).Name,choice==node?gold:jade,unlocked)){SelectChapterNode(choice);return;}
             }
-            int highest=ChapterProgression.CompletedTier(profile,node,ChapterDifficulty.Heroic);
-            Text(ChapterRect(new MobilePanelLayout.Area(16,50,layout.Width-32,18),u),highest<=0?"已解锁节点可独立重玩 · 本节点尚未通关":"已解锁节点可独立重玩 · 最高通关第 "+highest+" 阶",Mathf.RoundToInt(11*u),muted);
-            DrawChapterEntryDetails(ChapterRect(layout.Body,u),u);
-            DrawChapterEntryControls(ChapterRect(layout.FooterButton(0,3),u),u);
-            if(Button(ChapterRect(layout.FooterButton(1,3),u),"返回副本选择",jade)){CloseChapterSelection();session.EnterDungeon();return;}
-            if(Button(ChapterRect(layout.FooterButton(2,3),u),"进入 "+ChapterDefinition.Get(node).Name,gold,ChapterProgression.CanEnter(profile,node,difficulty)))
+            DrawChapterEntryDetails(ChapterRect(new MobilePanelLayout.Area(28,88,layout.Width-56,layout.Height-184),u),u);
+            DrawChapterEntryControls(ChapterRect(new MobilePanelLayout.Area(28+0*((layout.Width-56)/3),layout.Height-76,(layout.Width-56)/3-8,48),u),u);
+            if(Button(ChapterRect(new MobilePanelLayout.Area(28+1*((layout.Width-56)/3),layout.Height-76,(layout.Width-56)/3-8,48),u),"返回营地",jade)){CloseChapterSelection();return;}
+            if(Button(ChapterRect(new MobilePanelLayout.Area(28+2*((layout.Width-56)/3),layout.Height-76,(layout.Width-56)/3-8,48),u),"进入 "+ChapterDefinition.Get(node).Name,gold,ChapterProgression.CanEnter(profile,node,difficulty)))
             {ConfirmSelectedChapter();return;}
         }
         private void DrawChapterEntryDetails(Rect body,float u)

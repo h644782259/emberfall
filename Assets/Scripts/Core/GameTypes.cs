@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -35,7 +35,7 @@ namespace Emberfall
     public enum Rarity { Common, Rare, Epic, Legendary }
     public enum FashionSlot { Wings, Weapon }
     public enum ElementalistSpecialization { None, Shatter, Burn }
-    public enum EquipmentMechanic { None, FrostEcho, CinderTrail, ReturningBlade, VenomSpread, TwinSummonResonance, WeaponPower, WeaponPrecision, WeaponRuin, ArmorPower, ArmorPrecision, ArmorRuin, RelicPower, RelicPrecision, RelicRuin }
+    public enum EquipmentMechanic { None, FrostEcho, CinderTrail, ReturningBlade, VenomSpread, TwinSummonResonance, WeaponPower, WeaponPrecision, WeaponRuin, ArmorPower, ArmorPrecision, ArmorRuin, RelicPower, RelicPrecision, RelicRuin, WeaponFlow, WeaponTempo, ArmorFlow, ArmorStride, RelicVitality, RelicWard }
     public enum SummonerRoute { Bonded, Pack }
     public enum MasteryType { Offense, Vitality, Guard, Technique }
 
@@ -55,16 +55,21 @@ namespace Emberfall
         }
 
         public static bool IsAttributeGem(EquipmentMechanic gem)
-        {return gem>=EquipmentMechanic.WeaponPower&&gem<=EquipmentMechanic.RelicRuin;}
+        {return gem>=EquipmentMechanic.WeaponPower&&gem<=EquipmentMechanic.RelicWard;}
         public static bool GemCompatible(EquipmentMechanic gem,HeroClass hero)
-        {return IsAttributeGem(gem)||gem!=EquipmentMechanic.None&&MechanicClass(gem)==hero;}
+        {return IsAttributeGem(gem);}
         public static EquipmentMechanic[] GemsFor(HeroClass hero)
         {
-            var gems=new List<EquipmentMechanic>(MechanicsFor(hero));
-            for(int i=(int)EquipmentMechanic.WeaponPower;i<=(int)EquipmentMechanic.RelicRuin;i++)gems.Add((EquipmentMechanic)i);
+            var gems=new List<EquipmentMechanic>();
+            for(int i=(int)EquipmentMechanic.WeaponPower;i<=(int)EquipmentMechanic.RelicWard;i++)gems.Add((EquipmentMechanic)i);
             return gems.ToArray();
         }
-        public static int GemAttribute(EquipmentMechanic gem){return IsAttributeGem(gem)?(int)gem-(int)EquipmentMechanic.WeaponPower:MechanicAttribute(gem);}
+        public static EquipmentMechanic CurrentGem(EquipmentMechanic gem)
+        {
+            if(IsAttributeGem(gem)||gem==EquipmentMechanic.None)return gem;
+            return gem==EquipmentMechanic.CinderTrail?EquipmentMechanic.WeaponPower:gem==EquipmentMechanic.ReturningBlade?EquipmentMechanic.WeaponRuin:gem==EquipmentMechanic.FrostEcho?EquipmentMechanic.RelicWard:gem==EquipmentMechanic.VenomSpread?EquipmentMechanic.RelicPrecision:EquipmentMechanic.RelicVitality;
+        }
+        public static int GemAttribute(EquipmentMechanic gem){if(gem>=EquipmentMechanic.WeaponFlow&&gem<=EquipmentMechanic.RelicWard)return new[]{6,7,6,8,3,5}[(int)gem-(int)EquipmentMechanic.WeaponFlow];return IsAttributeGem(gem)?(int)gem-(int)EquipmentMechanic.WeaponPower:MechanicAttribute(gem);}
         public static float GemAttributeValue(EquipmentMechanic gem,Rarity rarity,int rank)
         {float[] basis={.03f,.015f,.06f,.05f,.08f,.01f,.04f,.015f,.02f};int attribute=GemAttribute(gem);return basis[Math.Max(0,Math.Min(8,attribute))]*(1+(int)rarity)*(1+.2f*rank);}
         public static string AttributeLabel(int attribute)
@@ -137,6 +142,7 @@ namespace Emberfall
 
         public static ItemSlot MechanicSlot(EquipmentMechanic mechanic)
         {
+            if(mechanic>=EquipmentMechanic.WeaponFlow&&mechanic<=EquipmentMechanic.RelicWard)return (ItemSlot)(((int)mechanic-(int)EquipmentMechanic.WeaponFlow)/2);
             if(IsAttributeGem(mechanic))return (ItemSlot)(((int)mechanic-(int)EquipmentMechanic.WeaponPower)/3);
             return mechanic == EquipmentMechanic.CinderTrail || mechanic == EquipmentMechanic.ReturningBlade ? ItemSlot.Weapon : ItemSlot.Relic;
         }
@@ -178,7 +184,7 @@ namespace Emberfall
 
         public static string GemName(EquipmentMechanic mechanic)
         {
-            if(IsAttributeGem(mechanic))return new[]{"赤锋","鹰眼","裂魂","赤铠","明镜","破军","赤曜","星瞳","灾星"}[(int)mechanic-(int)EquipmentMechanic.WeaponPower]+"宝石";
+            if(IsAttributeGem(mechanic))return new[]{"赤锋","鹰眼","裂魂","赤铠","明镜","破军","赤曜","星瞳","灾星","灵汐","疾咏","涌泉","轻羽","长生","星佑"}[(int)mechanic-(int)EquipmentMechanic.WeaponPower]+"宝石";
             switch(mechanic)
             {
                 case EquipmentMechanic.FrostEcho:return "霜鸣宝石";
@@ -471,6 +477,11 @@ namespace Emberfall
         public int xp;
         public int gold = 60;
         public int potions = 5;
+        public int revivalStones;
+        public int[] gemBags=new int[3];
+        public int gemBagSeed,gemBagsOpened;
+        public int retiredGemRefundShards;
+        public int[] revivalClaimedTiers=new int[3];
         public int skillPoints;
         public int tutorialMask;
         public bool classTutorialCompleted;
@@ -643,35 +654,35 @@ namespace Emberfall
                 "巨剑裁决与多段剑阵爆发，终结大范围敌群。无需战意，适合聚怪后的爆发。"
             },
             {
-                "冻结普通/精英敌人，解冻后暂时减速40%；首领保留霜痕，并可打断其带青色符号的预警。", "在瞄准地点降下陨星，造成范围爆发；主冲击可打断带青色符号的首领预警。", "在瞄准地点制造持续的奥术风暴。",
-                "被动：永久提高法术攻击与生命，学习后自动生效。", "雷霆在敌人间跳跃，逐个造成伤害并短暂眩晕。", "霜焰行者提高移速60%；碎冰/均衡释放伤害霜环，灼燃留下持续燃烧的火径，重叠足迹不叠伤。",
+                "冰刺持续4.2至5.4秒，将普通/精英敌人抛起；目标受重力下落，回到冰刺高度后会再次被击飞。首领保留霜痕，并可打断其带青色符号的预警。", "在瞄准地点降下陨星，造成范围爆发，将普通/精英敌人垂直抛起后自然落地；主冲击可打断带青色符号的首领预警。", "在瞄准地点制造持续6秒的奥术风暴。",
+                "被动：永久提高法术攻击与生命，学习后自动生效。", "雷霆在敌人间跳跃，逐个造成伤害并短暂眩晕。", "踏焰疾行，撞击敌人并留下灼烧火径。",
                 "在目标区域先释放冰霜冲击，再引爆雷霆，造成两段范围伤害与短暂控制。", "创造旋转的虚空漩涡，将敌人吸向中心并反复撕裂。等级提升会增大黑洞主体与吸附范围。", "被动：受伤后释放元素反击并回复能量，具有内置冷却。",
                 "陨星连续坠落，火焰、冰晶与雷霆逐段引爆目标区域；元素专精会改变爆发元素。无需奥能，兼顾范围伤害与控制。"
             },
             {
                 "向前方发射多支穿透箭矢。短冷却，适合清理敌群。", "在瞄准地点引爆陷阱，伤害并眩晕敌人；主爆炸可打断带青色符号的首领预警。", "向瞄准地点持续倾泻箭雨。",
-                "被动：永久提高暴击几率和移动速度，学习后自动生效。", "向瞄准方向跃进5米，0.55秒后砸地，造成范围伤害与击退；空中不能普攻，起跳仅有0.18秒保护，落地获得机动增益。", "毒蔓使敌人减速并叠加中毒，最多3层；离开毒区后毒伤仍会持续。",
+                "被动：永久提高暴击几率和移动速度，学习后自动生效。", "向瞄准方向跃进5米，0.55秒后砸地，造成范围伤害、击退并击倒普通/精英敌人；空中不能普攻，起跳仅有0.18秒保护，落地获得机动增益。", "毒蔓使敌人减速并叠加中毒，最多3层；离开毒区后毒伤仍会持续。",
                 "向前射出三支穿透风箭，并获得机动与普攻增益。", "锁定选区内的一名敌人持续追射，并使其受到的伤害提高12%至20%。目标死亡后不自动转锁。", "被动：受伤时自动短暂无敌并提高移动速度，具有内置冷却。",
                 "连续向目标周围降下实体箭雨，最后集中落箭冲击；觉醒后终爆追加放射箭。无需专注，适合敌群密集时使用。"
             },
             {
                 "向前方释放灵能冲击，造成扇形伤害并将敌人轰开；可打断带青色符号的首领预警。", "在目标地点生长荆棘，使敌人减速并持续中毒；首领减速效果降低。", "召唤灵狼自动追击并近战撕咬，持续14秒；群契模式同时召唤两只。再次施放替换旧灵狼。",
                 "被动：提高自身攻击，召唤物继承强化后的攻击。学习后永久生效。", "在选定地点架起木架星灵炮台，自动发射追踪炮弹，射程10.5米，持续12秒；炮台固定不动，再次施放替换旧炮台。", "自身发射穿透敌人的灵魂长矛，造成260%攻击伤害。",
-                "召唤由炽热熔石与燃烧羽焰构成的烬羽灵，自动移动并发射穿透灵羽攻击敌人，持续12秒；再次施放替换旧烬羽灵。", "在目标地点形成引力核心，持续聚拢敌人，结束时击飞普通/精英敌人；首领免疫浮空，牵引衰减。", "被动：受伤时释放灵能反击并回复灵力，具有独立内置冷却。",
+                "召唤由炽热熔石与燃烧羽焰构成的烬羽灵，自动移动并发射穿透灵羽攻击敌人，持续12秒；再次施放替换旧烬羽灵。", "在目标上方召唤能量球，持续4.2秒压制范围内的普通/精英敌人，使其倒地无法行动，结束时爆发并短暂击倒；首领承受伤害但免疫倒地。", "被动：受伤时释放灵能反击并回复灵力，具有独立内置冷却。",
                 "召唤一只远古树灵守卫，持续24秒，使用范围重击并击倒敌人；最多存在1只树灵；无需灵力；每2.5秒为6米内可见的主人恢复10%/12%/14%最大生命，树灵范围重击造成225%攻击伤害。"
             }
         };
         private static readonly string[,] ReinforcedEffects = {
-            { "追加一段旋斩；伤害+30%，范围+15%。", "追加震荡，延长眩晕；伤害+30%，范围+15%。", "剑刃风暴持续3秒；整段伤害单独预算，范围+15%。", "", "反击护盾持续8秒，减伤65%，反击范围扩大。", "冲锋末端追加爆发；伤害+30%，路径扩大。", "", "裂地增加至7段，逐段击飞；伤害+30%，范围+15%。", "", "裁决增加至7段；伤害+30%，范围+15%。" },
+            { "追加一段旋斩；伤害+30%，范围+15%。", "追加震荡，延长眩晕；伤害+30%，范围+15%。", "剑刃风暴持续4.35秒；整段伤害单独预算，范围+15%。", "", "反击护盾持续8秒，减伤65%，反击范围扩大。", "冲锋末端追加爆发；伤害+30%，路径扩大。", "", "裂地增加至7段，逐段击飞；伤害+30%，范围+15%。", "", "裁决增加至7段；伤害+30%，范围+15%。" },
             { "释放双重新星；伤害+30%，范围+15%。", "双陨星连续落下；伤害+30%，范围+15%。", "风暴脉冲加快；整段伤害单独预算，范围+15%。", "", "连锁最多8个目标；伤害+30%，范围+15%。", "霜焰持续8秒，强化霜环伤害；灼燃沿途留下火区。", "", "漩涡攻击增加至11次；伤害+30%，范围+15%。", "", "天灾增加至7段；伤害+30%，范围+15%。" },
-            { "增加至7支箭矢；伤害+30%，作用范围+15%。", "陷阱追加余震；伤害+30%，范围+15%。", "箭雨持续5秒；整段伤害单独预算，范围+15%。", "", "跃击范围+15%，落地伤害提高，获得6秒机动与普攻增益。", "毒区持续更久；伤害+30%，范围+15%。", "", "连续射出17支穿透箭；伤害+30%，射程扩大。", "", "箭幕增加至10段；伤害+30%，范围+15%。" },
-            { "灵能冲击伤害+30%，范围+15%，击退敌人。", "荆棘伤害+30%，范围+15%，延长减速与中毒覆盖。", "灵狼攻击+30%，持续18秒；自动追击近处敌人。", "", "炮台攻击+30%，持续16秒，固定位置自动发射灵弹。", "灵魂长矛伤害+30%，穿透范围+15%。", "", "引力印记伤害+30%，范围+15%，结束时击飞。", "", "树灵持续30秒，重击伤害+30%，范围扩大。" }
+            { "增加至7支箭矢；伤害+30%，作用范围+15%。", "陷阱追加余震；伤害+30%，范围+15%。", "箭雨持续6.5秒；整段伤害单独预算，范围+15%。", "", "跃击范围+15%，落地伤害提高，获得6秒机动与普攻增益。", "毒区持续更久；伤害+30%，范围+15%。", "", "连续射出17支穿透箭；伤害+30%，射程扩大。", "", "箭幕增加至10段；伤害+30%，范围+15%。" },
+            { "灵能冲击伤害+30%，范围+15%，击退敌人。", "荆棘伤害+30%，范围+15%，延长减速与中毒覆盖。", "灵狼攻击+30%，持续18秒；自动追击近处敌人。", "", "炮台攻击+30%，持续16秒，固定位置自动发射灵弹。", "灵魂长矛伤害+30%，穿透范围+15%。", "", "引力印记伤害+30%，范围+15%，持续倒地压制。", "", "树灵持续30秒，重击伤害+30%，范围扩大。" }
         };
         private static readonly string[,] AwakenedEffects = {
-            { "三段旋斩并牵引收束；伤害+60%，范围+35%。", "追加终结冲击与强化眩晕；伤害+60%，范围+35%。", "持续3.6秒，牵引敌人并追加收尾爆发。", "", "反击护盾持续10秒，减伤70%，多层圣光反击。", "冲锋终点爆发，起点追加残影冲击。", "", "8段裂地逐段击飞，并追加末端爆破；伤害+60%，范围+35%。", "", "8段裁决，终击留下2秒剑气领域。" },
+            { "三段旋斩并牵引收束；伤害+60%，范围+35%。", "追加终结冲击与强化眩晕；伤害+60%，范围+35%。", "持续5.1秒，牵引敌人并追加收尾爆发。", "", "反击护盾持续10秒，减伤70%，多层圣光反击。", "冲锋终点爆发，起点追加残影冲击。", "", "8段裂地逐段击飞，并追加末端爆破；伤害+60%，范围+35%。", "", "8段裁决，终击留下2秒剑气领域。" },
             { "双重新星后追加8枚冰片；同目标冰片递减并设上限，扩大范围与冻结。", "双陨星后留下2秒灼烧领域。", "高速脉冲聚拢敌人，并追加收束爆发。", "", "连锁最多10个目标，每个节点追加溅射。", "霜焰持续10秒，每秒释放强化霜环；灼燃沿途留下火区。", "", "13次漩涡攻击，更强吸附并追加终结爆发。", "", "8段天灾，终击留下聚怪元素领域。" },
-            { "9支穿透箭，命中追加爆裂；同目标后续命中递减，伤害有上限。", "引爆前吸附敌人，随后追加余震。", "持续6秒箭雨，并在结束时追加爆发。", "", "跃击范围+35%，起点追加残影陷阱，落地获得7秒机动与普攻增益。", "毒区吸附敌人，并在结束时追加爆裂。", "", "连续射出20支追踪穿透箭，强化覆盖能力。", "", "11段箭幕，终爆追加12支放射箭。" },
-            { "灵能冲击伤害+60%，范围+35%，将敌群轰开。", "荆棘伤害+60%，范围+35%，强化毒伤与区域控制。", "灵狼攻击+60%，持续22秒；自动追击近处敌人。", "", "炮台攻击+60%，持续20秒，固定位置自动发射灵弹。", "灵魂长矛伤害+60%，穿透范围+35%。", "", "引力印记伤害+60%，范围+35%，聚怪后以击飞结束。", "", "树灵持续36秒，重击伤害+60%，范围扩大。" }
+            { "9支穿透箭，命中追加爆裂；同目标后续命中递减，伤害有上限。", "引爆前吸附敌人，随后追加余震。", "持续7.5秒箭雨，并在结束时追加爆发。", "", "跃击范围+35%，起点追加残影陷阱，落地获得7秒机动与普攻增益。", "毒区吸附敌人，并在结束时追加爆裂。", "", "连续射出20支追踪穿透箭，强化覆盖能力。", "", "11段箭幕，终爆追加12支放射箭。" },
+            { "灵能冲击伤害+60%，范围+35%，将敌群轰开。", "荆棘伤害+60%，范围+35%，强化毒伤与区域控制。", "灵狼攻击+60%，持续22秒；自动追击近处敌人。", "", "炮台攻击+60%，持续20秒，固定位置自动发射灵弹。", "灵魂长矛伤害+60%，穿透范围+35%。", "", "引力印记伤害+60%，范围+35%，能量球持续压制并爆发。", "", "树灵持续36秒，重击伤害+60%，范围扩大。" }
         };
         public static string ClassName(HeroClass value) { return ClassNames[(int)value]; }
         public static Color ClassColor(HeroClass value) { return ClassColors[(int)value]; }

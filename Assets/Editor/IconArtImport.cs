@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
@@ -17,7 +17,8 @@ namespace Emberfall.Editor
             importer.alphaIsTransparency = true;
             importer.mipmapEnabled = false;
             importer.isReadable = false;
-            importer.maxTextureSize = 128;
+            importer.maxTextureSize = assetPath.Contains("/feather-wings-v2/")?1024:128;
+            if(assetPath.Contains("/feather-wings-v2/"))importer.mipmapEnabled=true;
             importer.npotScale = TextureImporterNPOTScale.None;
             importer.wrapMode = TextureWrapMode.Clamp;
             importer.filterMode = FilterMode.Bilinear;

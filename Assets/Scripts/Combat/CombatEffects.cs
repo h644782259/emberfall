@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace Emberfall
@@ -74,6 +74,10 @@ namespace Emberfall
         }
         private void LateUpdate(){RefreshBoundary();}
         private void Update()
+        {
+            using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.CombatEffects)) UpdateMeasuredEffect();
+        }
+        private void UpdateMeasuredEffect()
         {
             // Standalone rings/forks have no world parent to retire them. Check the
             // originating adventure before scaled time: title/death can freeze it.
@@ -330,6 +334,10 @@ namespace Emberfall
 
         private void Update()
         {
+            using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.CombatEffects)) UpdateMeasuredEffect();
+        }
+        private void UpdateMeasuredEffect()
+        {
             CombatImpactBatch.BeginAction();
             try
             {
@@ -405,7 +413,7 @@ namespace Emberfall
                 }
                 if (strikesPlayer)
                 {
-                    session.Player.TakeDamageFrom(damage.Amount, damageSource);
+                    session.Player.TakeDamageFrom(damage.Amount, damageSource,previous);
                     PhysicalSkillVfx.Impact(Vector3.Lerp(previous,transform.position,playerFraction),direction,color,.65f);
                     Destroy(gameObject);
                     return;
@@ -424,8 +432,8 @@ namespace Emberfall
                 foreach(var candidate in session.Enemies)
                 {
                     if(candidate==null||candidate.IsDead||!candidate.gameObject.activeInHierarchy||hitTargets.Contains(candidate))continue;
-                    float height=candidate.IsBoss?candidate.PhysicalBodyHeight:Mathf.Clamp((owner.EnemyBodyPoint(candidate).y-candidate.transform.position.y)*2,.65f,5f),fraction;
-                    if(!PhysicalSkillMotion.BodyContact(previous,transform.position,candidate.transform.position,height,candidate.ProjectileHitRadius,radius,out fraction))continue;
+                    float height=candidate.IsBoss?candidate.PhysicalBodyHeight:Mathf.Clamp((owner.EnemyBodyPoint(candidate).y-candidate.ImpactFeet.y)*2,.65f,5f),fraction;
+                    if(!PhysicalSkillMotion.BodyContact(previous,transform.position,candidate.ImpactFeet,height,candidate.ProjectileHitRadius,radius,out fraction))continue;
                     if(hitProp!=null&&fraction>propFraction)continue;
                     sweptHits.Add(new BodyHit{Enemy=candidate,Fraction=fraction});
                 }
@@ -537,7 +545,7 @@ namespace Emberfall
         private SkillVisualRecipe visualRecipe;
         private FilledSkillVfx.ArrowBatchHandle arrowRainVisual;
         private readonly ScheduledImpactBatch<EnemyController> pendingTickTargets = new ScheduledImpactBatch<EnemyController>();
-        private bool IsCurrentCast { get { return owner != null && session != null && session.Player == owner && !owner.IsDead && session.HasStarted && !session.CombatEffectsEnded && owner.CombatEpoch == epoch; } }
+        private bool IsCurrentCast { get { return owner != null && session != null && session.Player == owner && !owner.IsDead && session.HasStarted && !session.CombatEffectsEnded && owner.CombatEpoch == epoch && (!(follow&&duration>0&&owner.HeroClass==HeroClass.Vanguard)||owner.IsSkillChannelCurrent(castId)); } }
 
         public static void Spawn(PlayerController player, GameSession game, Vector3 at, float size, CombatDamage amount, float disable,
             float startup, float activeTime, float tickInterval, Color tint, bool followPlayer = false, bool fallingMeteor = false, float pulling = 0f, CombatDamage finisher = default(CombatDamage), int statusSkill = -1, int statusRank = 1, int castId = 0, SkillVisualRecipe visual = SkillVisualRecipe.Neutral, int trackedMechanic = -1)
@@ -588,6 +596,10 @@ namespace Emberfall
         }
 
         private void Update()
+        {
+            using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.CombatEffects)) UpdateMeasuredEffect();
+        }
+        private void UpdateMeasuredEffect()
         {
             if (!IsCurrentCast)
             { Retire(); return; }
@@ -682,19 +694,25 @@ namespace Emberfall
                     if (!pendingTickTargets.TryTake(out enemy)) break;
                     if (enemy == null || enemy.IsDead || !session.Enemies.Contains(enemy)) continue;
                     Vector3 delta = CombatFx.Flat(enemy.transform.position - transform.position);
-                    if (delta.magnitude <= radius + (enemy.IsBoss ? .85f : .4f) + enemy.HitFootprintBonus && CombatSight.Area(transform.position,enemy.transform.position))
+                    float contactHeight=visualRecipe==SkillVisualRecipe.Ice?EnemyImpactMotion.FrostContactHeight:meteor?3.2f:lightningVisual?5f:2f;
+                    float feet=enemy.ImpactFeet.y-transform.position.y;
+                    if (delta.magnitude <= radius && feet<=contactHeight&&feet+enemy.PhysicalBodyHeight>=0 && CombatSight.Area(transform.position,enemy.transform.position))
                     {
                         if (fireVisual)
                             ElementalCombatVfx.OnEnemy(enemy, ElementalCombatVfx.Element.Fire, 2.5f);
                         if (poisonVisual)
                             ElementalCombatVfx.OnEnemy(enemy, ElementalCombatVfx.Element.Poison, 2f);
-                        enemy.TakeDamage(owner.ResolveSkillImpact(enemy, statusSkill, castId, damage.Amount, damage.IsCritical, damage.CriticalMultiplier),delta.normalized,.3f,stun,critical:damage.IsCritical,actualHealthLoss:mechanismInstance==null?(System.Action<float>)null:RecordMechanismHealthLoss,practiceCastId:castId);
+                        enemy.TakeDamage(owner.ResolveSkillImpact(enemy, statusSkill, castId, damage.Amount, damage.IsCritical, damage.CriticalMultiplier),delta.normalized,meteor||visualRecipe==SkillVisualRecipe.Ice?0:.3f,stun,critical:damage.IsCritical,actualHealthLoss:mechanismInstance==null?(System.Action<float>)null:RecordMechanismHealthLoss,practiceCastId:castId);
                         owner.RegisterSkillHit(castId);
                         if (tick == 0 && lightningVisual)
                             ElementalCombatVfx.Lightning(transform.position + Vector3.up * 2f,
                                 enemy.transform.position + Vector3.up * (enemy.IsBoss ? 2f : 1f));
                         if (enemy.StatusEffects != null && statusSkill == 0 && owner.HeroClass == HeroClass.Arcanist)
+                        {
                             owner.ApplyNovaStatus(enemy, statusRank);
+                            enemy.StatusEffects.Knockup(1.2f,2.2f,true);
+                        }
+                        if(meteor&&enemy.StatusEffects!=null)enemy.StatusEffects.Knockup(1.4f,2.8f,true);
                         if (enemy.StatusEffects != null && ((statusSkill == 5 && owner.HeroClass == HeroClass.Ranger) || (statusSkill == 1 && owner.HeroClass == HeroClass.Summoner)))
                         {
                             enemy.StatusEffects.Slow(3f, .3f + statusRank * .07f);
@@ -725,7 +743,7 @@ namespace Emberfall
         }
 
         private void Retire() { pendingTickTargets.Clear(); Destroy(gameObject); }
-        private void OnDisable() { if(performance!=null){performance.Retire();performance=null;}arrowRainVisual.Retire();arrowRainVisual=default;castReceipt?.Release();castReceipt=null;pendingTickTargets.Clear(); }
+        private void OnDisable() { if(owner!=null&&follow&&duration>0&&owner.HeroClass==HeroClass.Vanguard)owner.EndSkillChannel(castId);if(performance!=null){performance.Retire();performance=null;}arrowRainVisual.Retire();arrowRainVisual=default;castReceipt?.Release();castReceipt=null;pendingTickTargets.Clear(); }
 
         private void OnDestroy()
         {

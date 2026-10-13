@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 namespace Emberfall
 {
     public sealed partial class CombatModel
@@ -13,41 +13,21 @@ namespace Emberfall
         private void BuildFashionWingShape(FashionData wings,Color color)
         {
             fashionWings.localPosition += RearSilhouette.WingOffset(heroClass);
-            fashionWings.localScale=Vector3.one*CostumeRecipes.WingScale(wings.VisualRarity)*(1f+.05f*wings.upgradeRank);
-            WingSilhouette style=CostumeRecipes.WingStyle(wings.VisualRarity);
-            Color primary=wings.VisualRarity==Rarity.Common?new Color(.7f,.76f,.82f):wings.VisualRarity==Rarity.Rare?new Color(.16f,.7f,1):wings.VisualRarity==Rarity.Epic?new Color(.7f,.32f,1):new Color(1,.58f,.18f);
-            primary=Color.Lerp(primary,Color.white,wings.upgradeRank*.1f);
-            int count=CostumeRecipes.WingFeathers(wings.VisualRarity)+wings.upgradeRank;
+            int tier=Mathf.Clamp((int)wings.VisualRarity,0,3);
+            fashionWings.localScale=Vector3.one*(.70f+tier*.13f)*(1f+.025f*wings.upgradeRank);
+            Color metal=tier<2?new Color(.62f,.7f,.79f):new Color(.88f,.65f,.27f);
             for(int side=-1;side<=1;side+=2)
             {
-                for(int i=0;i<count;i++)
-                {
-                    bool crystal=(int)wings.VisualRarity>=(int)Rarity.Epic;
-                    Color accent=wings.VisualRarity==Rarity.Common?primary:i%3==0?primary:i%3==1?Color.Lerp(primary,Color.white,.45f):new Color(.18f,.95f,.85f);
-                    var feather=CostumeMesh(crystal?"Layered prismatic flight blade":"Swept flight feather",crystal?WingSilhouette.Crystal:WingSilhouette.Feather,fashionWings,
-                        new Vector3(side*(.12f+i*.115f),.12f-i*.07f,-i*.025f),new Vector3(1,.78f-i*.06f,1),accent,crystal?VisualSurface.Crystal:VisualSurface.Cloth);
-                    feather.localRotation=Quaternion.Euler(12,side*RearSilhouette.WingYaw(heroClass),-side*(RearSilhouette.WingSpread(heroClass)+i*12));
-                    int trails=CostumeRecipes.WingTrailCount(wings.VisualRarity,Application.isMobilePlatform,EffectPreferences.ReducedEffects);
-                    if(i==count-1&&trails>=2||i==count-2&&trails>=4)
-                    {
-                        var tip=NewJoint("Bounded wing glimmer trail",feather,new Vector3(0,.95f,0));var trail=tip.gameObject.AddComponent<TrailRenderer>();
-                        trail.sharedMaterial=Mat(accent,VisualSurface.Crystal);trail.startWidth=.028f;trail.endWidth=0;trail.minVertexDistance=.15f;trail.numCapVertices=0;trail.numCornerVertices=0;
-                        trail.startColor=accent;trail.endColor=new Color(accent.r,accent.g,accent.b,0);trail.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;trail.receiveShadows=false;
-                        tip.gameObject.AddComponent<FashionTrailBudget>().Initialize(trail);
-                    }
-                }
-                Part("Wing scapular support",PrimitiveType.Capsule,new Vector3(side*.22f,.04f,0),new Vector3(.11f,.32f,.10f),primary,fashionWings,VisualSurface.Cloth).localRotation=Quaternion.Euler(0,0,-side*52);
+                var wing=NewJoint("Layered feather wing",fashionWings,new Vector3(side*.12f,.08f,0));
+                wing.localRotation=Quaternion.Euler(8,side*RearSilhouette.WingYaw(heroClass),0);
+                wing.gameObject.AddComponent<MeshFilter>().sharedMesh=FeatherWingMesh.PaintedSurface(side);
+                var renderer=wing.gameObject.AddComponent<MeshRenderer>();
+                renderer.sharedMaterial=FeatherWingMesh.PaintedMaterial(tier);
+                renderer.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;
+                wing.gameObject.AddComponent<FeatherWingSway>().Initialize(side,tier,renderer);
+                if(tier>0)GlowingPart("Wing heart jewel",PrimitiveType.Sphere,new Vector3(side*.39f,.38f,-.10f),Vector3.one*(.075f+tier*.014f),tier==2?new Color(.7f,.35f,1):new Color(.28f,.7f,1),fashionWings);
             }
-            if(style==WingSilhouette.Mechanical)
-            {
-                Transform orbit=NewJoint("Mechanical star-ring orbit",fashionWings,new Vector3(0,.12f,-.06f));
-                CostumeMesh("Bronze outer astrolabe",style,orbit,Vector3.zero,Vector3.one*.34f,new Color(.85f,.55f,.16f),VisualSurface.Metal);
-                CostumeMesh("Inclined inner astrolabe",style,orbit,Vector3.zero,Vector3.one*.24f,new Color(.3f,.9f,1),VisualSurface.Crystal).localRotation=Quaternion.Euler(28,15,0);
-                orbit.gameObject.AddComponent<FashionOrbit>();
-            }
-            if(wings.rarity==Rarity.Legendary)for(int side=-1;side<=1;side+=2)
-                CostumeMesh("Legendary flight rim",WingSilhouette.Crystal,fashionWings,new Vector3(side*.34f,.28f,-.055f),new Vector3(.28f,.38f,.24f),Color.Lerp(primary,Color.white,.55f),VisualSurface.Crystal).localRotation=Quaternion.Euler(0,0,-side*(32+(int)wings.VisualRarity*8));
-            Part("Wing clasp",PrimitiveType.Sphere,Vector3.zero,new Vector3(.16f,.18f,.1f),Color.white,fashionWings,VisualSurface.Crystal);
+            Part("Engraved wing clasp",PrimitiveType.Sphere,Vector3.zero,new Vector3(.18f,.22f,.1f),metal,fashionWings,VisualSurface.Metal);
         }
         private void BuildClassCostume()
         {

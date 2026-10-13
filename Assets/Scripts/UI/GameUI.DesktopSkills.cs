@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 namespace Emberfall
 {
     public sealed partial class GameUI
@@ -32,11 +32,13 @@ namespace Emberfall
             float prerequisiteHeight=DesktopParagraphHeight(prerequisite,530,12);
             string[] evolutions=new string[3];
             float evolutionHeight=0;
-            bool scaleLine=showOffenseScale && !(skill==2&&p.heroClass!=HeroClass.Summoner)&&!(p.heroClass==HeroClass.Ranger&&skill==0&&BuildCatalog.ConcentratedVenomEquipped(p));
+            bool scaleLine=false;
             for(int stage=1;stage<=3;stage++)
             {
                 evolutions[stage-1]=skill==2&&p.heroClass!=HeroClass.Summoner?SkillBudgetHint(p.heroClass,skill,stage):GameBalance.SkillEvolution(p.heroClass,skill,stage);
                 string venom=BuildCatalog.VenomSkillOverride(p,skill,stage);if(venom.Length>0)evolutions[stage-1]=venom;
+                evolutions[stage-1]=System.Text.RegularExpressions.Regex.Replace(evolutions[stage-1],@"[，；、 ]*(伤害|范围)\+\d+%[，；、。 ]*","");
+                string numbers=SkillNumbers(p,skill,stage);if(numbers.Length>0)evolutions[stage-1]=numbers+"\n"+evolutions[stage-1];
                 evolutionHeight=Mathf.Max(evolutionHeight,DesktopParagraphHeight(evolutions[stage-1],154,scaleLine?10:11));
             }
             float statsY=descriptionHeight+10,prerequisiteY=statsY+73;
@@ -72,8 +74,6 @@ namespace Emberfall
                 Text(new Rect(evolution.x+9,evolution.y+7,65,20),GameBalance.SkillRankName(stage),14,stage<=rank?gold:pale,true);
                 SkillStateTag(new Rect(evolution.x+9,evolution.y+31,60,22),"Lv."+GameBalance.SkillRankRequiredLevel(skill,stage),muted,10);
                 if(current)DrawIcon(new Rect(evolution.xMax-30,evolution.y+7,22,22),UIIconAtlas.Utility("confirm"),gold);
-                if(scaleLine)
-                    Text(new Rect(evolution.x+9,evolution.y+59,154,16),"阶级系数 "+(100+(stage-1)*30)+"% · 范围 "+Mathf.RoundToInt(GameBalance.SkillRangeMultiplier(p.heroClass,skill,stage)*100)+"%",10,jade);
                 Text(new Rect(evolution.x+9,evolution.y+(scaleLine?78:60),154,evolutionHeight),evolutions[stage-1],scaleLine?10:11,scaleLine?muted:jade,false,true);
             }
             if(detailOverflow)EndTouchScroll();else GUI.EndGroup();

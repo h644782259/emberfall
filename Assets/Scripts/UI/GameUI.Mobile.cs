@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Emberfall
 {
@@ -16,7 +16,7 @@ namespace Emberfall
         {
             Rect r=TouchRect(area);blockedRects.Add(r);
             float size=28*TouchRatio;DrawIcon(new Rect(r.center.x-size*.5f,r.center.y-size*.5f,size,size),UIIconAtlas.Utility(icon),color);
-            Badge(r,icon=="inventory"?NewEquipmentAttention||Attention.LootPending:icon=="skills"?Attention.Skills:icon=="achievement"?session.Progression.ClaimableAchievements>0:false);
+            Badge(r,icon=="inventory"?NewEquipmentAttention||Attention.LootPending:icon=="skills"?Attention.Skills:icon=="achievement"?CachedAchievementAttention:false);
             return GUI.Button(r,GUIContent.none,invisibleButton);
         }
 
@@ -53,7 +53,7 @@ namespace Emberfall
                 if(targeting!=null&&!targeting.Begin(skill))
                 {if(string.IsNullOrEmpty(session.ControlFailure("skill"+skill)))session.ReportControlFailure("skill"+skill,"暂不可用");}}
         }
-        public bool MobileDungeonEntranceVisible {get{return session!=null&&!session.PracticeActive&&!session.InDungeon&&!session.InputBlocked&&!session.DungeonSelectionOpen&&!session.NearChapterExit&&!session.NearRoomExit&&!session.SideEventAvailable&&session.IsNearDungeonEntrance&&session.Progression.CanEnterDungeon;}}
+        public bool MobileDungeonEntranceVisible {get{return session!=null&&!session.PracticeActive&&!session.InDungeon&&!session.InputBlocked&&!session.DungeonSelectionOpen&&!session.NearChapterExit&&!session.NearRoomExit&&!session.SideEventAvailable&&(session.IsNearDungeonEntrance||session.IsNearChapterEntrance)&&session.Progression.CanEnterDungeon;}}
         public MobileControlLayout.Area MobileInteractionArea
         {
             get
@@ -66,7 +66,7 @@ namespace Emberfall
             }
         }
         public bool MobileInteractionVisible {get{return session!=null&&!session.PracticeActive&&(session.NearDungeonReturn||session.NearChapterExit||session.NearRoomExit||session.SideEventAvailable||MobileDungeonEntranceVisible);}}
-        private bool CanMobileInteract {get{return session!=null&&!session.PracticeActive&&!session.InputBlocked&&!session.DungeonSelectionOpen&&(session.NearDungeonReturn||session.NearChapterExit||session.NearRoomExit||session.SideEventAvailable||session.InDungeon||session.IsNearDungeonEntrance);}}
+        private bool CanMobileInteract {get{return session!=null&&!session.PracticeActive&&!session.InputBlocked&&!session.DungeonSelectionOpen&&(session.NearDungeonReturn||session.NearChapterExit||session.NearRoomExit||session.SideEventAvailable||session.InDungeon||(session.IsNearDungeonEntrance||session.IsNearChapterEntrance));}}
         public void ActivateMobileInteraction(int triggeringFinger=TouchReleaseLatch.AnyPointer)
         {
             if(!CanMobileInteract||UITransitionBlocked)return;
@@ -109,17 +109,21 @@ namespace Emberfall
         {
             var l=MobileControls.Layout;GameProfile p=session.Progression.Profile;
             DrawMobileVitals(l);
+            bool hudEnabled=GUI.enabled;GUI.enabled=CanSwitchFunction&&!UITransitionBlocked;
             if(MobileIcon(l.Inventory,"inventory",jade))TogglePanel(Panel.Inventory);
             if(MobileIcon(l.SkillsMenu,"skills",p.skillPoints>0?gold:jade))TogglePanel(Panel.Skills);
+            GUI.enabled=hudEnabled;
             if(MobileIcon(l.Menu,"settings",pale))session.SetPaused(true);
+            GUI.enabled=CanSwitchFunction&&!UITransitionBlocked;
             if(MobileIcon(l.Catalog,"achievement",gold))OpenProgressionGoals();
             if(HubServicesAvailable)
             {
                 if(MobileIcon(l.Shop,"shop",gold))OpenHubService(HubNpcKind.Merchant);
                 if(MobileIcon(l.Smith,"smith",jade))OpenHubService(HubNpcKind.Blacksmith);
             }
+            GUI.enabled=hudEnabled;
             Rect map=TouchRect(l.Map);blockedRects.Add(map);DrawMinimapTerrain(map);
-            if(!session.InDungeon){MapDot(map,new Vector3(0,0,11),jade,4*TouchRatio);for(int npc=0;npc<3;npc++)MapDot(map,GameSession.HubNpcPosition(npc),gold,3*TouchRatio);}
+            if(!session.InDungeon){MapDot(map,new Vector3(0,0,11),jade,4*TouchRatio);MapDot(map,GameSession.ChapterEntrancePosition,new Color(.8f,.5f,1),4*TouchRatio);for(int npc=0;npc<3;npc++)MapDot(map,GameSession.HubNpcPosition(npc),gold,3*TouchRatio);}
             else if(session.DungeonReturnAvailable)MapDot(map,session.DungeonReturnPosition,jade,4*TouchRatio);
             if(session.Player!=null)MapDot(map,session.Player.transform.position,jade,4*TouchRatio);
             foreach(var enemy in session.Enemies)if(enemy!=null&&!enemy.IsDead)MapDot(map,enemy.transform.position,enemy.IsBoss?gold:new Color(1,.4f,.3f),2*TouchRatio);
@@ -128,11 +132,12 @@ namespace Emberfall
             if(string.IsNullOrEmpty(session.Notification)&&!MobileLootReplacesInformation)
             {
                 if(session.ChapterActive||session.SpecialAdventure)DrawMobileModeStatus(TouchRect(l.AdventureStatus));
-                else if(!session.IsNearDungeonEntrance&&TryGrowthHudHint(out growthTitle,out growthStep))
+                else if(!(session.IsNearDungeonEntrance||session.IsNearChapterEntrance)&&TryGrowthHudHint(out growthTitle,out growthStep))
                 {
                     Rect goal=TouchRect(l.AdventureStatus);float y=goal.y;
                     DrawMobileObjectiveText(goal,ref y,growthTitle,11,gold,true,true);
                     DrawMobileObjectiveText(goal,ref y,growthStep,10,pale);
+                    DrawObjectiveDirection(new Rect(goal.x,y,110*TouchRatio,24*TouchRatio),TouchRatio);
                 }
             }
             if(session.InDungeon&&!session.SpecialAdventure)
@@ -140,7 +145,7 @@ namespace Emberfall
             DrawMobileHotbar();
             DrawCompanionCommands();
 
-            string interaction=MobileDungeonEntranceVisible?"进入副本":session.NearDungeonReturn?"传送点":session.NearChapterExit?"沿星路前进":session.NearRoomExit?"进入下一间":session.SideEventAvailable?"开启晶核挑战":session.InDungeon?"返回营地":session.IsNearDungeonEntrance?"进入副本":"靠近入口";
+            string interaction=MobileDungeonEntranceVisible?(session.IsNearChapterEntrance?"星路章节":"普通副本"):session.NearDungeonReturn?"传送点":session.NearChapterExit?"沿星路前进":session.NearRoomExit?"进入下一间":session.SideEventAvailable?"开启晶核挑战":session.InDungeon?"返回营地":(session.IsNearDungeonEntrance||session.IsNearChapterEntrance)?"进入副本":"靠近入口";
             if(MobileInteractionVisible)
             {
             Rect interact=TouchRect(MobileInteractionArea);blockedRects.Add(interact);
@@ -151,8 +156,8 @@ namespace Emberfall
             Text(interact,interaction,TouchFont(11),CanMobileInteract?gold:muted,true,false,TextAnchor.MiddleCenter);
 
             }
-            EnemyController boss=null;foreach(var e in session.Enemies)if(e!=null&&e.IsBoss&&!e.IsDead){boss=e;break;}
-            if(boss!=null){Rect bossBar=TouchRect(l.BossHealth);Rect bossName=TouchRect(l.BossHealth.X,8,l.BossHealth.Width,20);blockedRects.Add(bossName);Text(bossName,boss.DisplayName,TouchFont(11),gold,true,false,TextAnchor.MiddleCenter);blockedRects.Add(bossBar);Bar(bossBar,boss.Health/Mathf.Max(1,boss.MaxHealth),new Color(.93f,.34f,.29f));}
+            var target=session.Player==null?null:session.Player.AimTarget;
+            if(target!=null&&!target.IsDead)DrawEnemyTargetPanel(target);else DrawDungeonStatus();
             var targeting=session.Player==null?null:session.Player.GetComponent<SkillTargetingController>();
             var charge=session.Player==null?null:session.Player.GetComponent<SkillChargeController>();
             if(charge!=null&&charge.IsCharging)Bar(TouchRect(26,l.Height-40,128,5),charge.Progress,gold);
@@ -273,7 +278,7 @@ namespace Emberfall
             {
                 var hero=(HeroClass)i;Color tint=GameBalance.ClassColor(hero);Rect r=TitleRect(i*134,50,126,166);
                 Fill(r,new Color(.055f,.09f,.13f));Border(r,selectedClass==hero?gold:tint*.45f,selectedClass==hero?2:1);
-                DrawCrest(TitleRect(i*134+26,68,74,78),hero,tint);
+                DrawHeroPortrait(TitleRect(i*134+7,58,112,102),hero,"class-"+i);
                 Text(TitleRect(i*134+5,166,116,31),GameBalance.ClassName(hero),TitleFont(18),pale,true,false,TextAnchor.MiddleCenter);
                 if(GUI.Button(r,GUIContent.none,invisibleButton))selectedClass=hero;
             }
@@ -290,14 +295,15 @@ namespace Emberfall
             if(mobileSaveSelectionIssue!=saveSelectionError)
             {mobileSaveSelectionIssue=saveSelectionError;if(!string.IsNullOrEmpty(saveSelectionError)){CancelMobileScroll();saveSelectionScroll=Vector2.zero;}}
             float issueHeight=string.IsNullOrEmpty(saveSelectionError)?0:MeasureMobileParagraph(saveSelectionError,panelWidth-42,14,true)+16;
-            saveSelectionScroll=BeginTouchScroll("mobile-saves",viewport,saveSelectionScroll,new Rect(0,0,(panelWidth-20)*ratio,Mathf.Max(viewport.height,(issueHeight+saveSlots.Count*68)*ratio)));
+            saveSelectionScroll=BeginTouchScroll("mobile-saves",viewport,saveSelectionScroll,new Rect(0,0,(panelWidth-20)*ratio,Mathf.Max(viewport.height,(issueHeight+saveSlots.Count*96)*ratio)));
             if(issueHeight>0)DrawMobileParagraph(10,6,panelWidth-42,saveSelectionError,14,gold,true);
             for(int i=0;i<saveSlots.Count;i++)
             {
-                var slot=saveSlots[i];Rect r=new Rect(0,(issueHeight+i*68)*ratio,(panelWidth-22)*ratio,60*ratio);
+                var slot=saveSlots[i];Rect r=new Rect(0,(issueHeight+i*96)*ratio,(panelWidth-22)*ratio,88*ratio);
                 Fill(r,card);Border(r,selectedSaveId==slot.Id?gold:jade*.35f);
-                Text(new Rect(12*ratio,r.y+7*ratio,(panelWidth-200)*ratio,23*ratio),slot.DisplayName,TouchFont(16),pale,true);
-                Text(new Rect(12*ratio,r.y+34*ratio,(panelWidth-50)*ratio,19*ratio),(slot.SavedAtUtc==System.DateTime.MinValue?"时间未知":slot.SavedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm"))+(slot.DeletionPending?"  删除未完成":""),TouchFont(12),muted);
+                if(slot.CanLoad&&r.yMax>=saveSelectionScroll.y&&r.y<=saveSelectionScroll.y+viewport.height)DrawHeroPortrait(new Rect(4*ratio,r.y+3*ratio,68*ratio,82*ratio),slot.HeroClass,"save-"+slot.Id,slot);
+                Text(new Rect(82*ratio,r.y+17*ratio,(panelWidth-210)*ratio,23*ratio),slot.DisplayName,TouchFont(16),pale,true);
+                Text(new Rect(82*ratio,r.y+49*ratio,(panelWidth-110)*ratio,19*ratio),(slot.SavedAtUtc==System.DateTime.MinValue?"时间未知":slot.SavedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm"))+(slot.DeletionPending?"  删除未完成":""),TouchFont(12),muted);
                 if(GUI.Button(r,GUIContent.none,invisibleButton)){selectedSaveId=slot.Id;saveSelectionError=null;}
             }
             EndTouchScroll();

@@ -1,8 +1,8 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Emberfall
 {
-    /// <summary>A pending cast owns one fixed aim and commits its budget only on release.</summary>
+    /// <summary>A pending cast owns one fixed aim and pays its budget at input and releases after its windup.</summary>
     public sealed class SkillChargeController : MonoBehaviour
     {
         public bool IsCharging { get { return SkillIndex >= 0; } }
@@ -31,6 +31,7 @@ namespace Emberfall
             if (owner == null || session == null || IsCharging || ConsumedThisFrame || !owner.CanBeginSkillTargeting(skill)) return false;
             float chargeTime = Duration(owner.HeroClass, skill);
             if (chargeTime <= 0) return false;
+            if (!owner.PaySkillPreparation(skill)) return false;
             int rank = session.Progression.Profile.skillRanks[skill];
             Vector3 origin = owner.transform.position;
             bool contract = owner.HeroClass == HeroClass.Summoner && (skill == 4 || skill == 9);
@@ -82,7 +83,7 @@ namespace Emberfall
             if (elapsed < duration) return;
             int skill = SkillIndex;
             SkillIndex = -1;
-            // Revalidate the learned rank, budget and cooldown at the actual release.
+            // The budget was paid at input; release must not charge it again.
             // TargetPoint/Direction remain the original snapshot through this call.
             if (!ValidSnapshotTarget()) TargetEnemy = null;
             owner.ExecuteChargedSkill(skill);

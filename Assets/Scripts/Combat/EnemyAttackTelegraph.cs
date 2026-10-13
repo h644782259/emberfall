@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace Emberfall
@@ -19,7 +19,7 @@ namespace Emberfall
         private float impactRadius, progress;
         private Color earthTint;
         private int lastRevision = -1;
-        private bool interruptible, circular, slime;
+        private bool interruptible, circular, slime, controlWarning;
         private readonly Color danger = new Color(.34f, .18f, .075f);
 
         public static EnemyAttackTelegraph Circle(Vector3 center, float radius, Transform attacker, bool slime = false)
@@ -140,19 +140,22 @@ namespace Emberfall
             if (interruptCore != null) interruptCore.gameObject.SetActive(value);
         }
 
+        public void SetControlWarning(bool value) { controlWarning=value; Present(); }
+
         public void SetProgress(float value) { progress = Mathf.Clamp01(value); Present(); }
 
         private void Present()
         {
             for (int i = 0; i < bodies.Count; i++)
             {
-                float load = .35f + progress * .65f;
+                float load = (controlWarning ? .65f : .35f) + progress * .65f;
                 bodies[i].position = WorldTerrain.Ground(points[i], -.025f + scales[i].y * load * .4f);
                 bodies[i].localScale = Vector3.Scale(scales[i], new Vector3(1, load, 1));
                 Color tint = Color.Lerp(earthTint, slime ? new Color(.36f, .43f, .18f) : danger, progress);
+                if(controlWarning)tint=Color.Lerp(new Color(.85f,.37f,.06f),new Color(1f,.12f,.035f),progress);
                 block.Clear(); block.SetColor("_Color", tint); block.SetColor("_Tint", tint);
-                block.SetFloat("_Heat", slime ? 0 : progress * .8f);
-                block.SetColor("_EmissionColor", (slime ? new Color(.18f, .24f, .025f) : new Color(.7f,.13f,.015f)) * progress * .025f);
+                block.SetFloat("_Heat", controlWarning ? .65f+progress*.35f : slime ? 0 : progress * .8f);
+                block.SetColor("_EmissionColor", (slime ? new Color(.18f, .24f, .025f) : new Color(.7f,.13f,.015f)) * (controlWarning ? .45f+progress*.55f : progress*.025f));
                 renderers[i].SetPropertyBlock(block);
             }
             if (interruptCore != null)

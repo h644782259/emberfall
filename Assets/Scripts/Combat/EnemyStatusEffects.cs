@@ -26,8 +26,10 @@ namespace Emberfall
         public float OwnBurnRemaining(PlayerController source)
         {return source!=null&&burnSource==source&&burnEpoch==source.CombatEpoch?burnTime:0;}
         public bool KnockedDown { get { return downTime > 0; } }
-        public bool IsAirborne { get { return airborneTime > 0; } }
-        public float AirborneHeight { get { return airborneTime <= 0 ? 0 : Mathf.Sin(Mathf.Clamp01(1f - airborneTime / airborneDuration) * Mathf.PI) * airborneHeight; } }
+        public bool IsAirborne { get { return impactMotion.Airborne; } }
+        public float AirborneHeight { get { return impactMotion.Height; } }
+        public float AirborneVelocity { get { return impactMotion.Velocity; } }
+        public bool CanReceiveFrostLift => impactMotion.CanLift(EnemyImpactMotion.FrostContactHeight);
         public string Summary { get {
             string value = IsAirborne ? "浮空 " : downTime > 0 ? "击倒 " : frozenTime > 0 ? "冻结 " : enemy != null && enemy.IsStunned ? "眩晕 " : "";
             if (frostMarkTime > 0 && frozenTime <= 0) value += "霜痕 ";
@@ -53,7 +55,8 @@ namespace Emberfall
         private Transform model;
         private CombatModel knockdownModel;
         private bool wasDown;
-        private float airborneTime, airborneDuration, airborneHeight, airborneRecovery;
+        private EnemyImpactMotion impactMotion;
+        private float airborneRecovery;
 
         internal event System.Action VisualStateChanged;
         private void NotifyVisualState(){var changed=VisualStateChanged;if(changed!=null)changed();}
@@ -94,23 +97,33 @@ namespace Emberfall
             return ConsumeFrost();
         }
 
-        public void Knockdown(float duration)
+        public void Knockdown(float duration, bool physicalImpact=false)
         {
             if (enemy == null || enemy.IsDead || duration <= 0 || float.IsNaN(duration) || float.IsInfinity(duration)) return;
             float granted = enemy.ApplyControl(duration);
             if (!enemy.IsBoss && granted <= 0) granted = Mathf.Min(duration, enemy.ControlStunRemaining);
+            if(physicalImpact&&!enemy.IsBoss)granted=Mathf.Max(granted,Mathf.Min(duration,enemy.Tier==EnemyController.ThreatTier.Elite?.9f:1.8f));
             downTime = Mathf.Max(downTime, granted);
+            if(granted>0)enemy.StopForPhysicalImpact();
         }
-        public void Knockup(float duration, float height)
+        public void Suppress(float lease)
         {
-            if (enemy == null || enemy.IsDead || enemy.IsBoss || duration <= 0 || float.IsNaN(duration) || float.IsInfinity(duration) || IsAirborne || airborneRecovery > 0) return;
+            if(enemy==null||enemy.IsDead||enemy.IsBoss||!FinitePositive(lease))return;
+            downTime=Mathf.Max(downTime,Mathf.Min(.3f,lease));
+            if(IsAirborne)impactMotion.PressDown();
+            enemy.StopForPhysicalImpact();
+        }
+        public void Knockup(float duration, float height, bool sustainedField=false)
+        {
+            if (enemy == null || enemy.IsDead || enemy.IsBoss || !FinitePositive(duration)||!FinitePositive(height) ||
+                (sustainedField?!CanReceiveFrostLift:IsAirborne||airborneRecovery>0)) return;
             float granted = enemy.ApplyControl(Mathf.Clamp(duration, .3f, 1.2f));
             if (granted <= 0) granted = Mathf.Min(1.2f, enemy.ControlStunRemaining);
-            if (granted <= 0) return;
-            airborneDuration = granted;
-            airborneTime = airborneDuration;
-            airborneHeight = Mathf.Clamp(height, .25f, 2f) * (enemy.IsBoss ? .18f : 1f);
-            airborneRecovery = airborneDuration + (enemy.IsBoss ? 2.5f : enemy.Tier == EnemyController.ThreatTier.Elite ? 1.1f : .45f);
+            if (granted <= 0 && !sustainedField) return;
+            float apex=Mathf.Clamp(height,.8f,3.2f);
+            impactMotion.Launch(apex);downTime=0;
+            airborneRecovery = sustainedField?0:2*Mathf.Sqrt(2*apex/EnemyImpactMotion.Gravity)+.2f;
+            enemy.StopForPhysicalImpact();
             enemy.Provoke();
         }
         public void Mark(float duration, float vulnerability)
@@ -286,7 +299,7 @@ namespace Emberfall
             for(int i=0;i<ScheduledTickWindow.MaximumCatchUp&&!enemy.IsDead&&!game.InputBlocked&&!game.CombatEnded&&burnSchedule!=null&&burnSchedule.TryTakeDueTick(true);i++)
                 enemy.TakeDamage(burnDamage*StatusTickRates.Burn,Vector3.zero,impact:false,damageIcon:"burn");
             if(burnSchedule!=null&&burnSchedule.Complete){burnTime=burnDamage=0;burnSource=null;}
-            airborneTime = Mathf.Max(0, airborneTime - dt);
+            if(impactMotion.Advance(dt))downTime=Mathf.Max(downTime,.35f);
             airborneRecovery = Mathf.Max(0, airborneRecovery - dt);
             if (slowTime <= 0) slowStrength = 0;
             if (markTime <= 0) markStrength = 0;
@@ -305,8 +318,13 @@ namespace Emberfall
             var game=GameSession.Instance;
             float dt=game!=null&&game.HasStarted&&!game.InputBlocked?Time.deltaTime:0;
             if(knockdownModel!=null&&knockdownModel.TryAnimateKnockdown(downTime,IsAirborne,dt)){wasDown=false;return;}
-            if (downTime > 0 && !enemy.IsBoss) { model.localRotation = Quaternion.Euler(0, 0, 72); wasDown = true; }
-            else if (wasDown) { model.localRotation = Quaternion.identity; wasDown = false; }
+            if (downTime > 0 && !enemy.IsBoss && !IsAirborne)
+            { model.localRotation = Quaternion.Slerp(model.localRotation,Quaternion.Euler(0,0,72),1-Mathf.Exp(-16*dt)); wasDown = true; }
+            else if (wasDown)
+            {
+                model.localRotation = Quaternion.Slerp(model.localRotation,Quaternion.identity,1-Mathf.Exp(-12*dt));
+                if(Quaternion.Angle(model.localRotation,Quaternion.identity)<.1f){model.localRotation=Quaternion.identity;wasDown=false;}
+            }
         }
     }
 }

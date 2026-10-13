@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 namespace Emberfall
 {
     // The combat clock has no animation input or callback. It advances once per
@@ -44,11 +44,13 @@ namespace Emberfall
         public static PeriodicSkillBudget EarlyField(HeroClass hero,int rank)
         {
             rank=Rank(rank);
-            if(hero==HeroClass.Vanguard)return new PeriodicSkillBudget(0,2.4f+(rank-1)*.6f,.45f,rank==1?3.4f:rank==2?4.8f:6.4f,rank==3?1.12f:0);
-            if(hero==HeroClass.Arcanist)return new PeriodicSkillBudget(.2f,4.5f,rank>=2?.5f:.6f,rank==1?3.8f:rank==2?5.2f:6.8f,rank==3?1.28f:0);
-            if(hero==HeroClass.Ranger)return new PeriodicSkillBudget(.3f,4f+(rank-1),.4f,rank==1?3.8f:rank==2?5.4f:7.2f,rank==3?1.6f:0);
+            if(hero==HeroClass.Vanguard)return new PeriodicSkillBudget(0,3.6f+(rank-1)*.75f,.45f,rank==1?3.4f:rank==2?4.8f:6.4f,rank==3?1.12f:0);
+            if(hero==HeroClass.Arcanist)return new PeriodicSkillBudget(.2f,6f,rank>=2?.5f:.6f,rank==1?3.8f:rank==2?5.2f:6.8f,rank==3?1.28f:0);
+            if(hero==HeroClass.Ranger)return new PeriodicSkillBudget(.3f,5.5f+(rank-1),.4f,rank==1?3.8f:rank==2?5.4f:7.2f,rank==3?1.6f:0);
             return new PeriodicSkillBudget(0,0,1,0,0);
         }
+        public static PeriodicSkillBudget FrostSpikes(int rank)
+        {return new PeriodicSkillBudget(.2f,4.2f+(Rank(rank)-1)*.6f,.2f,OpeningImpact(HeroClass.Arcanist,0,rank)*.4f,0);}
         // Same single-target ceiling as the former 3/4/5 arrow retreat volley.
         public static float RangerVault(int rank)
         {rank=Rank(rank);return .32f*(1f+(rank-1)*.3f)*(rank+2)*1.65f;}
@@ -59,11 +61,11 @@ namespace Emberfall
         // Nominal release/recovery timing is gameplay data, not the current model's
         // animation age. Visual settling may extend beyond these values safely.
         public static float SkillPoseDuration(HeroClass hero,int skill,bool charged)
-        { return charged && hero==HeroClass.Vanguard && skill==9 ? AdvancedFirstEvent(hero,skill)/(.52f-.30f) : skill==9?1.12f:skill>=4?.84f:.68f; }
+        { return Math.Max(.1f,SkillCastingPolicy.Recovery(hero,skill)/.48f); }
         public static float SkillPoseStart(HeroClass hero,int skill,bool charged)
-        { return charged && hero==HeroClass.Vanguard && skill==9 ? .30f : .52f; }
+        { return .52f; }
         public static float SkillBasicRecovery(HeroClass hero,int skill,bool charged)
-        { return SkillPoseDuration(hero,skill,charged)*(.65f-SkillPoseStart(hero,skill,charged)); }
+        { return SkillCastingPolicy.Recovery(hero,skill); }
         public static float BasicCoefficient(HeroClass hero){return hero==HeroClass.Vanguard?1f:hero==HeroClass.Ranger?.78f:1.15f;}
         public static float BasicInterval(HeroClass hero){return hero==HeroClass.Vanguard?.46f:hero==HeroClass.Ranger?.34f:.52f;}
         // Auxiliary values multiply the same rank-scaled advanced cast snapshot.
@@ -123,7 +125,7 @@ namespace Emberfall
             return 1;
         }
         public static float AdvancedInterval(HeroClass hero,int skill)
-        {if(skill==6)return 1;if(hero==HeroClass.Vanguard)return skill==7?.27f:skill==9?.48f:.2f;if(hero==HeroClass.Arcanist)return skill==7?.55f:skill==9?.65f:.2f;return skill==7?.18f:skill==9?.42f:.2f;}
+        {if(skill==6)return 1;if(hero==HeroClass.Vanguard)return skill==7?.36f:skill==9?.6f:.2f;if(hero==HeroClass.Arcanist)return skill==7?.7f:skill==9?.8f:.2f;return skill==7?.22f:skill==9?.52f:.2f;}
         public static float AdvancedFirstEvent(HeroClass hero,int skill)
         {return skill==6?1:hero==HeroClass.Vanguard&&skill==9?.15f:skill==9?.6f:hero==HeroClass.Arcanist&&skill==7?.3f:0;}
         public static float ChargeSeconds(HeroClass hero,int skill)

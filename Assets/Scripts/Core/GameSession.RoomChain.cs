@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 namespace Emberfall
 {
@@ -105,7 +105,7 @@ namespace Emberfall
    if(RoomChainRun!=null&&RoomChainRun.Finished)pendingRoomChoice.Cancel();
    if(RoomChainRun==null||!RoomChainRun.Finished||roomResultRecorded)return;
    roomResultRecorded=true;DungeonCleared=!RoomChainRun.Failed;
-   if(DungeonCleared){RetireRemainingEncounterEnemies();roomEnemies.Clear();TrySettleRoomReward();GameAudio.Play(SoundCue.Victory);}
+   if(DungeonCleared){RetireRemainingEncounterEnemies();roomEnemies.Clear();TrySettleRoomReward();BeginVictoryTransition();GameAudio.Play(SoundCue.Victory);}
    LastRunSummary=BuildRunSummary(DungeonCleared);SuspendInputs();UpdateTimeScale();
   }
   private bool TrySettleRoomReward()

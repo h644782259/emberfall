@@ -1,8 +1,38 @@
-using UnityEngine;
+﻿using UnityEngine;
 namespace Emberfall
 {
     public sealed partial class GameUI
     {
+        private bool blinkFollowupSelected;
+        private Vector2 blinkFollowupDetailScroll;
+        private void DrawBlinkFollowupNode(Rect r,float u)
+        {
+            bool compact=r.height<50*u,learned=session.Player.BlinkFollowupLearned;
+            Color accent=blinkFollowupSelected?gold:learned?jade:muted;
+            Surface(r,card);SurfaceFrame(r,accent);
+            DrawIcon(new Rect(r.x+4*u,r.y+4*u,24*u,24*u),UIIconAtlas.Utility("blink"),accent);
+            Text(new Rect(r.x+32*u,r.y+2*u,r.width-36*u,24*u),session.Player.BlinkFollowupName,Mathf.RoundToInt((compact?9:12)*u),learned?pale:muted,true);
+            Text(new Rect(r.x+4*u,r.yMax-19*u,r.width-8*u,18*u),learned?"Lv.5 · 已习得":"Lv.5 · 自动习得",Mathf.RoundToInt((compact?8:10)*u),accent,false,false,TextAnchor.MiddleCenter);
+            if(MobileControls.Active?MobileSkillRowClicked(r):GUI.Button(r,GUIContent.none,invisibleButton))
+            {blinkFollowupSelected=true;CancelMobileScroll();}
+        }
+        private void DrawBlinkFollowupDetail(Rect r,float u)
+        {
+            Surface(r,card);Fill(new Rect(r.x,r.y,r.width,3*u),jade);
+            blinkFollowupDetailScroll=BeginTouchScroll("blink-followup-detail",r,blinkFollowupDetailScroll,new Rect(0,0,r.width-16*u,290*u));
+            r=new Rect(0,0,r.width-16*u,290*u);
+            float x=r.x+16*u,w=r.width-32*u;
+            Text(new Rect(x,r.y+14*u,w,32*u),session.Player.BlinkFollowupName,Mathf.RoundToInt(22*u),pale,true);
+            Text(new Rect(x,r.y+52*u,w,24*u),session.Player.BlinkFollowupLearned?"Lv.5 · 已习得":"Lv.5 · 自动习得",Mathf.RoundToInt(12*u),jade,true);
+            string damage=(session.Player.BlinkFollowupDamageMultiplier*100).ToString("0")+"%攻击力";
+            string effect=session.Player.HeroClass==HeroClass.Vanguard?"对前方3米、130°扇形内敌人造成"+damage+"伤害，击退并震慑0.2秒。":session.Player.HeroClass==HeroClass.Arcanist?"对周围3米内敌人造成"+damage+"伤害，小幅击退并震慑0.2秒。":session.Player.HeroClass==HeroClass.Ranger?"贯穿前方7米内敌人，造成"+damage+"伤害，小幅击退并震慑0.1秒。":"在6米内目标位置引爆，造成"+damage+"的2.6米范围伤害，震慑0.55秒。";
+            int effectFont=Mathf.RoundToInt(14*u);float effectHeight=Mathf.Max(66*u,Style(effectFont,false,true).CalcHeight(new GUIContent(effect),w));
+            Text(new Rect(x,r.y+90*u,w,effectHeight),effect,effectFont,pale,false,true);
+            string trigger=MobileControls.Active?"闪现后 1.2 秒内，点击原闪现按钮释放。":"闪现后 1.2 秒内，点击鼠标左键释放。";
+            Text(new Rect(x,r.y+96*u+effectHeight,w,66*u),trigger,Mathf.RoundToInt(13*u),jade,false,true);
+            Text(new Rect(x,r.y+164*u+effectHeight,w,50*u),"5级自动习得。每次闪现可衔接一次，无额外资源消耗。",Mathf.RoundToInt(12*u),muted,false,true);
+            EndTouchScroll();
+        }
         private int skillSection;
         private bool masteryResetConfirm;
         private Vector2 skillDevelopmentScroll;

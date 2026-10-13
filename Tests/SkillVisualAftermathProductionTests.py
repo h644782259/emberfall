@@ -11,13 +11,14 @@ root=Path(os.environ.get('EMBERFALL_TEST_ROOT',Path(__file__).resolve().parents[
 ns={'__file__':str(root/'Tests/FilledVfxPoolProductionTests.py')}
 exec((root/'Tests/FilledVfxPoolProductionTests.py').read_text().split('with tempfile.TemporaryDirectory',1)[0],ns)
 shell,boundaries=ns['s'],ns['boundaries']
+boundaries+='namespace UnityEngine{public static partial class Mathf{public static float SmoothStep(float a,float b,float t){t=Clamp01(t);return a+(b-a)*t*t*(3-2*t);}}}'
 shell=shell.replace('public T[] GetComponentsInChildren<T>(bool include)', 'public T[] GetComponentsInChildren<T>(bool include=false)')
 shell=shell.replace('public sealed class Transform\n', 'public sealed partial class Transform\n')
 shell=shell.replace('public class Renderer:Component{', 'public class Renderer:Component{public void GetPropertyBlock(MaterialPropertyBlock b){b.Opacity=Opacity;}')
 shell=shell.replace('public sealed class ParticleSystem:Component{', 'public sealed class ParticleSystem:Component{public int Stops,Clears;public void Stop(bool child,ParticleSystemStopBehavior reason){Stops++;if(reason==ParticleSystemStopBehavior.StopEmittingAndClear)Clears++;}')
 shell=shell.replace('public static Quaternion LookRotation(Vector3 forward)=>', 'public static Quaternion LookRotation(Vector3 forward,Vector3 up)=>identity;public static Quaternion LookRotation(Vector3 forward)=>')
 boundaries+='''namespace UnityEngine{public enum ParticleSystemStopBehavior{StopEmitting,StopEmittingAndClear}public sealed class DefaultExecutionOrderAttribute:Attribute{public DefaultExecutionOrderAttribute(int n){}}public class Light:Component{public float intensity;}public sealed partial class Transform{public int childCount=>GameObject.All.Count(o=>o.transform.parent==this&&!o.Destroyed);public Transform GetChild(int i)=>GameObject.All.Where(o=>o.transform.parent==this&&!o.Destroyed).ElementAt(i).transform;public T GetComponent<T>()where T:Component=>gameObject.GetComponent<T>();public T[] GetComponentsInChildren<T>()where T:Component=>GameObject.All.Where(o=>o==gameObject||o.transform.parent==this).Select(o=>o.GetComponent<T>()).Where(c=>c!=null).ToArray();}}
-namespace Emberfall{internal sealed class ElementalFieldVisual:MonoBehaviour{}}
+namespace Emberfall{public static class GameBalance{public const float ArcanistPulseRadius=4,ArcanistFinaleRadius=5;}internal sealed class ElementalFieldVisual:MonoBehaviour{}}
 '''
 
 def member(source,token):
@@ -33,7 +34,7 @@ namespace Emberfall {
  public class TestReceipt {public int Releases;public void Release(){Releases++;}}
  public struct CombatDamage {public float Amount;}
  public class AdvancedSkillVfx {public bool Settling,Stopped;public void CompleteAftermath(){Settling=true;}public void Stop(){Stopped=true;}}
- internal enum SkillPerformanceBody{Tornado,Gravity,Meteor,ArrowVolley,Poison,Spirit,Frost,Fault,Fire,Lightning,GravityCollapse}
+ internal enum SkillPerformanceBody{Tornado,Gravity,Meteor,ArrowVolley,Poison,Spirit,Frost,Fault,Fire,Lightning,GravityCollapse,Pressure}
  internal sealed class SkillPerformanceVfx:MonoBehaviour {
   PlayerController owner;GameSession session;int epoch,beatPreparedFrame=-1,windLayers;Transform authority;bool bound,retired,settling,flightArmed,awaitingContact;Func<bool> stateActive;
   SkillPerformanceBody kind=SkillPerformanceBody.ArrowVolley;float age,life,beatAge;Transform[] parts=Array.Empty<Transform>();Renderer[] surfaces=Array.Empty<Renderer>();Material body;MaterialPropertyBlock block=new MaterialPropertyBlock();ParticleSystem particles;Light glow;
@@ -86,7 +87,7 @@ static class Program {
   C(field.gameObject.Destroyed&&field.Receipt.Releases==1&&field.Cloud.transform.parent==null&&field.Field.transform.parent==null,"area completion detaches only the existing visual children then destroys damage producer");
   C(field.Particles.Stops==1&&field.Particles.Clears==0,"existing field particles stop emission without clearing residue");
   GameSession.Instance.InputBlocked=true;Tick(field.Cloud,"LateUpdate",2);C(!field.Cloud.Destroyed&&field.Cloud.GetComponent<MeshRenderer>().Opacity==0,"pause freezes detached child before a new fade sample");
-  GameSession.Instance.InputBlocked=false;Tick(field.Cloud,"LateUpdate",.6f);C(!field.Cloud.Destroyed&&field.Cloud.GetComponent<MeshRenderer>().Opacity>0&&field.Cloud.GetComponent<MeshRenderer>().Opacity<1,"detached field fades gradually through actual timing coverage");Tick(field.Cloud,"LateUpdate",.3f);C(field.Cloud.Destroyed,"detached child has finite normal-completion lifetime");
+  GameSession.Instance.InputBlocked=false;Tick(field.Cloud,"LateUpdate",.6f);C(!field.Cloud.Destroyed&&field.Cloud.GetComponent<MeshRenderer>().Opacity>0&&field.Cloud.GetComponent<MeshRenderer>().Opacity<1,"detached field fades gradually through actual timing coverage");Tick(field.Cloud,"LateUpdate",SkillVisualAftermathTiming.FieldTail);C(field.Cloud.Destroyed,"detached child has finite normal-completion lifetime");
   GameSession.Instance.InputBlocked=true;h.CombatEpoch++;Tick(field.Field,"LateUpdate",.1f);C(field.Field.Destroyed,"detached field cancellation validates epoch before pause");
   foreach(float n in new[]{float.NaN,float.PositiveInfinity,float.NegativeInfinity,0,-1})C(SkillVisualAftermathTiming.Coverage(n)==0,"invalid visual clock cannot create opaque infinite tail");
   Console.WriteLine("PASS "+checks+" actual producer completion/receipt release/no new contact/pool generation/idempotence/pause/death/epoch/session/result/detached-particle assertions; managed, not rendered acceptance.");

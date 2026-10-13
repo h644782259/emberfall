@@ -12,7 +12,9 @@ namespace Emberfall
             float duration=SkillPerformanceTiming.Duration(hero.HeroClass,skill,rank);
             float cadence=skill==2?SkillDamageBudgets.EarlyField(hero.HeroClass,rank).Interval:SkillDamageBudgets.AdvancedInterval(hero.HeroClass,skill);
             body.BeginSkillPerformance(skill,duration,cadence,castId);
-            Create(hero,body,duration);
+            var sound=hero.HeroClass==HeroClass.Vanguard?SkillPerformanceBody.Tornado:hero.HeroClass==HeroClass.Ranger?SkillPerformanceBody.ArrowVolley:hero.HeroClass==HeroClass.Summoner?SkillPerformanceBody.Spirit:skill==1||skill==9?SkillPerformanceBody.Fire:skill==0||skill==6?SkillPerformanceBody.Frost:skill==7?SkillPerformanceBody.Gravity:SkillPerformanceBody.Lightning;
+            GameAudio.SustainSkill(hero,hero.transform,sound,duration+.4f,SkillCastingPolicy.Channeled(hero.HeroClass,skill)?()=>hero!=null&&hero.IsSkillChannelCurrent(castId):(System.Func<bool>)null);
+            Create(hero,body,SkillCastingPolicy.Channeled(hero.HeroClass,skill)?duration:.45f);
         }
         internal static SkillCastConduit BeginCharge(PlayerController hero,CombatModel body,float duration)
         {return hero==null||body==null?null:Create(hero,body,duration);}

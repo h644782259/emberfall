@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace Emberfall
@@ -56,6 +56,12 @@ namespace Emberfall
             rim.color = dungeon ? new Color(.34f,.43f,.8f) : new Color(.44f,.65f,.77f);
             rim.intensity = dungeon ? .28f : .32f; rim.shadows = LightShadows.None;
             ApplyEnvironmentLighting(dungeon,hub,light,rim);
+            if(dungeon && dungeonLayout<2)
+            {
+                int theme=(int)((uint)chapterSeed/2%3);
+                if(theme==1){light.color=new Color(.64f,.91f,.80f);RenderSettings.fogColor=new Color(.055f,.10f,.095f);}
+                else if(theme==2){light.color=new Color(1,.77f,.52f);RenderSettings.fogColor=new Color(.12f,.075f,.05f);}
+            }
             float sceneScale=dungeon?ArenaSizeRules.LayoutScale(dungeonLayout):1;
             Transform geometry=root.transform;
             if(sceneScale>1){geometry=Region(root.transform,"Expanded boss encounter geometry");geometry.localScale=new Vector3(sceneScale,1,sceneScale);}
@@ -70,7 +76,7 @@ namespace Emberfall
                 else if (dungeonLayout >= 20) BuildTacticalRoom(geometry, resources, dungeonLayout);
                 else if (dungeonLayout >= 10) BuildLinkedRoom(geometry, resources, dungeonLayout - 10);
                 else if (dungeonLayout >= 2) BuildChallengeArena(geometry, resources, dungeonLayout - 2);
-                else BuildDungeon(geometry, resources, dungeonLayout);
+                else BuildDungeon(geometry, resources, dungeonLayout, chapterSeed);
             }
             else if (hub == 0)
             {
@@ -243,6 +249,8 @@ namespace Emberfall
             Primitive(camp, "Camp rug", PrimitiveType.Cube, new Vector3(0,.047f,-10), new Vector3(3.8f,.018f,2.7f), r.Material(new Color(.25f,.37f,.36f),false,VisualSurface.Cloth));
             BuildCampfire(camp, r, new Vector3(-5.5f, 0, -23));
             Tent(camp, r, new Vector3(5.5f, 0, -23));
+            Portal(parent,r,GameSession.ChapterEntrancePosition,r.Material(new Color(.64f,.38f,1f),true));
+            Label(parent,"STAR CHAPTERS","星路章节",GameSession.ChapterEntrancePosition+Vector3.up*4.65f,.10f,new Color(.83f,.65f,1),false);
             // The travel rune supplies the only label at this location.
             Portal(parent, r, new Vector3(0, 0, 11), jade);
             Label(parent, "FALLEN STAR", "沉星遗迹", new Vector3(0, 4.65f, 11), .10f, new Color(.65f, 1, .87f), false);
@@ -289,14 +297,15 @@ namespace Emberfall
             }
         }
 
-        private static void BuildDungeon(Transform parent, WorldResources r, int layout)
+        private static void BuildDungeon(Transform parent, WorldResources r, int layout, int seed = 0)
         {
+            int theme=(int)((uint)seed/2%3);
             Transform original=parent;
             parent=Region(parent,"Expanded cathedral grounds");parent.localScale=new Vector3(1.5f,1,1.5f);
             Material baseStone = r.Material(new Color(.095f, .11f, .17f));
-            Material slab = r.Material(new Color(.21f, .23f, .31f));
+            Material slab = r.Material(theme==1?new Color(.18f,.28f,.27f):theme==2?new Color(.29f,.21f,.17f):new Color(.21f, .23f, .31f));
             Material border = r.Material(new Color(.31f, .31f, .42f));
-            Material rune = r.Material(new Color(.34f, .62f, .98f), true);
+            Material rune = r.Material(theme==1?new Color(.32f,.84f,.63f):theme==2?new Color(.96f,.48f,.16f):new Color(.34f, .62f, .98f), true);
             // Unity's cylinder is two units tall: the old -.7/.7 placement
             // put both base and floor tops at y=0 and flickered as the camera moved.
             Primitive(parent, "Sanctum base", PrimitiveType.Cylinder, new Vector3(0, -.85f, 0), new Vector3(42, .7f, 42), baseStone);
@@ -335,6 +344,8 @@ namespace Emberfall
                 Pillar(gallery, r, new Vector3(side*7,0,6), 2.9f, true);
                 Vector3 barricade = layout % 2 == 0 ? new Vector3(side*10.5f,0,-7.5f) : new Vector3(side*5f,0,-1.5f);
                 Vector2 barrierSize = layout % 2 == 0 ? new Vector2(4.2f,.9f) : new Vector2(.9f,5.5f);
+                if(theme==1){barricade=new Vector3(side*9f,0,2.5f);barrierSize=new Vector2(2.4f,2.4f);}
+                else if(theme==2){barricade=new Vector3(side*8f,0,-4);barrierSize=new Vector2(5f,1.1f);}
                 GameObject partition=Primitive(gallery, "Collapsed gallery partition", PrimitiveType.Cube, barricade + Vector3.up*.65f, new Vector3(barrierSize.x,1.3f,barrierSize.y), border,cameraOccluder:true);
                 RegisterSceneryBox(barricade*1.5f, barrierSize*1.5f, partition);
                 for (int i = 0; i < 5; i++)

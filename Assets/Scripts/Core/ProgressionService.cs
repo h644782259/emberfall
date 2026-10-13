@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
@@ -14,6 +14,9 @@ namespace Emberfall
         public int Level;
         public DateTime SavedAtUtc;
         public bool CanLoad, RecoveredFromBackup, IsCurrent, DeletionPending;
+        // Read-only appearance from the already-read save; never load a live character for a portrait.
+        public ItemData PreviewWeapon, PreviewArmor, PreviewRelic;
+        public FashionData PreviewWings, PreviewFashionWeapon;
     }
 
     /// <summary>A read-only identity snapshot. Creating it never changes files; only an explicit
@@ -252,6 +255,11 @@ namespace Emberfall
                     Level = readable ? loaded.level : 0,
                     SavedAtUtc = written,
                     CanLoad = readable,
+                    PreviewWeapon = readable ? loaded.inventory?.Find(item=>item!=null&&item.id==loaded.weaponId) : null,
+                    PreviewArmor = readable ? loaded.inventory?.Find(item=>item!=null&&item.id==loaded.armorId) : null,
+                    PreviewRelic = readable ? loaded.inventory?.Find(item=>item!=null&&item.id==loaded.relicId) : null,
+                    PreviewWings = readable ? loaded.fashions?.Find(item=>item!=null&&item.id==loaded.wingsFashionId) : null,
+                    PreviewFashionWeapon = readable ? loaded.fashions?.Find(item=>item!=null&&item.id==loaded.weaponFashionId) : null,
                     RecoveredFromBackup = recovered,
                     IsCurrent = !activeSlotDeleted && string.Equals(currentSlotId, id, StringComparison.Ordinal),
                     DeletionPending = deletionPending
@@ -825,7 +833,10 @@ namespace Emberfall
                     {
                         case ItemSlot.Weapon:if(a.variant==1)stats.GemLowHealthDamage+=.075f*ascension;else stats.GemHealthyDamage+=.05f*ascension;break;
                         case ItemSlot.Armor:if(a.variant==1)stats.GemHealthyGuard+=.05f*ascension;else stats.GemLowHealthGuard+=.05f*ascension;break;
-                        case ItemSlot.Relic:break; // Relic forms trigger through successful skill/dodge combinations.
+                        case ItemSlot.Relic:
+                            if(a.mechanic==EquipmentMechanic.RelicVitality||a.mechanic==EquipmentMechanic.RelicWard)
+                            {if(a.variant==1)stats.GemHighEnergyRecovery+=.2f*ascension;else stats.GemLowEnergyRecovery+=.2f*ascension;}
+                            break; // Original relic forms trigger through skill/dodge combinations.
                     }
                 }
                 else ApplyGemAttribute(ref stats,BuildCatalog.MechanicAttribute(a.mechanic),BuildCatalog.MechanicAttributeValue(a.mechanic,a.upgradeRank));
@@ -1835,7 +1846,7 @@ namespace Emberfall
                 var slot=(FashionSlot)roll.slotIndex;
                 preview.fashion=new FashionData{id="fashion-"+(int)slot+"-3",slot=slot,rarity=Rarity.Legendary,appearanceTier=3,name=FashionName(slot,Rarity.Legendary,profile.heroClass)};
             }
-            else if(roll.primaryKind==4){preview.gemMechanic=roll.gemMechanic;preview.gemRarity=roll.gemRarity;}
+            else if(roll.primaryKind==4){preview.gemMechanic=BuildCatalog.CurrentGem(roll.gemMechanic);preview.gemRarity=roll.gemRarity;}
             return preview;
         }
         private static void FreezeChestContents(GameProfile profile,ChestReward roll)
@@ -1864,7 +1875,7 @@ namespace Emberfall
         private string GrantOneItemChest(ChestReward draw)
         {
             if(!ValidOneItemChest(draw)){Fail("宝箱奖励记录无效，请保留存档。");return null;}
-            var candidate=Snapshot();var receipt=CopyChestRoll(draw);receipt.hasCurrencyDeltas=true;
+            var candidate=Snapshot();var receipt=CopyChestRoll(draw);receipt.hasCurrencyDeltas=true;receipt.gemMechanic=BuildCatalog.CurrentGem(receipt.gemMechanic);
             if(receipt.primaryKind==1)
             {
                 if(candidate.inventory.Count+candidate.pendingLoot.Count+candidate.recoveryLoot.Count>=MaximumSavedEquipment){Fail("装备空间已满，请整理后重试。");return null;}
@@ -3160,6 +3171,13 @@ namespace Emberfall
             if (profile.heroClass != HeroClass.Arcanist || !Enum.IsDefined(typeof(ElementalistSpecialization), profile.specialization))
                 profile.specialization = ElementalistSpecialization.None;
             profile.mechanicMaterials = Clamp(profile.mechanicMaterials, 0, 999999);
+            profile.revivalStones=Clamp(profile.revivalStones,0,999999);
+            if(profile.gemBags==null||profile.gemBags.Length!=3)profile.gemBags=new int[3];
+            for(int i=0;i<3;i++)profile.gemBags[i]=Clamp(profile.gemBags[i],0,999999);
+            if(profile.gemBagSeed==0)profile.gemBagSeed=Guid.NewGuid().GetHashCode();
+            profile.gemBagsOpened=Math.Max(0,profile.gemBagsOpened);
+            if(profile.revivalClaimedTiers==null||profile.revivalClaimedTiers.Length!=3)profile.revivalClaimedTiers=new int[3];
+            for(int n=0;n<3;n++)profile.revivalClaimedTiers[n]=Clamp(profile.revivalClaimedTiers[n],0,ChapterProgression.CompletedTier(profile,(ChapterNode)n,ChapterDifficulty.Heroic));
             profile.affixReforgeStones=Clamp(profile.affixReforgeStones,0,999999);profile.affixReforgeCount=Math.Max(0,profile.affixReforgeCount);
             profile.refinementStones=Clamp(profile.refinementStones,0,999999);profile.refinementCount=Math.Max(0,profile.refinementCount);profile.refinementMaxCount=Math.Max(0,profile.refinementMaxCount);
             profile.materialRewardedClears = Clamp(profile.materialRewardedClears, 0, profile.clearedRuns);

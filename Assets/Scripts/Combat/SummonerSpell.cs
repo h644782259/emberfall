@@ -19,7 +19,6 @@ namespace Emberfall
             int propCast=castId==0?player.NewCastId():castId;
             float range = GameBalance.SkillRangeMultiplier(rank);
             Color color = GameBalance.ClassColor(HeroClass.Summoner);
-            if(skill==7)SkillPerformanceVfx.Sustain(player,target,4.4f*range,SummonerDamageRules.MarkFinisherTime,SkillPerformanceBody.Gravity);
             if (skill == 2 || skill == 4 || skill == 6 || skill == 9)
             {
                 var form = skill == 2 ? SummonedCompanion.Kind.Wolf : skill == 4 ? SummonedCompanion.Kind.Spirit : skill == 6 ? SummonedCompanion.Kind.Wisp : SummonedCompanion.Kind.Treant;
@@ -69,7 +68,8 @@ namespace Emberfall
                 var spell = obj.AddComponent<SummonerSpell>();
                 spell.owner = player; spell.session = game; spell.rank = rank; spell.damage = damage; spell.epoch = player.CombatEpoch; spell.castId=propCast;spell.castReceipt=player.RetainCastReceipt(propCast);
                 spell.finisherDamage = player.RollDirectDamage(damage * SummonerDamageRules.MarkFinisherCoefficient);
-                AdvancedSkillVfx.Rune(player, target, 4.4f * range, color, 3.3f, rank + 1);
+                spell.pressure=SkillPerformanceVfx.Sustain(player,target,4.4f*range,SummonerDamageRules.MarkFinisherTime,SkillPerformanceBody.Pressure,obj.transform,()=>spell!=null&&spell.IsCurrentCast);
+                AdvancedSkillVfx.Rune(player, target, 4.4f * range, color, SummonerDamageRules.MarkFinisherTime, rank + 1);
             }
         }
         private void Update()
@@ -85,8 +85,7 @@ namespace Emberfall
                 float distance = delta.magnitude;
                 if (distance > radius || !CombatSight.Area(transform.position,enemy.transform.position)) continue;
                 enemy.Provoke();
-                if (distance > .6f)
-                    enemy.ApplyPull(delta.normalized * Mathf.Min(distance - .6f, Time.deltaTime * (3.5f + rank)));
+                if(age<=SummonerDamageRules.MarkFinisherTime)enemy.StatusEffects?.Suppress(.3f);
             }
             for (int tick=0;tick<ScheduledTickWindow.MaximumCatchUp;tick++)
             {
@@ -113,7 +112,7 @@ namespace Emberfall
                     {
                         enemy.TakeDamage(finisherDamage.Amount, -delta.normalized, .3f, .25f, critical: finisherDamage.IsCritical,practiceCastId:castId);
                         owner.RegisterSkillHit(castId);
-                        if (!enemy.IsDead) enemy.StatusEffects.Knockup(.7f + rank * .1f, 1.2f + rank * .2f);
+                        if (!enemy.IsDead) enemy.StatusEffects.Knockdown(1.4f,true);
                     }
                     else
                     {
@@ -124,13 +123,14 @@ namespace Emberfall
                 if (pendingFinisher)
                 {
                     DestructibleProp.StrikeArea(owner,transform.position,Radius,finisherDamage,castId);
-                    SkillPerformanceVfx.CollapseGravity(owner,transform.position,Radius);
+                    if(pressure!=null){pressure.CompleteAftermath();pressure=null;}
                     Retire();return;
                 }
             }
         }
         private void Retire() { pendingTargets.Clear(); Destroy(gameObject); }
-        private void OnDisable() { castReceipt?.Release();castReceipt=null;pendingTargets.Clear(); }
+        private SkillPerformanceVfx pressure;
+        private void OnDisable() { if(pressure!=null){pressure.Retire();pressure=null;}castReceipt?.Release();castReceipt=null;pendingTargets.Clear(); }
         private void OnDestroy() { OnDisable(); }
     }
 }

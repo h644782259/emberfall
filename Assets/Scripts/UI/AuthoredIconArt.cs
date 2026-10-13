@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace Emberfall
@@ -38,7 +38,7 @@ namespace Emberfall
         public static Texture2D RefinedEquipment(ItemSlot slot,HeroClass hero,Rarity rarity)
         { return Load("refined-gear-"+heroes[(int)hero]+"/"+((int)slot*4+Mathf.Clamp((int)rarity,0,3)).ToString("D2")); }
         public static Texture2D RefinedFashion(FashionSlot slot,int tier,HeroClass hero)
-        { return Load("refined-gear-"+heroes[(int)hero]+"/"+((slot==FashionSlot.Wings?12:16)+Mathf.Clamp(tier,0,3)).ToString("D2")); }
+        { return (slot==FashionSlot.Wings?Load("feather-wings-v2/"+Mathf.Clamp(tier,0,3)):null) ?? Load("refined-gear-"+heroes[(int)hero]+"/"+((slot==FashionSlot.Wings?12:16)+Mathf.Clamp(tier,0,3)).ToString("D2")); }
 
         public static Texture2D Equipment(ItemSlot slot, HeroClass hero, Rarity rarity)
         {

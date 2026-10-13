@@ -1,4 +1,4 @@
-namespace Emberfall
+﻿namespace Emberfall
 {
     public partial class ProgressionService
     {
@@ -63,10 +63,22 @@ namespace Emberfall
             internal int Gold,Materials,Potions;
             internal bool First;
             internal int Stones;
+            public int RevivalStoneCount {get;internal set;}
             public int AffixReforgeStoneCount {get;internal set;}
             public int RefinementStoneCount {get;internal set;}
             public EquipmentMechanic Mechanic {get;internal set;}
             public Rarity Rarity {get;internal set;}
+        }
+        public const int RevivalStonePrice=5000;
+        public MerchantPurchaseQuote PrepareRevivalPurchase(bool atMerchant,int count=1,bool captureState=true)
+        {
+            if(!atMerchant||IsPracticeOnly||count<1||count>999999-Profile.revivalStones||count>Profile.gold/RevivalStonePrice)return null;
+            return new MerchantPurchaseQuote{Owner=this,Slot=CurrentSlotId,Fingerprint=captureState?BuildStateFingerprint():null,Quantity=count,Gold=Profile.gold,Stones=Profile.revivalStones,RevivalStoneCount=count};
+        }
+        public bool ConsumeRevivalStone()
+        {
+            if(IsPracticeOnly||Profile.revivalStones<1)return Fail("复活石不足。");
+            var candidate=Snapshot();candidate.revivalStones--;return CommitCandidate(candidate,true);
         }
         public MerchantPurchaseQuote PrepareAffixReforgePurchase(bool atMerchant,int count=1,bool captureState=true)
         {
@@ -97,6 +109,11 @@ namespace Emberfall
         public bool BuyAtMerchant(MerchantPurchaseQuote quote,bool atMerchant)
         {
             if(!atMerchant||quote==null||quote.Owner!=this||quote.Slot!=CurrentSlotId||quote.Fingerprint!=BuildStateFingerprint())return Fail("请在商人处核对并交易。");
+            if(quote.RevivalStoneCount>0)
+            {
+                if(quote.Gold!=Profile.gold||quote.Stones!=Profile.revivalStones||PrepareRevivalPurchase(atMerchant,quote.RevivalStoneCount)==null)return Fail("余额已变化，请重新购买");
+                var purchase=Snapshot();purchase.gold-=quote.RevivalStoneCount*RevivalStonePrice;purchase.revivalStones+=quote.RevivalStoneCount;return CommitCandidate(purchase,true);
+            }
             if(quote.AffixReforgeStoneCount>0)
             {
                 if(quote.Gold!=Profile.gold||quote.Stones!=Profile.affixReforgeStones||PrepareAffixReforgePurchase(atMerchant,quote.AffixReforgeStoneCount)==null)return Fail("余额已变化，请重新购买");

@@ -1,7 +1,7 @@
 using UnityEngine;
 namespace Emberfall
 {
-    internal enum SkillPerformanceBody { Tornado, Gravity, Meteor, ArrowVolley, Poison, Spirit, Frost, Fault, Fire, Lightning, GravityCollapse }
+    internal enum SkillPerformanceBody { Tornado, Gravity, Meteor, ArrowVolley, Poison, Spirit, Frost, Fault, Fire, Lightning, GravityCollapse, Pressure }
     // Real 3D bodies, textured turbulent energy and bounded particles. This never selects or damages targets.
     internal sealed partial class SkillPerformanceVfx : MonoBehaviour
     {
@@ -50,6 +50,7 @@ namespace Emberfall
         internal static SkillPerformanceVfx Sustain(PlayerController hero,Vector3 at,float radius,float duration,SkillPerformanceBody type,Transform follow=null,System.Func<bool> active=null,bool producerBoundActionBody=false)
         {
             if(hero==null||hero.IsDead)return null;
+            GameAudio.SustainSkill(hero,follow,type,duration+SkillVisualAftermathTiming.FieldTail,active);
             var root=new GameObject("Skill performance / "+type);root.transform.position=type==SkillPerformanceBody.Poison?new Vector3(at.x,WorldTraversal.SurfaceHeight(at,.04f),at.z):at;
             // Producer-bounded arrows are the main release-to-contact trajectory.
             // Their finite owner/epoch/session lifecycle remains the authority;
@@ -72,7 +73,7 @@ namespace Emberfall
             // The actual CombatArea tick is the only release authority.
             awaitingContact=kind==SkillPerformanceBody.Fire||kind==SkillPerformanceBody.Poison;
             windLayers=EffectPreferences.ReducedEffects?1:2;
-            int count=kind==SkillPerformanceBody.Tornado?(EffectPreferences.ReducedEffects?5:10):kind==SkillPerformanceBody.Gravity?1:kind==SkillPerformanceBody.ArrowVolley?(EffectPreferences.ReducedEffects?5:12):kind==SkillPerformanceBody.Meteor?3:kind==SkillPerformanceBody.Poison?(EffectPreferences.ReducedEffects?2:3):EffectPreferences.ReducedEffects?3:5;
+            int count=kind==SkillPerformanceBody.Tornado?(EffectPreferences.ReducedEffects?5:10):kind==SkillPerformanceBody.Gravity||kind==SkillPerformanceBody.Pressure?1:kind==SkillPerformanceBody.Frost?9:kind==SkillPerformanceBody.ArrowVolley?(EffectPreferences.ReducedEffects?5:12):kind==SkillPerformanceBody.Meteor?3:kind==SkillPerformanceBody.Poison?(EffectPreferences.ReducedEffects?2:3):EffectPreferences.ReducedEffects?3:5;
             // Wind dust is secondary decoration. The field body, flying arrows,
             // meteors and real release/contact beats keep their full identity.
             if(kind==SkillPerformanceBody.Tornado&&!EffectPreferences.ReducedEffects)
@@ -84,6 +85,7 @@ namespace Emberfall
                 if(kind==SkillPerformanceBody.ArrowVolley)Add(i,HeroSkillBodyAssets.Spell("Arrow"),new Vector3(1.15f,.6f,2.5f),Vector3.zero,Quaternion.identity,new Color(1,.58f,.055f));
                 else if(kind==SkillPerformanceBody.Meteor)Add(i,i==0?(HeroSkillBodyAssets.Rock??orb):HeroSkillBodyAssets.Spell("Flame"),i==0?Vector3.one*2.1f:new Vector3(.8f,3f,.8f),Vector3.up*12,Quaternion.identity,i==0?new Color(.4f,.1f,.025f):tint);
                 else if(kind==SkillPerformanceBody.Gravity)Add(i,lensQuad,new Vector3(size*1.4f,size*1.4f,1),Vector3.up*1.45f,Quaternion.identity,tint);
+                else if(kind==SkillPerformanceBody.Pressure)Add(i,orb,Vector3.one*size*.9f,Vector3.up*3.6f,Quaternion.identity,new Color(.35f,.9f,.85f));
                 else if(kind==SkillPerformanceBody.Spirit)Add(i,HeroSkillBodyAssets.Spirit,Vector3.one*(.4f+(i%2)*.1f),new Vector3(Mathf.Sin(i*1.7f)*size*.35f,.6f+i*.15f,Mathf.Cos(i*2.1f)*size*.3f),Quaternion.Euler(0,i*72,0),tint);
                 else if(kind==SkillPerformanceBody.Lightning)Add(i,DischargeMesh(i),Vector3.one,Vector3.zero,Quaternion.identity,tint);
                 else if(kind==SkillPerformanceBody.Fault)
@@ -118,6 +120,12 @@ namespace Emberfall
                     Mesh shape=HeroSkillBodyAssets.Spell(kind==SkillPerformanceBody.Frost?"Crystal":"Flame");
                     Vector3 at=new Vector3(Mathf.Cos(i*2.4f),0,Mathf.Sin(i*2.4f))*size*.5f;
                     Vector3 dimensions=new Vector3(.6f,1.7f+i*.35f,.6f);Quaternion rotation=Quaternion.Euler(0,i*120,0);
+                    if(kind==SkillPerformanceBody.Frost)
+                    {
+                        float angle=(i-1)*Mathf.PI*2/(count-1);
+                        at=i==0?Vector3.zero:new Vector3(Mathf.Cos(angle),0,Mathf.Sin(angle))*size*.78f;
+                        dimensions=new Vector3(size*.24f,EnemyImpactMotion.FrostContactHeight,size*.24f);
+                    }
                     bool dry=kind!=SkillPerformanceBody.Fire||GroundSkillSurface.TryPlaceAttached(transform,shape,ref at,ref dimensions,rotation,size);
                     Mesh grounded=dry?AnchoredImpactMesh.Create(shape,transform,at,dimensions,rotation):new Mesh{name="Fire contact / no dry fuel support"};ownedBodies.Add(grounded);
                     Add(i,grounded,Vector3.one,Vector3.zero,Quaternion.identity,tint);
@@ -263,6 +271,8 @@ namespace Emberfall
                 else if(kind==SkillPerformanceBody.ArrowVolley||kind==SkillPerformanceBody.Meteor){/* Flight is evaluated once below. */}
                 else if(kind!=SkillPerformanceBody.Fault&&kind!=SkillPerformanceBody.Lightning&&kind!=SkillPerformanceBody.Poison&&kind!=SkillPerformanceBody.Frost&&kind!=SkillPerformanceBody.Fire)parts[i].localRotation=Quaternion.Euler(Mathf.Sin(age*2+i)*12,age*32+i*71,0);
                 surfaces[i].GetPropertyBlock(block);float opacity=(kind==SkillPerformanceBody.Lightning?DischargeOpacity(i):envelope)*(kind==SkillPerformanceBody.Tornado?(i<windLayers?(i==0?.20f:.09f):1):kind==SkillPerformanceBody.Gravity&&i>0?.68f:1);
+                if(kind==SkillPerformanceBody.Pressure)
+                {parts[i].localPosition=Vector3.up*(3.6f-.25f*Mathf.SmoothStep(0,1,age/.5f)+(settling?.6f*Mathf.Clamp01(beatAge):0));opacity*=.55f;}
                 if(surfaces[i].sharedMaterial==body)opacity=SkillVisualAftermathTiming.Coverage(life-age);
                 if(settling)opacity*=SkillVisualAftermathTiming.Coverage(life-age,.6f);
                 block.SetFloat("_Opacity",opacity);block.SetFloat("_Phase",age+i*.7f);surfaces[i].SetPropertyBlock(block);

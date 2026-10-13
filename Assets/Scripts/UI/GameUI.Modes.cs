@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 namespace Emberfall
 {
  public sealed partial class GameUI
@@ -28,6 +28,7 @@ namespace Emberfall
    entryRewardPopupVisible=entryRewardPopup!=null;
    if(entryRewardPopup==null)return;
    float u=MobileControls.Active?TouchRatio:1f;
+   if(MobileControls.Active&&width<height)u=Mathf.Max(u,1f/scale);
    if(!entryRewardAnchorIsRoot){Vector2 at=GUIUtility.ScreenToGUIPoint(entryRewardScreenAnchor),end=GUIUtility.ScreenToGUIPoint(entryRewardScreenEnd);entryRewardAnchor=new Rect(at.x,at.y,end.x-at.x,end.y-at.y);}
    if(!entryRewardViewport.Overlaps(entryRewardAnchor)){entryRewardPopupVisible=false;return;}
    bool comparing=entryRewardPopup.GearSlot.HasValue||entryRewardPopup.AppearanceSlot.HasValue;
@@ -35,7 +36,8 @@ namespace Emberfall
    float w=Mathf.Min((comparing?(IsWornReward(entryRewardPopup)?340:620):compact?InventoryGridGeometry.ItemPopupWidth:320)*u,width-24*u),textWidth=w-40*u;
    float contentHeight=DrawRewardDetailRows(entryRewardPopup,textWidth/u,u,false)*u;
    float headerHeight=comparing?0:92;
-   float h=Mathf.Min(contentHeight+(headerHeight+10)*u,height-24*u);
+   float bagAction=entryRewardPopup.BagSlot>=0?52:0;
+   float h=Mathf.Min(contentHeight+(headerHeight+10+bagAction)*u,height-24*u);
    float x=entryRewardAnchor.xMax+10*u;
    if(x+w>width-12*u)x=entryRewardAnchor.x-w-10*u;
    x=Mathf.Clamp(x,12*u,Mathf.Max(12*u,width-w-12*u));
@@ -56,15 +58,21 @@ namespace Emberfall
     }
     DrawItemDetailTags(new Rect(x+8*u,y+60*u,w-24*u,22*u),entryRewardPopup,u);
    }
-   entryRewardPopupScroll=BeginTouchScroll("entry-reward-popup",new Rect(x+12*u,y+headerHeight*u,w-24*u,h-(headerHeight+10)*u),entryRewardPopupScroll,new Rect(0,0,textWidth,contentHeight),showScrollbar:false);
+   entryRewardPopupScroll=BeginTouchScroll("entry-reward-popup",new Rect(x+12*u,y+headerHeight*u,w-24*u,h-(headerHeight+10+bagAction)*u),entryRewardPopupScroll,new Rect(0,0,textWidth,contentHeight),showScrollbar:false);
    DrawRewardDetailRows(entryRewardPopup,textWidth/u,u,true);
    EndTouchScroll();
+   if(entryRewardPopup.BagSlot>=0)
+   {
+    int slot=entryRewardPopup.BagSlot;
+    if(Button(new Rect(x+12*u,y+h-50*u,w-24*u,40*u),"开启",gold,session.Progression.Profile.gemBags[slot]>0))
+    {string outcome;bool saved=session.Progression.OpenGemBag((ItemSlot)slot,out outcome);Feedback(saved,outcome);entryRewardSelection=null;entryRewardPopup=null;return;}
+   }
    if((MobileControls.Active||(entryRewardSelection??" ").StartsWith("merchant:"))&&PopupCloseButton(new Rect(box.xMax-(compact?48:44)*u,y+(compact?4:0)*u,44*u,44*u)))entryRewardSelection=null;
   }
   private string GemRewardDescription(EquipmentMechanic gem,Rarity rarity,int rank=0)
   {
    string attribute=BuildCatalog.IsAttributeGem(gem)?BuildCatalog.GemAttributeSummary(gem,rarity,rank):BuildCatalog.AttributeLabel(BuildCatalog.MechanicAttribute(gem))+" +"+(BuildCatalog.MechanicAttributeValue(gem,rank)*100).ToString("0.#")+"%";
-   return BuildCatalog.GemName(gem)+"\n"+GameBalance.SlotName(BuildCatalog.MechanicSlot(gem))+"槽\n基础属性\n"+attribute;
+   return BuildCatalog.GemName(gem)+"\n"+(BuildCatalog.IsAttributeGem(gem)?"属性宝石":"机制宝石")+"\n"+GameBalance.SlotName(BuildCatalog.MechanicSlot(gem))+"槽\n"+(rank==0?"未升阶基础属性":"当前升阶属性")+"\n"+attribute+(BuildCatalog.IsAttributeGem(gem)?"":"\n"+BuildCatalog.MechanicDescription(gem));
   }
   private string GemDropDescription(EquipmentMechanic gem,bool preview)
   {return BuildCatalog.GemName(gem)+"\n"+GameBalance.ClassName(BuildCatalog.MechanicClass(gem))+"专用 · "+GameBalance.SlotName(BuildCatalog.MechanicSlot(gem))+"槽\n"+(preview?"通关宝箱必得整件；已拥有则转为3枚星烬碎片。\n":"")+"机制\n"+BuildCatalog.MechanicDescription(gem);}
@@ -91,7 +99,7 @@ namespace Emberfall
    return new EntryRewardPreview{Key="obtained:"+item.id,Equipment=item,GearSlot=item.slot,Name=ItemTitle(item),Description=description,Rarity=item.rarity,Tint=GameBalance.RarityColor(item.rarity),Icon=UIIconAtlas.EquipmentCardIcon(item,session.Progression.Profile.heroClass)};
   }
   private string EntryRewardKind(EntryRewardPreview item)
-  {return item.AppearanceSlot.HasValue?"时装":(item.Key??"").Contains("gem:")?"宝石":item.Key=="shard"||item.Key=="thread"||((item.Key??"").Contains("refinement")||(item.Key??"").Contains("affix-reforge"))?"材料":item.Key=="experience"?"经验":item.Key=="gold"?"货币":(item.Key??"").Contains("potion")?"药剂":"装备";}
+  {return (item.Key??"").Contains("gem-bag:")?"宝石袋":item.Key=="revival"?"道具":item.AppearanceSlot.HasValue?"时装":(item.Key??"").Contains("gem:")?"宝石":item.Key=="shard"||item.Key=="thread"||((item.Key??"").Contains("refinement")||(item.Key??"").Contains("affix-reforge"))?"材料":item.Key=="experience"?"经验":item.Key=="gold"?"货币":(item.Key??"").Contains("potion")?"药剂":"装备";}
   private void DrawEntryRewardIcon(Rect icon,EntryRewardPreview item,float u,bool compact=false)
   {
    Fill(icon,card);
@@ -100,7 +108,7 @@ namespace Emberfall
    if(item.Rarity==Rarity.Legendary)DrawFashionSlotFlow(icon,item.QualityColor,u);
   }
   private bool CompactRewardItem(EntryRewardPreview item)
-  {return ((item.Key??"").Contains("refinement")||(item.Key??"").Contains("affix-reforge"))||item.Key=="shard"||item.Key=="thread"||item.Key=="gold"||item.Key=="experience"||(item.Key??"").Contains("potion");}
+  {return item.Key=="revival"||((item.Key??"").Contains("refinement")||(item.Key??"").Contains("affix-reforge"))||item.Key=="shard"||item.Key=="thread"||item.Key=="gold"||item.Key=="experience"||(item.Key??"").Contains("potion");}
   private float DrawEntryRewardRows(EntryRewardPreview item,float available,float u,bool draw)
   {
    float y=0;string[] lines=item.Description.Split('\n');
@@ -123,7 +131,7 @@ namespace Emberfall
     }
     if(CompactRewardItem(item))continue;
     float h=Mathf.Max(24*u,Style(Mathf.RoundToInt(section?12*u:11*u),section,true).CalcHeight(new GUIContent(line),(available-16)*u)+8*u);
-    if(draw){if(section)Fill(new Rect(0,(y+5)*u,3*u,h-10*u),item.QualityColor);Text(new Rect(8*u,y*u,(available-16)*u,h),line,Mathf.RoundToInt(section?12*u:11*u),section?item.QualityColor:muted,section,true);}
+    if(draw){if(section)Fill(new Rect(0,(y+5)*u,3*u,h-10*u),item.QualityColor);Text(new Rect(8*u,y*u,(available-16)*u,h),line,Mathf.RoundToInt(section?12*u:11*u),section?item.QualityColor:(item.Key??"").Contains("gem-bag:")?pale:muted,section,true);}
     y+=h/u+4;
    }
    return y;
@@ -137,6 +145,7 @@ namespace Emberfall
   }
   private float DrawRewardDetailRows(EntryRewardPreview item,float available,float u,bool draw)
   {
+   if(item.PreviewBagSlot>=0)return DrawGemBagContents(item,available,u,draw);
    if(CompactRewardItem(item)){if(draw)Text(new Rect(0,0,available*u,44*u),ResourceDescription(item.Key),Mathf.RoundToInt(12*u),new Color(.78f,.84f,.9f),false,true);return 44;}
    if(!item.GearSlot.HasValue&&!item.AppearanceSlot.HasValue)return DrawEntryRewardRows(item,available,u,draw);
    string current="";ItemData currentEquipment=null;
@@ -276,7 +285,7 @@ namespace Emberfall
   }
   private sealed class EntryRewardPreview
   {
-   public ItemData Equipment;public string Key,Name,Description;public Texture2D Icon;public Color Tint;public Color QualityColor {get{return GameBalance.RarityColor(Rarity);}}public Rarity Rarity;public bool Clear;public bool UnenhancedReward;public bool AllowActions;public int Quantity=1;public ItemSlot? GearSlot;public FashionSlot? AppearanceSlot;
+   public int BagSlot=-1,PreviewBagSlot=-1;public ItemData Equipment;public string Key,Name,Description;public Texture2D Icon;public Color Tint;public Color QualityColor {get{return GameBalance.RarityColor(Rarity);}}public Rarity Rarity;public bool Clear;public bool UnenhancedReward;public bool AllowActions;public int Quantity=1;public ItemSlot? GearSlot;public FashionSlot? AppearanceSlot;
   }
   private readonly System.Collections.Generic.Dictionary<string,System.Collections.Generic.List<EntryRewardPreview>> entryPreviewCache = new System.Collections.Generic.Dictionary<string,System.Collections.Generic.List<EntryRewardPreview>>();
   private System.Collections.Generic.List<EntryRewardPreview> EntryRewardPreviews(int mode,int tier,bool chapter)
@@ -404,9 +413,10 @@ namespace Emberfall
    Box(AdventureRect(l.Frame,u),jade,false);
    Text(new Rect((l.X+inset)*u,(l.Y+inset)*u,(l.Frame.Width-2*inset-48)*u,36*u),"选择冒险",Mathf.RoundToInt(20*u),pale,true);
    if(PopupCloseButton(new Rect((l.X+l.Frame.Width-44-inset)*u,(l.Y+inset)*u,44*u,36*u))){adventureChapterSelected=false;session.CancelDungeonSelection();BlockUITransition();return;}
+   adventureChapterSelected=false;
    string[] names={"沉星遗迹","守望林庭","烬河突围","蚀星斗场","回廊远征"};
-   adventureListScroll=BeginTouchScroll("adventure-list",AdventureRect(l.List,u),adventureListScroll,new Rect(0,0,(l.List.Width-18)*u,480*u));
-   for(int i=0;i<8;i++)
+   adventureListScroll=BeginTouchScroll("adventure-list",AdventureRect(l.List,u),adventureListScroll,new Rect(0,0,(l.List.Width-18)*u,300*u));
+   for(int i=0;i<5;i++)
    {
     bool chapter=i>=5;var node=(ChapterNode)(chapter?i-5:0);
     bool unlocked=!chapter||ChapterProgression.IsUnlocked(session.Progression.Profile,node);

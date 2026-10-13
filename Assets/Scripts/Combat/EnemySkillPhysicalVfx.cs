@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Emberfall
 {
@@ -151,10 +151,10 @@ namespace Emberfall
                 // The body excludes player-radius compensation in the damage capsule.
                 float width = Mathf.Max(.28f, radius - .4f) * 1.25f;
                 bodies[i].localScale = new Vector3(width, rise * 2f, Mathf.Max(.62f, spacing * 1.75f));
-                Color tint = live ? new Color(.24f, .155f, .085f) : Color.Lerp(baseTint, new Color(.29f, .18f, .09f), progress);
+                Color tint = live ? new Color(.24f, .155f, .085f) : Color.Lerp(new Color(.8f,.35f,.06f), new Color(1f,.15f,.035f), progress);
                 block.Clear(); block.SetColor("_Color", tint); block.SetColor("_Tint", tint);
-                block.SetFloat("_Heat", live ? 1 : progress * .7f);
-                block.SetColor("_EmissionColor", new Color(.7f, .13f, .018f) * (live ? .035f : progress * .018f));
+                block.SetFloat("_Heat", live ? 1 : .65f+progress*.35f);
+                block.SetColor("_EmissionColor", new Color(.7f, .13f, .018f) * (live ? .035f : .45f+progress*.55f));
                 renderers[i].SetPropertyBlock(block);
             }
             core.gameObject.SetActive(!live && interruptible); core.position = WorldTerrain.Ground(from, .52f); core.localScale = new Vector3(.38f, .62f, .38f);

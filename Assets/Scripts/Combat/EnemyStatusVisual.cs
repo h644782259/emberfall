@@ -41,6 +41,7 @@ namespace Emberfall
             for(int i=0;i<ice.Length;i++)
             {
                 if(i<count&&ice[i]==null)ice[i]=Piece("Frozen ankle crystal",iceMaterial,new Vector3((i-1)*.22f,.3f,.12f),new Vector3(.12f,.5f,.14f),new Vector3(0,0,(i-1)*18));
+                if(ice[i]!=null&&bodyModel!=null)AttachBody(ice[i],bodyModel.transform,new Vector3((i-1)*.22f,.3f,.12f),new Vector3(.12f,.5f,.14f));
                 Set(ice[i],i<count);
             }
             if(marked&&frost==null)frost=Piece("Frost mark diamond",iceMaterial,frostPoint,new Vector3(.14f,.14f,.06f),new Vector3(0,0,45));

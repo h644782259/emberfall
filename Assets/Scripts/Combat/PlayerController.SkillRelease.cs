@@ -1,10 +1,10 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Emberfall
 {
     public sealed partial class PlayerController
     {
-        private const float SkillPreparationSeconds = .14f;
+        private float SkillPreparationSeconds => SkillCastingPolicy.Preparation(pendingSkillReleaseClass,pendingSkillReleaseSlot);
         private int pendingSkillReleaseSlot = -1, pendingSkillReleaseEpoch, skillReleaseInputFrame = -1;
         private float pendingSkillReleaseAge;
         private Vector3 pendingSkillReleaseAim, pendingSkillReleaseForward;
@@ -13,14 +13,41 @@ namespace Emberfall
         private HeroClass pendingSkillReleaseClass;
         private bool executingPreparedSkill;
         internal bool HasPendingSkillRelease { get { return pendingSkillReleaseSlot >= 0; } }
-        private bool SkillReleaseInputBlocked { get { return HasPendingSkillRelease || skillReleaseInputFrame == Time.frameCount; } }
+        private bool SkillReleaseInputBlocked { get { return blinkFollowupPending || HasPendingSkillRelease || skillReleaseInputFrame == Time.frameCount; } }
         private float SkillPreparationProgress { get { return Mathf.Clamp01(pendingSkillReleaseAge / SkillPreparationSeconds); } }
 
-        // Preparation is an accepted input, not a paid cast. The original resource
-        // transaction and cast receipt are created once at the actual release.
+        // Input pays once; the paid release is consumed only after preparation completes.
+        private int paidSkillSlot = -1;
+        internal bool PaySkillPreparation(int slot)
+        {
+            if (!CanBeginSkillTargeting(slot)) return false;
+            int rank = session.Progression.Profile.skillRanks[slot];
+            if (!CanUseMovementSkill(slot, rank)) { TraversalFailure(); return false; }
+            if(!StockTargetReady(slot,rank)){session.ReportControlFailure("skill"+slot,"无目标");return false;}
+            // Limited healing rank one has no defensive benefit: do not pay for an empty heal.
+            if (!SkillHealingHasEffect(slot,rank))
+            { session.Notify("生命已满，无需使用治疗技能。"); return false; }
+            if (HeroClass==HeroClass.Vanguard && slot == 6 && skillRuntime.Remaining(slot) <= 0 && Energy >= GameBalance.SkillEnergyCost(HeroClass, slot) && !session.TrySpendHealingCharge()) return false;
+            if (!skillRuntime.TryConsume(slot, rank, (ActiveRunBonuses == null ? 1f : ActiveRunBonuses.CooldownMultiplier)*(1f-stats.CooldownReduction)))
+            {
+                if(skillRuntime.StockPersistenceFailed){session.Notify("技能未释放："+session.Progression.LastError);return false;}
+                if (skillFeedbackCooldown <= 0)
+                {
+                    float remaining = skillRuntime.Remaining(slot);
+                    session.ReportControlFailure("skill"+slot,remaining>0?"冷却":"缺能");
+                    if(!MobileControls.Active&&remaining<=0)session.Notify("能量不足：需要 " + GameBalance.SkillEnergyCost(HeroClass,slot) + " 点；普攻命中回复 8 点，持续回复每秒 4 点。");
+                    skillFeedbackCooldown = .8f;
+                }
+                return false;
+            }
+            paidSkillSlot = slot;
+            StopSkillChannel();
+            return true;
+        }
         private bool BeginSkillRelease(int slot)
         {
-            if (SkillReleaseInputBlocked || !CanBeginSkillTargeting(slot)) return false;
+            if (SkillReleaseInputBlocked || !PaySkillPreparation(slot)) return false;
+            StopSkillChannel();
             pendingSkillReleaseSlot = slot; pendingSkillReleaseEpoch = CombatEpoch;
             pendingSkillReleaseClass = HeroClass; pendingSkillReleaseSession = session;
             pendingSkillReleaseAim = aimPoint; pendingSkillReleaseTarget = AimTarget;
@@ -38,7 +65,7 @@ namespace Emberfall
             pendingSkillReleaseSlot = -1; pendingSkillReleaseAge = 0;
             pendingSkillReleaseSession = null; pendingSkillReleaseTarget = null;
         }
-        private void OnDisable() { CancelPendingSkillRelease(); }
+        private void OnDisable() { ClearBlinkFollowup(); paidSkillSlot = -1; CancelPendingSkillRelease(); }
 
         // Explicit scaled-time gate; animation callbacks never own payment/damage.
         private void AdvanceSkillRelease(float deltaTime)
@@ -47,7 +74,7 @@ namespace Emberfall
             if (session == null || session != pendingSkillReleaseSession || session.Player != this ||
                 !session.HasStarted || session.CombatEffectsEnded || IsDead || CombatEpoch != pendingSkillReleaseEpoch ||
                 HeroClass != pendingSkillReleaseClass || !gameObject.activeInHierarchy)
-            { CancelPendingSkillRelease(); if (model != null && !IsDead) model.CancelAction(); return; }
+            { paidSkillSlot = -1; CancelPendingSkillRelease(); if (model != null && !IsDead) model.CancelAction(); return; }
             if (session.InputBlocked || deltaTime <= 0 || float.IsNaN(deltaTime) || float.IsInfinity(deltaTime)) return;
             pendingSkillReleaseAge += deltaTime;
             AnimateSkillPreparation(pendingSkillReleaseSlot, SkillPreparationProgress);

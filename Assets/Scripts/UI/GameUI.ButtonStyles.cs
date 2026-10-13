@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Emberfall
 {
@@ -53,10 +53,10 @@ namespace Emberfall
             bool row = role == ButtonRole.Row || role == ButtonRole.SelectedRow;
             bool selectedRow = role == ButtonRole.SelectedRow;
             Color accent = danger ? new Color(1f, .43f, .4f) : primary || selected ? gold : jade;
-            Color background = primary || selected ? new Color(.65f, .32f, .075f) :
+            Color background = primary || selected ? new Color(.58f, .38f, .18f) :
                 danger ? new Color(.16f, .018f, .028f) :
                 navigation || tab || row && !selectedRow || toggle && !active ? new Color(.015f, .028f, .042f) : new Color(.015f, .13f, .105f);
-            Color foreground = primary || selected ? new Color(.012f, .008f, .004f) :
+            Color foreground = primary || selected ? new Color(1f, .95f, .84f) :
                 danger ? new Color(1f, .76f, .72f) : navigation ? new Color(.71f, .94f, .89f) : pale;
             Color outline = tab && !selected ? new Color(.22f, .32f, .38f) :
                 navigation || toggle && !active ? new Color(.25f, .49f, .47f) : accent;

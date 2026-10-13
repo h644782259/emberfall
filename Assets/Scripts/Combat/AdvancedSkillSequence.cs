@@ -72,7 +72,7 @@ namespace Emberfall
 
         private void Update()
         {
-            if (owner == null || owner.IsDead || session == null || session.Player != owner || !session.HasStarted || session.CombatEffectsEnded || owner.CombatEpoch != epoch)
+            if (owner == null || owner.IsDead || session == null || session.Player != owner || !session.HasStarted || session.CombatEffectsEnded || owner.CombatEpoch != epoch || SkillCastingPolicy.Channeled(heroClass,skill)&&!owner.IsSkillChannelCurrent(castId))
             { Destroy(gameObject); return; }
             if (session.InputBlocked || Time.deltaTime <= 0) return;
             age += Time.deltaTime;
@@ -380,7 +380,7 @@ namespace Emberfall
 
         private void OnDestroy(){OnDisable();}
         private void OnDisable()
-        {if(performance!=null){performance.Retire();performance=null;}if(ultimateField!=null){ultimateField.Stop();ultimateField=null;}castReceipt?.Release();castReceipt=null;if(healingAura!=null){healingAura.Stop();healingAura=null;}if(step<steps&&arrowBatch.IsValid)arrowBatch.Retire();}
+        {if(owner!=null&&SkillCastingPolicy.Channeled(heroClass,skill))owner.EndSkillChannel(castId);if(performance!=null){performance.Retire();performance=null;}if(ultimateField!=null){ultimateField.Stop();ultimateField=null;}castReceipt?.Release();castReceipt=null;if(healingAura!=null){healingAura.Stop();healingAura=null;}if(step<steps&&arrowBatch.IsValid)arrowBatch.Retire();}
         private Vector3 Clamp(Vector3 point) { return CombatSight.GroundPoint(origin,Vector3.ClampMagnitude(CombatFx.Flat(point),session.ArenaRadius-.7f)); }
         private static Vector3 Circle(float angle,float radius) { return new Vector3(Mathf.Cos(angle),0,Mathf.Sin(angle))*radius; }
     }

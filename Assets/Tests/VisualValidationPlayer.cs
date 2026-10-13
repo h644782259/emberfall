@@ -1,4 +1,4 @@
-#if EMBERFALL_VISUAL_VALIDATION
+﻿#if EMBERFALL_VISUAL_VALIDATION
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -66,7 +66,7 @@ namespace Emberfall
             get
             {
                 ConfigurePaths();
-                PerformanceRun = Array.IndexOf(Environment.GetCommandLineArgs(),"--camp-performance") >= 0;
+                PerformanceRun = Array.IndexOf(Environment.GetCommandLineArgs(),"--combat-flow")>=0 || Array.IndexOf(Environment.GetCommandLineArgs(),"--blink-followup")>=0 || Array.IndexOf(Environment.GetCommandLineArgs(),"--cast-poses")>=0 || Array.IndexOf(Environment.GetCommandLineArgs(),"--stride-audio")>=0 || Array.IndexOf(Environment.GetCommandLineArgs(),"--dungeon-tactics") >= 0 || Array.IndexOf(Environment.GetCommandLineArgs(),"--camp-performance") >= 0 || Array.IndexOf(Environment.GetCommandLineArgs(),"--impact-validation")>=0;
                 return saveDirectory;
             }
         }
@@ -232,6 +232,13 @@ namespace Emberfall
             Check(ui != null, "Runtime IMGUI component exists");
             Check(Path.GetFullPath(session.Progression.SaveDirectory) == SaveDirectory, "Test player uses its isolated save directory");
             if(System.Array.IndexOf(System.Environment.GetCommandLineArgs(),"--camp-performance")>=0){yield return VerifyCampPerformance();yield break;}
+            if(System.Array.IndexOf(System.Environment.GetCommandLineArgs(),"--impact-validation")>=0){yield return VerifyImpactControls();yield break;}
+            if(System.Array.IndexOf(System.Environment.GetCommandLineArgs(),"--dungeon-tactics")>=0){yield return VerifyDungeonTactics();yield break;}
+            if(System.Array.IndexOf(System.Environment.GetCommandLineArgs(),"--cast-poses")>=0){yield return VerifyCastPoses();yield break;}
+            if(System.Array.IndexOf(System.Environment.GetCommandLineArgs(),"--combat-flow")>=0){yield return VerifyCombatFlow();yield break;}
+            if(System.Array.IndexOf(System.Environment.GetCommandLineArgs(),"--blink-followup")>=0){yield return VerifyBlinkFollowups();yield break;}
+            if(System.Array.IndexOf(System.Environment.GetCommandLineArgs(),"--stride-audio")>=0){yield return VerifyStrideAudio();yield break;}
+            if(System.Array.IndexOf(System.Environment.GetCommandLineArgs(),"--hero-showcase")>=0){yield return VerifyHeroShowcases();yield break;}
             if(System.Array.IndexOf(System.Environment.GetCommandLineArgs(),"--reward-presentation")>=0){yield return VerifyRewardPresentation();yield break;}
             if(System.Array.IndexOf(System.Environment.GetCommandLineArgs(),"--adventure-rework")>=0){yield return VerifyAdventureRework();yield break;}
             if(System.Array.IndexOf(System.Environment.GetCommandLineArgs(),"--windows-handoff")>=0){yield return VerifyWindowsHandoff();yield break;}

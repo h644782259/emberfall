@@ -1,9 +1,19 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 namespace Emberfall
 {
     public sealed partial class GameUI
     {
+        private void DrawMerchantItemIcon(Rect slot,Texture2D icon,Color tint,bool legendary,float u)
+        {
+            if(legendary)
+            {
+                // Same closed rarity frame and travelling edge light as bag supply slots.
+                Fill(slot,card);Border(slot,tint);DrawFashionSlotFlow(slot,tint,u);
+                slot=new Rect(slot.x+4*u,slot.y+3*u,slot.width-8*u,slot.height-6*u);
+            }
+            DrawIcon(slot,icon,tint);
+        }
         private bool MerchantRarityTab(Rect r,Rarity rarity,float u)
         {
             bool selected=merchantGemRarity==rarity;Color tint=GameBalance.RarityColor(rarity);
@@ -54,7 +64,7 @@ namespace Emberfall
                 for(int i=0;i<saleItems.Count;i++)if(CanSellMerchantEquipment(saleItems[i])==available)saleOrder.Add(i);
                 for(int i=0;i<saleGems.Count;i++)if((p.GemSaleLock(saleGems[i].mechanic,MerchantServiceActive).Length==0)==available)saleOrder.Add(saleItems.Count+i);
             }
-            int count=merchantMode==0?3:merchantMode==1?mechanics.Length:saleItems.Count+saleGems.Count;
+            int count=merchantMode==0?4:merchantMode==1?3:saleItems.Count+saleGems.Count;
             if(merchantMode==2)merchantSelection=-1;
             else merchantSelection=Mathf.Clamp(merchantSelection,0,Mathf.Max(0,count-1));
             float contentHeight=l.GridHeight(count,true)+(merchantMode==1?((count+l.Columns-1)/l.Columns)*54:0);
@@ -67,11 +77,31 @@ namespace Emberfall
                 bool selected=false;
                 Fill(tile,selected?new Color(.12f,.22f,.24f):card);Border(tile,selected?gold:muted*.4f);
                 if(selected){Border(new Rect(tile.x+2*u,tile.y+2*u,tile.width-4*u,tile.height-4*u),gold);DrawIcon(new Rect(tile.xMax-25*u,tile.y+4*u,20*u,20*u),UIIconAtlas.Utility("confirm"),gold);}
+                if(merchantMode==1)
+                {
+                    var slot=(ItemSlot)index;var bag=GemBagPreview(slot,false);string reason=p.GemBagPurchaseLock(slot,MerchantServiceActive);
+                    DrawEntryRewardIcon(new Rect(tile.center.x-30*u,tile.y+12*u,60*u,60*u),bag,u);
+                    Text(new Rect(tile.x+6*u,tile.y+78*u,tile.width-12*u,26*u),bag.Name,Mathf.RoundToInt(12*u),gold,true,false,TextAnchor.MiddleCenter);
+                    Text(new Rect(tile.x+6*u,tile.y+105*u,tile.width-12*u,22*u),"随机宝石",Mathf.RoundToInt(11*u),muted,false,false,TextAnchor.MiddleCenter);
+                    InspectRewardItem(new Rect(tile.x,tile.y,tile.width,128*u),bag,true);
+                    DrawPrice(new Rect(tile.x+8*u,tile.y+131*u,tile.width-16*u,20*u),ProgressionService.GemBagPrice,true,u);
+                    if(PrimaryButton(new Rect(tile.x+6*u,tile.y+154*u,tile.width-12*u,44*u),reason.Length==0?"兑换":reason,gold,reason.Length==0&&Time.unscaledTime>=merchantActionUntil)&&StartMerchantAction())Feedback(p.BuyGemBag(slot,MerchantServiceActive),"宝石袋已放入行囊");
+                    continue;
+                }
+                if(merchantMode==0&&index==3)
+                {
+                    var purchase=p.PrepareRevivalPurchase(MerchantServiceActive,captureState:false);var preview=ResourceItemPreview("revival",1);
+                    DrawEntryRewardIcon(new Rect(tile.center.x-23*u,tile.y+6*u,46*u,46*u),preview,u);
+                    Text(new Rect(tile.x+6*u,tile.y+52*u,tile.width-12*u,30*u),"复活石",Mathf.RoundToInt(11*u),pale,false,true,TextAnchor.MiddleCenter);
+                    DrawPriceTint(new Rect(tile.x+8*u,tile.y+77*u,tile.width-16*u,20*u),ProgressionService.RevivalStonePrice,false,u,purchase!=null?gold:muted);
+                    InspectRewardItem(new Rect(tile.x,tile.y,tile.width,96*u),preview,true);
+                    if(PrimaryButton(new Rect(tile.x+6*u,tile.y+100*u,tile.width-12*u,44*u),purchase==null?"无法购买":"购买",gold,purchase!=null&&Time.unscaledTime>=merchantActionUntil)&&StartMerchantAction())OpenMerchantQuantity(4,EquipmentMechanic.None,Rarity.Epic,"复活石");
+                    continue;
+                }
                 if(merchantMode==0&&index==2)
                 {
                     var purchase=p.PrepareAffixReforgePurchase(MerchantServiceActive,captureState:false);var preview=ResourceItemPreview("affix-reforge",1);
-                    DrawIcon(new Rect(tile.center.x-23*u,tile.y+6*u,46*u,46*u),preview.Icon,preview.QualityColor);
-                    DrawFashionSlotFlow(new Rect(tile.center.x-23*u,tile.y+6*u,46*u,46*u),preview.QualityColor,u);
+                    DrawMerchantItemIcon(new Rect(tile.center.x-23*u,tile.y+6*u,46*u,46*u),preview.Icon,preview.QualityColor,true,u);
                     Text(new Rect(tile.x+6*u,tile.y+52*u,tile.width-12*u,30*u),"词条重铸石",Mathf.RoundToInt(11*u),gold,false,true,TextAnchor.MiddleCenter);
                     DrawPriceTint(new Rect(tile.x+8*u,tile.y+77*u,tile.width-16*u,20*u),ProgressionService.AffixReforgeStonePrice,false,u,purchase!=null?gold:muted);
                     InspectRewardItem(new Rect(tile.x,tile.y,tile.width,96*u),preview,true);
@@ -84,7 +114,7 @@ namespace Emberfall
                     var purchase=p.PrepareRefinementPurchase(MerchantServiceActive,quantity,captureState:false);
                     Color tint=GameBalance.RarityColor(Rarity.Epic);
                     DrawIcon(new Rect(tile.center.x-23*u,tile.y+6*u,46*u,46*u),UIIconAtlas.Utility("gem"),tint);
-                    Text(new Rect(tile.x+6*u,tile.y+52*u,tile.width-12*u,30*u),"装备洗练石 ×"+quantity,Mathf.RoundToInt(11*u),pale,false,true,TextAnchor.MiddleCenter);
+                    Text(new Rect(tile.x+6*u,tile.y+52*u,tile.width-12*u,30*u),"装备洗练石",Mathf.RoundToInt(11*u),pale,false,true,TextAnchor.MiddleCenter);
                     DrawPriceTint(new Rect(tile.x+8*u,tile.y+77*u,tile.width-16*u,20*u),quantity*ProgressionService.RefinementStonePrice,false,u,purchase!=null?gold:new Color(.98f,.28f,.24f));
                     InspectRewardItem(new Rect(tile.x,tile.y,tile.width,96*u),new EntryRewardPreview{Key="merchant:refinement:"+quantity,Name="装备洗练石",Rarity=Rarity.Epic,Tint=tint,Icon=UIIconAtlas.Utility("gem"),Description="装备洗练石\n数量  "+quantity+"\n用于铁匠洗练，提高装备属性数值。"},true);
                     string reason=p.Profile.refinementStones>999999-quantity?"洗练石已满":purchase==null?"金币不足":"购买";
@@ -96,8 +126,7 @@ namespace Emberfall
                 {
                     var gem=saleGems[itemIndex-saleItems.Count];Color tint=GameBalance.RarityColor(gem.rarity);
                     Rect gemIcon=new Rect(tile.center.x-23*u,tile.y+6*u,46*u,46*u);
-                    if(gem.rarity==Rarity.Legendary)DrawFashionSlotFlow(gemIcon,tint,u);
-                    DrawIcon(gemIcon,UIIconAtlas.Utility("gem"),tint);
+                    DrawMerchantItemIcon(gemIcon,UIIconAtlas.Utility("gem"),tint,gem.rarity==Rarity.Legendary,u);
                     if(gem.mounted)DrawWornIconBadge(gemIcon,u,"已镶嵌");
                     Text(new Rect(tile.x+6*u,tile.y+52*u,tile.width-12*u,30*u),BuildCatalog.GemName(gem.mechanic),Mathf.RoundToInt(11*u),pale,false,true,TextAnchor.MiddleCenter);
                     DrawPrice(new Rect(tile.x+8*u,tile.y+77*u,tile.width-16*u,20*u),p.GemSellValue(gem.mechanic),true,u);
@@ -115,16 +144,15 @@ namespace Emberfall
                 bool first=p.Profile.pendingFirstClearReward&&!p.Profile.firstClearRewardClaimed&&mechanic!=EquipmentMechanic.None&&merchantGemRarity==Rarity.Epic;
                 int price=item!=null?p.SellValue(item):mechanic==EquipmentMechanic.None?ProgressionService.PotionPrice:first?0:BuildCatalog.GemPrice(merchantGemRarity);
                 string caption=item!=null?item.name:mechanic==EquipmentMechanic.None?"生命药剂":BuildCatalog.GemName(mechanic);
-                DrawIcon(new Rect(tile.center.x-23*u,tile.y+(merchantMode==1?26:6)*u,46*u,46*u),item!=null?UIIconAtlas.EquipmentCardIcon(item,session.Progression.Profile.heroClass):UIIconAtlas.Utility(mechanic==EquipmentMechanic.None?"potion":"gem"),item!=null?GameBalance.RarityColor(item.rarity):merchantMode==1?GameBalance.RarityColor(merchantGemRarity):Color.white);
-                if(item!=null?item.rarity==Rarity.Legendary:mechanic!=EquipmentMechanic.None&&merchantGemRarity==Rarity.Legendary)DrawFashionSlotFlow(new Rect(tile.center.x-23*u,tile.y+(merchantMode==1?26:6)*u,46*u,46*u),GameBalance.RarityColor(Rarity.Legendary),u);
+                DrawMerchantItemIcon(new Rect(tile.center.x-23*u,tile.y+(merchantMode==1?26:6)*u,46*u,46*u),item!=null?UIIconAtlas.EquipmentCardIcon(item,session.Progression.Profile.heroClass):UIIconAtlas.Utility(mechanic==EquipmentMechanic.None?"potion":"gem"),item!=null?GameBalance.RarityColor(item.rarity):merchantMode==1?GameBalance.RarityColor(merchantGemRarity):Color.white,item!=null?item.rarity==Rarity.Legendary:mechanic!=EquipmentMechanic.None&&merchantGemRarity==Rarity.Legendary,u);
                 if(item!=null&&IsEquipped(item))DrawWornIconBadge(new Rect(tile.center.x-23*u,tile.y+6*u,46*u,46*u),u,"已穿戴");
                 Text(new Rect(tile.x+6*u,tile.y+(merchantMode==1?74:52)*u,tile.width-12*u,(merchantMode==1?24:30)*u),caption,Mathf.RoundToInt(11*u),pale,false,true,TextAnchor.MiddleCenter);
                 if(merchantMode==1)
                 {
-                    string stats=BuildCatalog.IsAttributeGem(mechanic)?BuildCatalog.GemAttributeSummary(mechanic,merchantGemRarity,p.Attachment(mechanic)?.upgradeRank??0):BuildCatalog.AttributeLabel(BuildCatalog.MechanicAttribute(mechanic))+" +"+(BuildCatalog.MechanicAttributeValue(mechanic,p.Attachment(mechanic)?.upgradeRank??0)*100).ToString("0.#")+"%";
+                    string stats=BuildCatalog.IsAttributeGem(mechanic)?BuildCatalog.GemAttributeSummary(mechanic,merchantGemRarity,0):BuildCatalog.AttributeLabel(BuildCatalog.MechanicAttribute(mechanic))+" +"+(BuildCatalog.MechanicAttributeValue(mechanic,0)*100).ToString("0.#")+"%";
                     DrawDetailTag(new Rect(tile.x+4*u,tile.y+4*u,38*u,18*u),GameBalance.SlotName(BuildCatalog.MechanicSlot(mechanic)),jade,u);
                     DrawDetailTag(new Rect(tile.xMax-42*u,tile.y+4*u,38*u,18*u),GameBalance.RarityName(merchantGemRarity),GameBalance.RarityColor(merchantGemRarity),u);
-                    DrawGemEffectText(new Rect(tile.x+6*u,tile.y+100*u,tile.width-12*u,30*u),stats,Mathf.RoundToInt(11*u),jade,true,TextAnchor.MiddleCenter);
+                    DrawGemEffectText(new Rect(tile.x+6*u,tile.y+100*u,tile.width-12*u,30*u),"基础 "+stats+"\n"+(BuildCatalog.IsAttributeGem(mechanic)?"属性宝石":"机制宝石"),Mathf.RoundToInt(10*u),jade,true,TextAnchor.MiddleCenter);
                 }
                 DrawPriceTint(new Rect(tile.x+8*u,tile.y+(merchantMode==1?131:77)*u,tile.width-16*u,20*u),price,merchantMode==1,u,item!=null||quote!=null?gold:new Color(.98f,.28f,.24f));
                 EntryRewardPreview detail;
@@ -153,8 +181,6 @@ namespace Emberfall
             }
             EndTouchScroll();
             Rect info=BuildPlanRect(l.Info,u);
-            if(merchantMode==1)
-            {for(int tier=0;tier<4;tier++){Rect tab=new Rect(info.x+tier*(info.width/4),info.y,info.width/4-4*u,info.height);if(MerchantRarityTab(tab,(Rarity)tier,u)){merchantGemRarity=(Rarity)tier;}}}
             if(merchantMode==2&&count==0)Text(BuildPlanRect(l.Body,u),"没有可出售物品。",Mathf.RoundToInt(16*u),jade);
             GUI.enabled=prior;DrawMerchantQuantity(u);
         }
@@ -177,6 +203,7 @@ namespace Emberfall
             var p=session.Progression;
             return Mathf.Max(1,merchantQuantityKind==0?Mathf.Min(99-p.Profile.potions,p.Profile.gold/ProgressionService.PotionPrice):
                 merchantQuantityKind==1?Mathf.Min(999999-p.Profile.refinementStones,p.Profile.gold/ProgressionService.RefinementStonePrice):
+                merchantQuantityKind==4?Mathf.Min(999999-p.Profile.revivalStones,p.Profile.gold/ProgressionService.RevivalStonePrice):
                 merchantQuantityKind==2?Mathf.Min(999999-p.Profile.affixReforgeStones,p.Profile.gold/ProgressionService.AffixReforgeStonePrice):1);
         }
         private Rect MerchantQuantityBox(float u)
@@ -220,9 +247,9 @@ namespace Emberfall
             if(Button(new Rect(box.x+16*u,rowY+52*u,80*u,36*u),"最大",jade))SetMerchantQuantity(maximum);
             Text(new Rect(box.x+104*u,rowY+52*u,w-120*u,36*u),"数量 "+merchantQuantity+" / "+maximum,Mathf.RoundToInt(13*u),pale,false,false,TextAnchor.MiddleRight);
             validInput=int.TryParse(merchantQuantityText,out parsed)&&parsed>=1&&parsed<=maximum;
-            var quote=!fresh||!validInput?null:merchantQuantityKind==2?p.PrepareAffixReforgePurchase(MerchantServiceActive,merchantQuantity):merchantQuantityKind==1?p.PrepareRefinementPurchase(MerchantServiceActive,merchantQuantity):p.PrepareMerchantPurchase(merchantQuantityMechanic,MerchantServiceActive,merchantQuantityRarity,merchantQuantity);
+            var quote=!fresh||!validInput?null:merchantQuantityKind==4?p.PrepareRevivalPurchase(MerchantServiceActive,merchantQuantity):merchantQuantityKind==2?p.PrepareAffixReforgePurchase(MerchantServiceActive,merchantQuantity):merchantQuantityKind==1?p.PrepareRefinementPurchase(MerchantServiceActive,merchantQuantity):p.PrepareMerchantPurchase(merchantQuantityMechanic,MerchantServiceActive,merchantQuantityRarity,merchantQuantity);
             bool first=p.Profile.pendingFirstClearReward&&!p.Profile.firstClearRewardClaimed&&merchantQuantityRarity==Rarity.Epic;
-            int unitPrice=merchantQuantityKind==0?ProgressionService.PotionPrice:merchantQuantityKind==1?ProgressionService.RefinementStonePrice:merchantQuantityKind==2?ProgressionService.AffixReforgeStonePrice:first?0:BuildCatalog.GemPrice(merchantQuantityRarity);
+            int unitPrice=merchantQuantityKind==4?ProgressionService.RevivalStonePrice:merchantQuantityKind==0?ProgressionService.PotionPrice:merchantQuantityKind==1?ProgressionService.RefinementStonePrice:merchantQuantityKind==2?ProgressionService.AffixReforgeStonePrice:first?0:BuildCatalog.GemPrice(merchantQuantityRarity);
             DrawPrice(new Rect(box.x+16*u,box.yMax-92*u,w-32*u,28*u),unitPrice*merchantQuantity,merchantQuantityKind==3,u);
             if(Button(new Rect(box.x+16*u,box.yMax-54*u,(w-40*u)*.5f,44*u),"取消",muted)){merchantQuantityKind=-1;return;}
             if(Button(new Rect(box.center.x+4*u,box.yMax-54*u,(w-40*u)*.5f,44*u),fresh?"确认交易":"请重新选择",gold,quote!=null))

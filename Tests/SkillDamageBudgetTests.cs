@@ -15,7 +15,7 @@ public static class SkillDamageBudgetTests
    for(int rank=1;rank<=3;rank++)
    {
     var field=SkillDamageBudgets.EarlyField(hero,rank);
-    Check(field.Ticks>0&&field.Ticks<=16,"bounded field ticks");
+    Check(field.Ticks>0&&field.Ticks<=20,"extended fields keep a bounded event count");
     Check(field.TotalCoefficient>prior,"rank upgrade meaningfully improves field");prior=field.TotalCoefficient;
     Check(field.TickCoefficient>0&&field.FinisherCoefficient>=0,"finite positive allocated events");
     Check(field.TotalCoefficient<8,"early sustained field no longer outvalues a full ultimate");

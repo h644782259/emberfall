@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace Emberfall
@@ -68,8 +68,14 @@ namespace Emberfall
         private Vector3 dungeonReturnPosition=Vector3.zero;
         private PlayerController dismissedResultOwner;private int dismissedResultEpoch=-1;
         public bool FinalBossEncounter {get{return InDungeon&&DungeonWave>=TotalWaves;}}
+        private float victoryTransitionRemaining;
+        private PlayerController victoryTransitionOwner;
+        private int victoryTransitionEpoch;
+        private void BeginVictoryTransition()
+        {victoryTransitionRemaining=2.5f;victoryTransitionOwner=Player;victoryTransitionEpoch=Player==null?-1:Player.CombatEpoch;}
+        private bool VictoryTransitionPresenting => victoryTransitionRemaining>0&&Player!=null&&Player==victoryTransitionOwner&&Player.CombatEpoch==victoryTransitionEpoch;
         public bool BossDeathPresenting {get{return EnemyDeathDissolve.IsPresenting(this)||LargeBossShutdownVisual.IsPresenting(this);}}
-        public bool FinishedResultReady {get{return (ModeFinished||DungeonCleared)&&!BossDeathPresenting;}}
+        public bool FinishedResultReady {get{return (ModeFinished||DungeonCleared)&&!VictoryTransitionPresenting&&!BossDeathPresenting;}}
         public bool FinishedResultDismissed {get{return Player!=null&&dismissedResultOwner==Player&&dismissedResultEpoch==Player.CombatEpoch;}}
         public void DismissFinishedResult()
         {
@@ -98,8 +104,6 @@ namespace Emberfall
             if(dungeonReturnMarker!=null&&dungeonReturnMarker.activeInHierarchy!=DungeonReturnAvailable)dungeonReturnMarker.SetActive(DungeonReturnAvailable);
         }
         private int runSeed, wavePopulation;
-        private readonly Queue<EncounterSpawn> reinforcementQueue=new Queue<EncounterSpawn>();
-        private float nextReinforcementAt;
         private readonly Dictionary<string, int> combatActions = new Dictionary<string, int>();
         private readonly HashSet<EnemyController> sideEventEnemies = new HashSet<EnemyController>();
         private Vector3 sideEventPosition = new Vector3(12,0,-3);
@@ -176,7 +180,7 @@ namespace Emberfall
         {
             ClearDungeonSettlement();
             if(!enteringChapter)ResetChapterRun();
-            MechanismEvidence.Reset();RunChoices.Reset(); reinforcementQueue.Clear(); nextReinforcementAt=0; DungeonSelectionOpen = false; AbandonSideEvent();
+            MechanismEvidence.Reset();RunChoices.Reset(); ResetWaveTerrain();  DungeonSelectionOpen = false; AbandonSideEvent();
             runDamageTaken=runHealingReceived=0;runDamageTotal=0;runPickupGold=runEnemyExperience=RunPickupPotions=0;runItemIds.Clear();runMaximumDamage=0;runMaximumCombo=0;comboHits=0;comboLastHit=-100;
             combatActions.Clear(); lastDamageSource = "未记录"; lastDamageAmount = 0; lastInterruptAt = -10; recapGoldLost = 0;
             if (dungeon)
@@ -192,20 +196,6 @@ namespace Emberfall
             ResetArenaMode(dungeon);
         }
 
-        private void TrySpawnReinforcements()
-        {
-            if(!InDungeon || IsDead || reinforcementQueue.Count==0 || Time.time<nextReinforcementAt || Enemies.Count>9)return;
-            nextReinforcementAt=Time.time+.8f;
-            int spawned=0;
-            while(reinforcementQueue.Count>0 && spawned<4 && Enemies.Count<EncounterPlan.MaximumSimultaneous)
-            {
-                EncounterSpawn next=reinforcementQueue.Peek(); Vector3 position;
-                if(!TrySafeSpawn(DungeonPoint(new Vector3(next.X,0,next.Z)),next.Boss?BossSpawnRadius:next.Kind==EnemyKind.Guardian?.65f:.5f,5.5f,out position))break;
-                reinforcementQueue.Dequeue(); SpawnEnemy(next.Kind,DungeonEntryLevel,position,next.Boss); spawned++;
-            }
-            if(spawned>0)Notify("遗迹援军接近 · "+spawned+" 名");
-        }
-
         public bool ConfirmBlessing(int index)
         {
             if(SceneLoading)return false;
@@ -213,7 +203,7 @@ namespace Emberfall
             if(ChapterActive)return false;
             if(RoomChainRun!=null)return ConfirmRoomInterlude(index);
             if(ModeRun!=null)return ConfirmArenaBlessing(index);
-            if (!InDungeon || IsDead || DungeonCleared || Enemies.Count > 0 || reinforcementQueue.Count>0 || !RunChoices.Choose(index)) return false;
+            if (!InDungeon || IsDead || DungeonCleared || Enemies.Count > 0 || wavePreparing || !RunChoices.Choose(index)) return false;
             if(!Progression.SaveDungeonCheckpoint())Notify(Progression.LastError);
             DungeonWave++; SpawnDungeonWave(); UpdateTimeScale();
             Notify(DungeonWave == TotalWaves ? "最终波 · 星蚀巨像" : "第 " + DungeonWave + " 波");

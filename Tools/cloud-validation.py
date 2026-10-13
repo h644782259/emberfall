@@ -177,7 +177,7 @@ def main():
         if (ROOT / "Tests/EncounterPlanTests.cs").exists():
             checks.append(("encounter-plans", [ROOT / "Assets/Scripts/Core/GameTypes.cs",
                           ROOT / "Assets/Scripts/Core/SkillRuntime.cs", ROOT / "Tests/SkillRuntimeTests.cs",
-                          ROOT / "Assets/Scripts/Core/EncounterPlan.cs", ROOT / "Tests/EncounterPlanTests.cs"],
+                          ROOT / "Assets/Scripts/Core/DungeonWaveTactics.cs", ROOT / "Assets/Scripts/Core/EncounterPlan.cs", ROOT / "Tests/EncounterPlanTests.cs"],
                           'using System; internal static class Program { static void Main() { Console.WriteLine(EncounterPlanTests.Run()); } }'))
         if (ROOT / "Tests/RunChoicesTests.cs").exists():
             checks.append(("run-choices", [ROOT / "Assets/Scripts/Core/GameTypes.cs",
@@ -378,6 +378,8 @@ def main():
                 sources.append(ROOT/"Assets/Scripts/Core/ReforgeQuote.cs")
             if ROOT/"Tests/CombatBalanceTests.cs" in sources:sources.append(ROOT/"Assets/Scripts/Core/SkillDamageBudgets.cs")
         for _, sources, _ in checks:
+            if ROOT/"Assets/Scripts/Core/SkillDamageBudgets.cs" in sources:
+                sources.append(ROOT/"Assets/Scripts/Core/SkillCastingPolicy.cs")
             sources[:] = list(dict.fromkeys(sources))
         for name, script in [("asset-meta-guids", "Tools/validate-meta-guids.py"),
                              ("asset-meta-guid-controls", "Tests/MetaGuidAuditTests.py")]:

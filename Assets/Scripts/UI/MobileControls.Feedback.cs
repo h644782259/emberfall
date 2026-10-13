@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 namespace Emberfall
 {
     public sealed partial class MobileControls
@@ -16,6 +16,7 @@ namespace Emberfall
         private void CheckDodgeFeedback()
         {
             var hero=session.Player;if(hero==null)return;
+            if(hero.BlinkFollowupRemaining>0)return;
             string reason=MobileCombatPresentation.Dodge(hero.DodgeCooldown,hero.IsJumping);
             if(reason.Length>0)session.ReportControlFailure("dodge",reason);
         }
@@ -41,7 +42,13 @@ namespace Emberfall
             string failure=session.ControlFailure("potion");
             string potionCaption=!string.IsNullOrEmpty(failure)?failure:potionState;
             if(potionCaption.Length>0&&potionCaption!="满血")GUI.Label(new Rect(Potion.x-8,Potion.y-18,Potion.width+16,16),potionCaption,controlLabel);
-            if(dodgeState.Length>0)LabelControl(Dodge,hero.DodgeCooldown>.01f?hero.DodgeCooldown.ToString("0.0"):dodgeState,true);
+            if(hero.BlinkFollowupRemaining>0)
+            {
+                LabelControl(Dodge,hero.BlinkFollowupName,false);
+                Rect action=VisualRect(Dodge);GUI.color=new Color(1f,.75f,.25f,EffectPreferences.TouchOpacity);
+                GUI.DrawTexture(new Rect(action.x,action.yMax+2,action.width*Mathf.Clamp01(hero.BlinkFollowupRemaining/1.2f),3),Texture2D.whiteTexture);GUI.color=Color.white;
+            }
+            else if(dodgeState.Length>0)LabelControl(Dodge,hero.DodgeCooldown>.01f?hero.DodgeCooldown.ToString("0.0"):dodgeState,true);
             var combo=hero.BasicOpportunityWindow(true);var ca=Layout.ComboOpportunity;
             comboMeter.Draw(new Rect(ca.X,ca.Y,ca.Width,ca.Height),combo,hero,hero.CombatEpoch,1,EffectPreferences.TouchOpacity);
             var counter=hero.BasicOpportunityWindow();var co=Layout.CounterOpportunity;
@@ -71,7 +78,7 @@ namespace Emberfall
                     GUI.Label(labelRect,content,pinnedTargetLabel);
                 }
             }
-            failure=session.ControlFailure("dodge");if(!string.IsNullOrEmpty(failure))LabelControl(Dodge,failure,true);
+            failure=session.ControlFailure("dodge");if(hero.BlinkFollowupRemaining<=0&&!string.IsNullOrEmpty(failure))LabelControl(Dodge,failure,true);
         }
         private static Rect VisualRect(Rect hit)
         {float ratio=EffectPreferences.TouchVisualScale;return new Rect(hit.center.x-hit.width*ratio*.5f,hit.center.y-hit.height*ratio*.5f,hit.width*ratio,hit.height*ratio);}

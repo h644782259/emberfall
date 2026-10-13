@@ -35,7 +35,7 @@ namespace UnityEngine{
  public static class Mathf{public static float Exp(float a)=>(float)Math.Exp(a);public static float Sin(float a)=>(float)Math.Sin(a);public static float Cos(float a)=>(float)Math.Cos(a);public static float Clamp(float a,float b,float c)=>Math.Min(c,Math.Max(b,a));public static float Clamp01(float a)=>Clamp(a,0,1);public static float MoveTowards(float a,float b,float d)=>Math.Abs(b-a)<=d?b:a+Math.Sign(b-a)*d;}
 }
 namespace Emberfall{
- public class EnemyStatusEffects{public bool KnockedDown,IsAirborne,IsFrozen;}
+ public class EnemyStatusEffects{public bool KnockedDown,IsAirborne,IsFrozen;public float AirborneHeight,AirborneVelocity;}
  public class EnemyController{public bool IsDead,IsBoss,IsStunned;public EnemyStatusEffects StatusEffects=new EnemyStatusEffects();}
  public sealed partial class CombatModel:MonoBehaviour{
   private EnemyController enemyOwner;private bool dying,isHero,articulatedEnemy;private float recoilStarted,recoilStrength;private Vector3 recoilDirection,recoilOffset,recoilVelocity;private int recoilFrame=-1;
@@ -49,6 +49,7 @@ namespace Emberfall{
  }
 }
 '''
+fixture=fixture.replace('public static float Exp(float a)', 'public static float Lerp(float a,float b,float t)=>a+(b-a)*Clamp01(t);public static float SmoothStep(float a,float b,float t){t=Clamp01(t);return a+(b-a)*t*t*(3-2*t);}public static float Exp(float a)')
 driver = r'''
 using System;using Emberfall;using UnityEngine;
 static class ActorChecks{

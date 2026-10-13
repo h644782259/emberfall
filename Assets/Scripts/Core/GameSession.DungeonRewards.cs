@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 namespace Emberfall
 {
@@ -11,7 +11,7 @@ namespace Emberfall
         public bool CombatEnded {get{return (PracticeActive&&PracticeRecord!=null&&PracticeRecord.Finished)||ModeFinished||(InDungeon&&DungeonCleared);}}
         // Every successful adventure remains explorable after its result closes.
         // Enemy damage and rewards retain the terminal CombatEnded admission.
-        public bool CombatEffectsEnded {get{return !AdventureResultPolicy.AcceptsPlayerEffects(HasStarted,CombatEnded,InDungeon,DungeonCleared,PracticeActive,FinishedResultDismissed);}}
+        public bool CombatEffectsEnded {get{return IsDead||!AdventureResultPolicy.AcceptsPlayerEffects(HasStarted,CombatEnded,InDungeon,DungeonCleared,PracticeActive,FinishedResultDismissed);}}
         private void QueueDungeonCompletion()
         {
             if(DungeonRewardPending)return;
@@ -36,6 +36,6 @@ namespace Emberfall
             return true;
         }
         private void ClearDungeonSettlement()
-        {pendingDungeonRewardId=null;pendingDungeonRewardTier=pendingDungeonRewardGold=pendingDungeonRewardExperience=0;}
+        {victoryTransitionRemaining=0;victoryTransitionOwner=null;pendingDungeonRewardId=null;pendingDungeonRewardTier=pendingDungeonRewardGold=pendingDungeonRewardExperience=0;}
     }
 }

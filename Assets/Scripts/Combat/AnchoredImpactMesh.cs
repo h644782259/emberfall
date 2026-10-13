@@ -8,6 +8,10 @@ namespace Emberfall
         private const int MaximumDepth=6,MaximumTriangles=4096,MaximumChecks=4096;
         internal static Mesh Create(Mesh source,Transform root,Vector3 offset,Vector3 scale,Quaternion rotation)
         {
+            using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.SurfaceBuild)) return CreateMeasured(source,root,offset,scale,rotation);
+        }
+        private static Mesh CreateMeasured(Mesh source,Transform root,Vector3 offset,Vector3 scale,Quaternion rotation)
+        {
             Vector3 origin=root.position;
             // Every certified face includes this origin in its visibility hull.
             // If even that point fails, subdivision cannot recover a visible face.
@@ -16,10 +20,13 @@ namespace Emberfall
             Vector3[] points=source.vertices;
             float originHeight=Mathf.Min(WorldTraversal.SurfaceHeight(origin,.015f),origin.y);
             var sourceUv=source.uv;var original=source.triangles;
+            var heights=new Dictionary<Vector2,float>();
             float minX=float.PositiveInfinity,minZ=float.PositiveInfinity,maxX=float.NegativeInfinity,maxZ=float.NegativeInfinity;
             for(int i=0;i<points.Length;i++)
             {
-                Vector3 world=root.TransformPoint(offset+rotation*Vector3.Scale(points[i],scale));world.y+=WorldTraversal.SurfaceHeight(world,.015f)-originHeight;points[i]=world;
+                Vector3 world=root.TransformPoint(offset+rotation*Vector3.Scale(points[i],scale));var key=new Vector2(world.x,world.z);
+                if(!heights.TryGetValue(key,out float ground)){ground=WorldTraversal.SurfaceHeight(world,.015f);heights.Add(key,ground);}
+                world.y+=ground-originHeight;points[i]=world;
                 minX=Mathf.Min(minX,world.x);minZ=Mathf.Min(minZ,world.z);maxX=Mathf.Max(maxX,world.x);maxZ=Mathf.Max(maxZ,world.z);
             }
             // Two exact whole-face certificates cover the complete transformed bounds.

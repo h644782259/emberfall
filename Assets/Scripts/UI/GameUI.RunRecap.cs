@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace Emberfall
@@ -51,7 +51,7 @@ namespace Emberfall
         {
             float u=MobileControls.Active?TouchRatio:1;
             Rect r=new Rect(width*.5f-160*u,height*.23f,320*u,62*u);
-            Text(new Rect(r.x,r.y,r.width,38*u),"首领已击败",Mathf.RoundToInt(24*u),gold,true,false,TextAnchor.MiddleCenter);
+            Text(new Rect(r.x,r.y,r.width,38*u),"挑战完成",Mathf.RoundToInt(24*u),gold,true,false,TextAnchor.MiddleCenter);
             Text(new Rect(r.x,r.y+36*u,r.width,22*u),"通关奖励即将揭晓",Mathf.RoundToInt(12*u),pale,false,false,TextAnchor.MiddleCenter);
             float pulse=.5f+.5f*Mathf.Sin(Time.unscaledTime*4);
             Fill(new Rect(r.center.x-(60+24*pulse)*u,r.yMax,(120+48*pulse)*u,2*u),new Color(gold.r,gold.g,gold.b,.4f+.4f*pulse));
@@ -200,27 +200,27 @@ namespace Emberfall
                 if(icons.Count==0)continue;
                 float side=Mathf.Min(art.width,art.height);
                 Rect square=new Rect(art.center.x-side*.5f,art.center.y-side*.5f,side,side);
-                float iconSize=Mathf.Min(64*u,Mathf.Max(32*u,side*.23f)),gap=4*u;
-                if(selected)iconSize*=1.18f;
+                float iconSize=Mathf.Min(132*u,Mathf.Max(40*u,side*.42f)),gap=6*u;
+                if(selected)iconSize*=1.10f;
+                iconSize=Mathf.Min(iconSize,(side*.82f-(icons.Count-1)*gap)/icons.Count);
                 float left=square.center.x-(icons.Count*iconSize+(icons.Count-1)*gap)*.5f;
                 for(int i=0;i<icons.Count;i++)
                 {
                     var item=icons[i];
                     // Each chest owns its inspection key, even when two stacks match.
                     string inspectionKey="chest:"+reward.Id+":"+choice+":"+i;
-                    Rect icon=new Rect(left+i*(iconSize+gap),square.y+side*.55f-iconSize,iconSize,iconSize);
+                    Rect icon=new Rect(left+i*(iconSize+gap),square.y+side*.60f-iconSize,iconSize,iconSize);
                     Color before=GUI.color;
                     float reveal=Mathf.Clamp01((progress-.42f)/.18f);
-                    float pulse=selected?.72f+.28f*Mathf.Sin(Time.unscaledTime*4):1;
-                    float opacity=before.a*reveal*pulse;
+                    float opacity=before.a*reveal;
                     DrawChestItemGrounding(icon,item.QualityColor,opacity,selected);
-                    // DrawIcon replaces GUI.color, so pass the pulse directly to its tint.
+                    // Keep the reward opaque; selection belongs to the surrounding glow.
                     Color artTint=item.QualityColor;artTint.a=opacity;
                     DrawIcon(new Rect(icon.x+4*u,icon.y+4*u,icon.width-8*u,icon.height-8*u),item.Icon,artTint);
                     GUI.color=new Color(before.r,before.g,before.b,opacity);
                     if(item.Quantity>1)DrawOutlinedIconText(new Rect(icon.x,icon.yMax-16*u,icon.width-2*u,16*u),item.Quantity.ToString(),Mathf.RoundToInt(11*u),pale,TextAnchor.MiddleRight);
                     GUI.color=before;
-                    // Inspection remains available throughout the pulse, including its dim phase.
+                    // The entire enlarged reward remains inspectable.
                     Rect hit=MobileControls.Active?new Rect(icon.center.x-Mathf.Max(icon.width,44*u)*.5f,icon.center.y-Mathf.Max(icon.height,44*u)*.5f,Mathf.Max(icon.width,44*u),Mathf.Max(icon.height,44*u)):icon;
                     InspectRewardItem(hit,item,false,inspectionKey);
                 }

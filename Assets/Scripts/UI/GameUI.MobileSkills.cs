@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Emberfall
 {
@@ -46,6 +46,7 @@ namespace Emberfall
             if(RouteSkillReturnAvailable&&NavigationButton(MobilePanelRect(layout.FooterButton(0,1)),"返回职业路线",jade)){ClosePanel();BlockUITransition();return;}
             Rect r=TouchRect(listArea.XMax+12,listArea.Y,layout.Body.Width-leftWidth-12,bodyHeight);
             Surface(r,new Color(.012f,.024f,.038f,.99f));SurfaceFrame(r,new Color(jade.r,jade.g,jade.b,.28f));
+            if(blinkFollowupSelected){DrawBlinkFollowupDetail(r,u);return;}
             float tagsWidth=132*u;
             Text(new Rect(r.x+10*u,r.y+4*u,r.width-tagsWidth-26*u,36*u),GameBalance.SkillName(profile.heroClass,selectedSkill),TouchFont(16),pale,true,false,TextAnchor.MiddleLeft);
             SkillStateTag(new Rect(r.xMax-tagsWidth-10*u,r.y+10*u,56*u,24*u),GameBalance.IsPassive(selectedSkill)?"被动":"主动",jade,TouchFont(12));
@@ -65,12 +66,15 @@ namespace Emberfall
         private Rect MobileSkillTreeNode(int skill,float width)
         {
             float step=width/3;
-            return TouchRect(4+GameBalance.SkillTreeColumn(skill)*step,8+GameBalance.SkillTreeRow(skill)*mobileSkillTreeStep,step-8,CompactSkillTree?40:82);
+            return TouchRect(4+GameBalance.SkillTreeColumn(skill)*step,4+GameBalance.SkillTreeRow(skill)*mobileSkillTreeStep,step-8,CompactSkillTree?40:82);
         }
         private float DrawMobileSkillTree(float width,bool draw)
         {
-            if(!draw)return 7*mobileSkillTreeStep+8;
+            if(!draw)return 7*mobileSkillTreeStep+70;
             var p=session.Progression.Profile;
+            float branchWidth=width/3;
+            Fill(TouchRect(width*.5f-1,CompactSkillTree?44:86,2,Mathf.Max(0,2*mobileSkillTreeStep-(CompactSkillTree?40:82))),jade*.5f);
+            DrawBlinkFollowupNode(TouchRect(4+branchWidth,4+2*mobileSkillTreeStep,branchWidth-8,CompactSkillTree?40:82),TouchRatio);
             var nodes=skillTreeNodes;
             for(int skill=0;skill<nodes.Length;skill++)nodes[skill]=MobileSkillTreeNode(skill,width);
             for(int child=0;child<GameBalance.SkillCount;child++)foreach(int parent in GameBalance.SkillPrerequisites[child])
@@ -84,12 +88,12 @@ namespace Emberfall
             for(int skill=0;skill<GameBalance.SkillCount;skill++)
             {
                 int rank=p.skillRanks[skill];bool canLearn=Attention.LearnableSkills.Contains(skill);
-                Rect node=MobileSkillTreeNode(skill,width);Color accent=selectedSkill==skill?gold:rank>0?jade:muted;
+                Rect node=MobileSkillTreeNode(skill,width);Color accent=!blinkFollowupSelected&&selectedSkill==skill?gold:rank>0?jade:muted;
                 // Branch positions and connectors use the shared skill prerequisite graph.
                 if(CompactSkillTree)
                 {
                     Surface(node,new Color(accent.r*.025f,accent.g*.035f,accent.b*.045f,.98f));
-                    SurfaceFrame(node,new Color(accent.r,accent.g,accent.b,selectedSkill==skill?.8f:.22f));
+                    SurfaceFrame(node,new Color(accent.r,accent.g,accent.b,!blinkFollowupSelected&&selectedSkill==skill?.8f:.22f));
                     Rect compactIcon=new Rect(node.x+3*TouchRatio,node.y+2*TouchRatio,24*TouchRatio,24*TouchRatio);
                     DrawSkillIdentity(compactIcon,p.heroClass,skill,rank,rank>0||canLearn,48);
                     string compactName=GameBalance.SkillName(p.heroClass,skill);int compactFont=9;
@@ -98,20 +102,20 @@ namespace Emberfall
                     Text(compactNameRect,compactName,TouchFont(compactFont),rank>0?pale:muted,true,false,TextAnchor.MiddleLeft);
                     Text(new Rect(node.x+4*TouchRatio,node.y+22*TouchRatio,node.width-8*TouchRatio,16*TouchRatio),"Lv."+GameBalance.SkillRequiredLevels[skill]+" · "+(rank>0?GameBalance.SkillRankName(rank):"锁定"),TouchFont(8),accent,false,false,TextAnchor.MiddleCenter);
                     Badge(compactIcon,canLearn);
-                    if(MobileSkillRowClicked(new Rect(node.x,node.y-2*TouchRatio,node.width,44*TouchRatio))&&selectedSkill!=skill){selectedSkill=skill;mobileSkillDetailScroll=Vector2.zero;mobileSkillStatus=null;CancelMobileScroll();}
+                    if(MobileSkillRowClicked(new Rect(node.x,node.y-2*TouchRatio,node.width,44*TouchRatio))&&(blinkFollowupSelected||selectedSkill!=skill)){blinkFollowupSelected=false;selectedSkill=skill;mobileSkillDetailScroll=Vector2.zero;mobileSkillStatus=null;CancelMobileScroll();}
                     continue;
                 }
                 Rect icon=new Rect(node.center.x-18*TouchRatio,node.y+5*TouchRatio,36*TouchRatio,36*TouchRatio);
                 DrawSkillIdentity(icon,p.heroClass,skill,rank,rank>0||canLearn,48);
-                if(selectedSkill==skill)DrawIcon(new Rect(node.center.x+20*TouchRatio,node.y+2*TouchRatio,12*TouchRatio,12*TouchRatio),UIIconAtlas.Utility("confirm"),gold);
+                if(!blinkFollowupSelected&&selectedSkill==skill)DrawIcon(new Rect(node.center.x+20*TouchRatio,node.y+2*TouchRatio,12*TouchRatio,12*TouchRatio),UIIconAtlas.Utility("confirm"),gold);
                 Text(new Rect(node.x+4*TouchRatio,node.y+44*TouchRatio,node.width-8*TouchRatio,22*TouchRatio),GameBalance.SkillName(p.heroClass,skill),TouchFont(10),rank>0||canLearn?pale:muted,true,false,TextAnchor.MiddleCenter);
                 SkillStateTag(new Rect(node.x+3*TouchRatio,node.y+64*TouchRatio,(node.width-10*TouchRatio)*.45f,18*TouchRatio),"Lv."+GameBalance.SkillRequiredLevels[skill],muted,TouchFont(9));
                 SkillStateTag(new Rect(node.x+node.width*.46f,node.y+64*TouchRatio,node.width*.54f-3*TouchRatio,18*TouchRatio),rank>0?GameBalance.SkillRankName(rank):"未解锁",accent,TouchFont(9));
                 Badge(icon,canLearn);
-                if(MobileSkillRowClicked(node)&&selectedSkill!=skill)
-                {selectedSkill=skill;mobileSkillDetailScroll=Vector2.zero;mobileSkillStatus=null;CancelMobileScroll();}
+                if(MobileSkillRowClicked(node)&&(blinkFollowupSelected||selectedSkill!=skill))
+                {blinkFollowupSelected=false;selectedSkill=skill;mobileSkillDetailScroll=Vector2.zero;mobileSkillStatus=null;CancelMobileScroll();}
             }
-            return 7*mobileSkillTreeStep+8;
+            return 7*mobileSkillTreeStep+70;
         }
 
         // Remove every node footprint from a connector, including nodes skipped by
@@ -166,6 +170,8 @@ namespace Emberfall
                 y+=38;
                 string evolution = skill == 2 && p.heroClass != HeroClass.Summoner ? SkillBudgetHint(p.heroClass, skill, stage) : GameBalance.SkillEvolution(p.heroClass, skill, stage);
                 string venom=BuildCatalog.VenomSkillOverride(p,skill,stage);if(venom.Length>0)evolution=venom;
+                evolution=System.Text.RegularExpressions.Regex.Replace(evolution,@"[，；、 ]*(伤害|范围)\+\d+%[，；、。 ]*","");
+                string numbers=SkillNumbers(p,skill,stage);if(numbers.Length>0)MobileSkillParagraph(ref y,width,numbers,14,jade,false,draw);
                 MobileSkillParagraph(ref y, width, evolution, 14, muted, false, draw);
             }
             return y;

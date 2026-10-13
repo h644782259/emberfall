@@ -11,6 +11,8 @@ namespace Emberfall
             if(enemy==null||enemy.Kind!=EnemyKind.Guardian||enemy.IsBoss)return null;
             var root=new GameObject("Guardian live material armor");root.transform.SetParent(enemy.transform,false);
             var visual=root.AddComponent<GuardArmorVisual>();visual.enemy=enemy;
+            var model=enemy.GetComponentInChildren<CombatModel>();
+            if(model!=null)root.transform.SetParent(model.transform,true); // Follow lift, fall and knockdown with the rendered body.
             visual.material=new Material(Resources.Load<Shader>("HeroSkillBody")){name="Weathered guardian armor"};visual.material.SetFloat("_Surface",1);visual.material.SetColor("_Tint",new Color(.35f,.42f,.46f));
             SkillBodyMaterialLibrary.Bind(visual.material);
             var atlas=Resources.Load<Texture2D>("WorldArt/ActorMaterialAtlas");if(atlas!=null)visual.material.SetTexture("_BodyTex",atlas);
@@ -28,7 +30,7 @@ namespace Emberfall
         public void RecordImpact(bool armorReduced,bool weakpointOpen)
         {
             if(!armorReduced&&!weakpointOpen)return;scraped=armorReduced;hitUntil=Time.time+.16f;
-            if(enemy!=null)PhysicalSkillVfx.Impact(enemy.transform.position+enemy.transform.forward*.5f+Vector3.up*1.35f,-enemy.transform.forward,new Color(.7f,.58f,.35f),.4f);
+            if(enemy!=null)PhysicalSkillVfx.Impact(enemy.ImpactFeet+enemy.transform.forward*.5f+Vector3.up*1.35f,-enemy.transform.forward,new Color(.7f,.58f,.35f),.4f);
             Refresh();
         }
         private void LateUpdate(){var game=GameSession.Instance;if(Time.deltaTime>0&&(game==null||!game.InputBlocked))Refresh(true);}

@@ -83,7 +83,7 @@ namespace Emberfall
         // Thin rendered floors support bodies/VFX without occupying navigation.
         private struct SupportTriangle{public Vector3 A,B,C;public bool Terrain;public float X0,X1,Z0,Z1;}
         private static readonly Dictionary<int,List<SupportTriangle>> groundSupports=new Dictionary<int,List<SupportTriangle>>();
-        private static int SupportCell(float p){return (int)System.Math.Floor(p/4f);}
+        private static int SupportCell(float p){return (int)System.Math.Floor(p/2f);}
         private static int SupportKey(int x,int z){return (x+256)*1024+z+256;}
         public static void AddSurfaceBox(Vector3 center,Vector2 size,float top,bool terrain=false)
         {
@@ -294,10 +294,11 @@ namespace Emberfall
             foreach(int index in solidCandidates)
             {
                 Obstacle obstacle=obstacles[index];
+                if(VisualFanClear(origin,a,b,obstacle,clearance)&&VisualFanClear(origin,b,c,obstacle,clearance)&&VisualFanClear(origin,c,a,obstacle,clearance))continue;
                 // A supported top is a floor. All four real vertex heights must
                 // clear it; mixed high/low faces still clip at the platform side.
                 if(obstacle.Height>0&&VisualAboveSupport(origin,obstacle)&&VisualAboveSupport(a,obstacle)&&VisualAboveSupport(b,obstacle)&&VisualAboveSupport(c,obstacle))continue;
-                if(!VisualFanClear(origin,a,b,obstacle,clearance)||!VisualFanClear(origin,b,c,obstacle,clearance)||!VisualFanClear(origin,c,a,obstacle,clearance))return false;
+                return false;
             }
             return true;
         }

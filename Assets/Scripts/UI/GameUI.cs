@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace Emberfall
@@ -387,6 +387,12 @@ namespace Emberfall
                 bool priorEnabled = GUI.enabled;
                 GUI.enabled = priorEnabled && panel == Panel.None && !session.InputBlocked;
                 DrawHUD();
+                if(session.Player!=null&&session.Player.HurtFlash>0)
+                {
+                    Color hit=new Color(.9f,.12f,.1f,session.Player.HurtFlash*.25f);
+                    Fill(new Rect(0,0,width,5),hit);Fill(new Rect(0,height-5,width,5),hit);
+                    Fill(new Rect(0,0,5,height),hit);Fill(new Rect(width-5,0,5,height),hit);
+                }
                 GUI.enabled = priorEnabled;
 
                 if (session.Paused) DrawPause();
@@ -522,7 +528,7 @@ namespace Emberfall
                 .Replace(" · I", "").Replace(" · K", "").Replace(" · H", "").Replace(" · T", "").Replace(" · E", "");
         }
 
-        private static string SkillTooltip(GameProfile profile, int skill, int rank)
+        private string SkillTooltip(GameProfile profile, int skill, int rank)
         {
             HeroClass hero = profile.heroClass;
             string result = GameBalance.SkillName(hero, skill) + " · " + GameBalance.SkillRankName(rank) + "\n" + GameBalance.SkillDescription(hero, skill);
@@ -533,6 +539,7 @@ namespace Emberfall
             result += (skill==SkillStockRules.Skill(hero)?"\n储存2次 · 每 "+SkillStockRules.Seconds(hero)+" 秒逐次回复 ·":"\n冷却 " + GameBalance.EffectiveCooldown(hero, skill, rank).ToString("0.#")) +
                 (cost == 0 ? " 秒 · 无需能量" : (skill==SkillStockRules.Skill(hero)?" 每次消耗 ":" 秒 · 消耗 ") + cost.ToString("0") + " " + GameBalance.EnergyName(hero));
             string budget=BuildCatalog.ConcentratedVenomEquipped(profile)&&hero==HeroClass.Ranger&&skill==0?"":SkillBudgetHint(hero,skill,rank);if(budget.Length>0)result+="\n"+budget;
+            result+="\n"+SkillNumbers(profile,skill,rank);
             float charge = SkillChargeController.Duration(hero, skill);
             if (charge > 0) result += "\n蓄力 " + charge.ToString("0.##") + " 秒";
             return result;
@@ -621,36 +628,32 @@ namespace Emberfall
             float availableWidth=mobile?MobileControls.Layout.Width:width;
             float availableHeight=mobile?MobileControls.Layout.Height:height;
             float maxZoom=mobile?(MobileControls.Layout.Tablet?1.75f:1f):1.5f;
-            float zoom=Mathf.Min(maxZoom,Mathf.Min((availableWidth-32)/528f,(availableHeight-24)/324f));
-            float x=(availableWidth-528*zoom)*.5f,y=(availableHeight-324*zoom)*.5f;
+            float zoom=Mathf.Min(maxZoom,Mathf.Min((availableWidth-32)/680f,(availableHeight-24)/410f));
+            float x=(availableWidth-680*zoom)*.5f,y=(availableHeight-410*zoom)*.5f;
             Rect HomeRect(float rx,float ry,float rw,float rh) => mobile?TouchRect(x+rx*zoom,y+ry*zoom,rw*zoom,rh*zoom):new Rect(x+rx*zoom,y+ry*zoom,rw*zoom,rh*zoom);
             int HomeFont(float size) => mobile?TouchFont(size*zoom):Mathf.RoundToInt(size*zoom);
-            // The viewport backdrop is drawn before the safe-area transform.
-            Text(HomeRect(0,4,528,42),"星烬纪元",HomeFont(32),pale,true,false,TextAnchor.MiddleCenter);
+            Text(HomeRect(0,0,680,48),"星烬纪元",HomeFont(34),pale,true,false,TextAnchor.MiddleCenter);
             SaveSlotInfo recent=RecentAdventureSlot();
-            if(recent!=null)
-            {
-                DrawCrest(HomeRect(120,68,50,52),recent.HeroClass,GameBalance.ClassColor(recent.HeroClass));
-                Text(HomeRect(184,67,260,28),recent.DisplayName,HomeFont(16),pale,true);
-                string saved=recent.SavedAtUtc==System.DateTime.MinValue?"最近的冒险":recent.SavedAtUtc.ToLocalTime().ToString("MM-dd HH:mm")+" 保存";
-                Text(HomeRect(184,98,260,22),saved,HomeFont(12),new Color(1f,.96f,.80f),true,false,TextAnchor.MiddleLeft);
-            }
-            else Text(HomeRect(0,74,528,38),"选择你的角色，开启第一段冒险",HomeFont(15),muted,false,false,TextAnchor.MiddleCenter);
-            if(DrawButton(HomeRect(88,141,352,62),recent!=null?"继续冒险":"创建角色",ButtonRole.Primary,fontSize:HomeFont(21)))
+            DrawHeroPortrait(HomeRect(-35,64,385,348),recent!=null?recent.HeroClass:selectedClass,"home",recent);
+            Text(HomeRect(360,106,295,34),recent!=null?recent.DisplayName:"你的传奇，由此开始",HomeFont(22),pale,true);
+            string saved=recent==null?"选择职业，开启第一段冒险":recent.SavedAtUtc==System.DateTime.MinValue?"最近的冒险":recent.SavedAtUtc.ToLocalTime().ToString("MM-dd HH:mm")+" 保存";
+            Text(HomeRect(360,149,295,24),saved,HomeFont(13),gold);
+            if(HomeButton(HomeRect(360,211,280,mobile?48:44),recent!=null?"继续冒险":"创建角色",true,HomeFont(18)))
             {
                 if(recent!=null)ContinueRecentAdventure();
                 else {titleCreatingHero=true;BlockUITransition();}
                 return;
             }
-            if(saveSlots.Count>0&&DrawButton(HomeRect(recent!=null?88:180,215,168,44),"其他存档",ButtonRole.Navigation,fontSize:HomeFont(14)))
+            if(saveSlots.Count>0&&HomeButton(HomeRect(360,269,132,mobile?44:34),"其他存档",false,HomeFont(13)))
             {OpenSaveSelection();return;}
-            if(recent!=null&&DrawButton(HomeRect(272,215,168,44),"新的角色",ButtonRole.Navigation,fontSize:HomeFont(14)))
+            if(recent!=null&&HomeButton(HomeRect(508,269,132,mobile?44:34),"新的角色",false,HomeFont(13)))
             {titleCreatingHero=true;BlockUITransition();return;}
+
 #if !UNITY_IOS && !UNITY_ANDROID
-            if(!mobile&&NavigationButton(new Rect(width-148,height-60,120,38),"退出游戏",muted))RequestExit(false);
+            if(!mobile&&HomeButton(new Rect(width-128,height-52,104,30),"退出游戏",false,13))RequestExit(false);
 #endif
             string message=!string.IsNullOrEmpty(session.Notification)?session.Notification:session.Progression.LastError;
-            if(!string.IsNullOrEmpty(message))Text(HomeRect(0,296,528,24),message,HomeFont(11),gold,false,true,TextAnchor.MiddleCenter);
+            if(!string.IsNullOrEmpty(message))Text(HomeRect(280,328,380,56),message,HomeFont(11),gold,false,true,TextAnchor.MiddleCenter);
         }
 
         private void DrawTitle()
@@ -661,10 +664,10 @@ namespace Emberfall
             // The title is a static, opaque composition; world geometry cannot leak through it.
             // Full-screen backdrop remains visible behind character cards.
             float x = (width - 1040) * .5f;
-            float y = (height - 438) * .5f;
+            float y = (height - 560) * .5f;
 
-            Fill(new Rect(x, y, 1040, 438), new Color(.048f, .074f, .112f, .72f));
-            Border(new Rect(x, y, 1040, 438), new Color(.22f, .33f, .43f, 1f));
+            Fill(new Rect(x, y, 1040, 560), new Color(.048f, .074f, .112f, .72f));
+            Border(new Rect(x, y, 1040, 560), new Color(.22f, .33f, .43f, 1f));
             Text(new Rect(x + 32, y + 24, 976, 43), "选择职业", 32, Color.white, true);
             Text(new Rect(x+280,y+36,720,24),"初选职业可在安全营地自由切换 · 同一角色共享成长",14,muted);
             Fill(new Rect(x + 32, y + 81, 976, 1), new Color(.2f, .3f, .39f, 1f));
@@ -673,21 +676,21 @@ namespace Emberfall
             {
                 HeroClass hero = (HeroClass)i;
                 Color accent = GameBalance.ClassColor(hero);
-                Rect choice = new Rect(x + 32 + i * 247, y + 104, 235, 228);
+                Rect choice = new Rect(x + 32 + i * 247, y + 104, 235, 350);
                 bool selected = selectedClass == hero;
                 Fill(choice, selected ? Color.Lerp(new Color(.063f, .096f, .143f, 1f), accent, .12f) : new Color(.063f, .096f, .143f, 1f));
                 Border(choice, selected ? accent : new Color(.22f, .32f, .42f, 1f), selected ? 2 : 1);
                 Fill(new Rect(choice.x, choice.y, choice.width, 3), selected ? accent : new Color(.28f, .39f, .5f, 1f));
                 Text(new Rect(choice.x + 17, choice.y + 16, 201, 19), selected ? "已选择" : "", 11, accent, true, false, TextAnchor.MiddleRight);
-                DrawCrest(new Rect(choice.x + 74, choice.y + 40, 87, 90), hero, accent);
-                Text(new Rect(choice.x + 17, choice.y + 145, 201, 36), GameBalance.ClassName(hero), 27, Color.white, true, false, TextAnchor.MiddleCenter);
-                Text(new Rect(choice.x + 17, choice.y + 193, 201, 21), roles[i], 12, pale, false, false, TextAnchor.MiddleCenter);
+                DrawHeroPortrait(new Rect(choice.x+12,choice.y+36,211,226),hero,"class-"+i);
+                Text(new Rect(choice.x + 17, choice.y + 276, 201, 36), GameBalance.ClassName(hero), 27, Color.white, true, false, TextAnchor.MiddleCenter);
+                Text(new Rect(choice.x + 17, choice.y + 322, 201, 21), roles[i], 12, pale, false, false, TextAnchor.MiddleCenter);
                 if (GUI.Button(choice, GUIContent.none, invisibleButton)) { selectedClass = hero; GameAudio.Play(SoundCue.UI); }
             }
-            if (NavigationButton(new Rect(x + 314, y + 359, 186, 50), "返回首页", jade)) {titleCreatingHero=false;BlockUITransition();return;}
-            if (PrimaryButton(new Rect(x + 520, y + 359, 206, 50), "开始冒险", gold, true, "以" + GameBalance.ClassName(selectedClass) + "创建独立存档，保留已有角色。", true)) StartSelectedHero();
+            if (NavigationButton(new Rect(x + 314, y + 479, 186, 50), "返回首页", jade)) {titleCreatingHero=false;BlockUITransition();return;}
+            if (PrimaryButton(new Rect(x + 520, y + 479, 206, 50), "开始冒险", gold, true, "以" + GameBalance.ClassName(selectedClass) + "创建独立存档，保留已有角色。", true)) StartSelectedHero();
 #if !UNITY_IOS && !UNITY_ANDROID
-            if(DangerButton(new Rect(x+800,y+359,206,50), "退出游戏", muted))RequestExit(false);
+            if(DangerButton(new Rect(x+800,y+479,206,50), "退出游戏", muted))RequestExit(false);
 #endif
             string titleMessage = !string.IsNullOrEmpty(session.Notification) ? session.Notification : session.Progression.LastError;
             if (!string.IsNullOrEmpty(titleMessage))
@@ -748,26 +751,26 @@ namespace Emberfall
             Text(new Rect(w.x + 620, w.y + 29, 186, 23), saveSlots.Count + " 份存档", 13, muted, false, false, TextAnchor.MiddleRight);
             if (PopupCloseButton(new Rect(w.xMax - 69, w.y + 20, 44, 32))) ClosePanel();
             Rect viewport = new Rect(w.x + 24, w.y + 113, 852, 347);
-            float contentHeight = Mathf.Max(viewport.height, saveSlots.Count * 84);
+            float contentHeight = Mathf.Max(viewport.height, saveSlots.Count * 118);
             saveSelectionScroll = BeginTouchScroll("save-list",viewport,saveSelectionScroll,new Rect(0,0,837,contentHeight));
             if (saveSlots.Count == 0) Text(new Rect(20, 120, 797, 36), "暂无存档", 20, muted, true, false, TextAnchor.MiddleCenter);
             for (int i = 0; i < saveSlots.Count; i++)
             {
                 SaveSlotInfo slot = saveSlots[i];
-                Rect row = new Rect(0, i * 84, 833, 74);
+                Rect row = new Rect(0, i * 118, 833, 108);
                 bool selected = slot.Id == selectedSaveId;
                 Color accent = slot.CanLoad ? GameBalance.ClassColor(slot.HeroClass) : muted;
                 Fill(row, selected ? new Color(.10f, .19f, .23f) : card);
                 Border(row, selected ? gold : new Color(accent.r, accent.g, accent.b, .25f));
-                if (slot.CanLoad) DrawCrest(new Rect(row.x + 12, row.y + 9, 52, 56), slot.HeroClass, accent);
+                if (slot.CanLoad && row.yMax>=saveSelectionScroll.y && row.y<=saveSelectionScroll.y+viewport.height) DrawHeroPortrait(new Rect(row.x+8,row.y+4,86,100),slot.HeroClass,"save-"+slot.Id,slot);
                 else DrawIcon(new Rect(row.x + 21, row.y + 22, 32, 32), UIIconAtlas.Utility("inventory"), muted);
-                Text(new Rect(row.x + 81, row.y + 12, 307, 25), slot.DisplayName, 17, slot.CanLoad ? pale : muted, true);
-                Text(new Rect(row.x + 81, row.y + 43, 307, 20), slot.CanLoad ? GameBalance.ClassName(slot.HeroClass)+" · Lv"+slot.Level : "存档暂时无法读取", 13, accent);
+                Text(new Rect(row.x + 110, row.y + 24, 278, 25), slot.DisplayName, 17, slot.CanLoad ? pale : muted, true);
+                Text(new Rect(row.x + 110, row.y + 59, 278, 20), slot.CanLoad ? GameBalance.ClassName(slot.HeroClass)+" · Lv"+slot.Level : "存档暂时无法读取", 13, accent);
                 string saved = slot.SavedAtUtc == System.DateTime.MinValue ? "保存时间未知" : slot.SavedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
-                Text(new Rect(row.x + 399, row.y + 17, 232, 21), saved, 13, muted);
+                Text(new Rect(row.x + 399, row.y + 30, 232, 21), saved, 13, muted);
                 string state = slot.DeletionPending ? "删除未完成" : !slot.CanLoad ? "无法读取" : slot.RecoveredFromBackup ? "可从备份恢复" : slot.IsCurrent ? "当前存档" : "";
-                Text(new Rect(row.x + 637, row.y + 13, 176, 22), state, 12, slot.RecoveredFromBackup ? gold : muted, false, false, TextAnchor.MiddleRight);
-                if (selected) Text(new Rect(row.x + 637, row.y + 43, 176, 20), "已选择", 12, gold, true, false, TextAnchor.MiddleRight);
+                Text(new Rect(row.x + 637, row.y + 26, 176, 22), state, 12, slot.RecoveredFromBackup ? gold : muted, false, false, TextAnchor.MiddleRight);
+                if (selected) Text(new Rect(row.x + 637, row.y + 61, 176, 20), "已选择", 12, gold, true, false, TextAnchor.MiddleRight);
                 bool prior = GUI.enabled;
                 GUI.enabled = prior;
                 if (GUI.Button(row, GUIContent.none, invisibleButton)) { selectedSaveId = slot.Id; saveSelectionError = null; GameAudio.Play(SoundCue.UI); }
@@ -931,7 +934,7 @@ namespace Emberfall
             var labelStyle=Style(Mathf.RoundToInt(11*u),true,false,TextAnchor.MiddleLeft);
             labelStyle.normal.textColor=Color.white;
             Fill(new Rect(0,railY,width,railHeight),new Color(.012f,.025f,.04f,.62f));
-            GUI.Label(new Rect(8*u,railY,width-16*u,railHeight),"Lv."+p.level+"   "+(capped?"满级":p.xp+" / "+GameBalance.XpToNext(p.level)),labelStyle);
+            GUI.Label(new Rect(8*u,railY,width-16*u,railHeight),"Lv."+p.level+"   "+(capped?"满级 · 100%":p.xp+" / "+GameBalance.XpToNext(p.level)+"  ·  "+(Mathf.Clamp01(p.xp/(float)GameBalance.XpToNext(p.level))*100).ToString("0.#")+"%"),labelStyle);
 
         }
         private void DrawHUD()
@@ -961,10 +964,11 @@ namespace Emberfall
                 : p.skillRanks[0] == 0 ? "学习首个职业技能"
                 : "前往北方的沉星遗迹";
             string objectiveProgress = session.SpecialAdventure?session.ModeObjectiveStatus:session.InDungeon
-                ? session.DungeonCleared ? "靠近返营传送点离开" : "第 " + session.DungeonWave + " / " + session.TotalWaves + " 波 · 剩余 " + session.Enemies.Count + " 个敌人"
+                ? session.DungeonCleared ? "靠近返营传送点离开" : session.WavePreparing ? "整波敌人正在集结…" : "第 " + session.DungeonWave + " / " + session.TotalWaves + " 波 · 剩余 " + session.Enemies.Count + " 个敌人"
                 : p.level < 2 ? "经验 " + p.xp + " / " + GameBalance.XpToNext(p.level)
                 : p.skillRanks[0] == 0 ? "可用精通点 " + p.skillPoints + " · K"
                 : "收集装备，进入传送门 · E";
+            if(session.UsesWaveTactics&&!session.DungeonCleared) objectiveText=DungeonWaveTactics.Name(session.CurrentWaveTactic);
             if(session.ChapterActive){objectiveText=ChapterDefinition.Get(session.ActiveChapterNode).Name;objectiveProgress=session.ChapterObjectiveStatus;}
             string growthTitle,growthDetail;bool hasGrowth=TryGrowthHudHint(out growthTitle,out growthDetail);
             if(!session.ChapterActive&&hasGrowth){objectiveText=growthTitle;objectiveProgress=growthDetail;}
@@ -989,6 +993,7 @@ namespace Emberfall
             Rect objective=new Rect(16,116,282,measured.Height);blockedRects.Add(objective);Box(objective,jade,false);
             Fill(new Rect(objective.x,objective.y,3,objective.height),jade);
             Text(new Rect(objective.x+13,objective.y+measured.HeadingY,255,17),"当前目标",12,jade,true);
+            DrawObjectiveDirection(new Rect(objective.xMax-112,objective.y+measured.HeadingY-3,102,24),1);
             Text(new Rect(objective.x+13,objective.y+measured.BodyY,255,bodyHeight),objectiveText,15,pale,true,true);
             if(showSeals)DrawChapterSeals(new Rect(objective.x+13,objective.y+measured.ProgressY,255,44),1,chapterFirstSeal,session.ChapterSealView(1));
             else if(showRoomSeals)DrawRoomSeals(new Rect(objective.x+13,objective.y+measured.ProgressY,255,66),1,false,roomFirstSeal,session.RoomSealView(1),session.RoomObjectiveView);
@@ -1008,14 +1013,7 @@ namespace Emberfall
             EnemyController target = session.Player == null ? null : session.Player.AimTarget;
             if (target != null && !target.IsDead)
             {
-                bool neutral = target.Tier == EnemyController.ThreatTier.Normal && !target.IsAggro;
-                string state = neutral ? "中立" : target.Tier == EnemyController.ThreatTier.Normal ? "反击中" : "主动敌人";
-                Color tint = neutral ? jade : target.Tier == EnemyController.ThreatTier.Elite ? gold : new Color(1, .55f, .45f);
-                string effects = target.StatusEffects == null ? "" : target.StatusEffects.Summary;
-                Rect targetInfo = new Rect((width - 560) * .5f, 68, 560, 19);
-                blockedRects.Add(targetInfo);
-                Text(targetInfo, target.DisplayName + " · " + state + (string.IsNullOrEmpty(effects) ? "" : " · " + effects), 11, tint, true, false, TextAnchor.MiddleCenter);
-                if (targetInfo.Contains(Mouse) && GUI.enabled) tooltip = target.DisplayName + "\n" + target.TraitDescription;
+                DrawEnemyTargetPanel(target);
             }
             DrawBossCombatWarning();
         }
@@ -1062,6 +1060,7 @@ namespace Emberfall
             {
                 MapDot(field, new Vector3(0, 0, -10), gold, 7);
                 MapDot(field, new Vector3(0, 0, 11), jade, 7);
+                MapDot(field,GameSession.ChapterEntrancePosition,new Color(.8f,.5f,1),7);
                 for (int npc = 0; npc < 2; npc++) MapDot(field, GameSession.HubNpcPosition(npc), gold, 4);
             }
             for (int i = 0; i < session.Enemies.Count; i++)
@@ -1087,23 +1086,33 @@ namespace Emberfall
             DrawMapMarker(new Rect(x-size*.5f,y-size*.5f,size,size),color);
         }
 
+        private void DrawEnemyTargetPanel(EnemyController target)
+        {
+            bool boss=target.IsBoss,elite=!boss&&target.Tier==EnemyController.ThreatTier.Elite;
+            float u=MobileControls.Active?TouchRatio:1;
+            float w=Mathf.Min((boss?350:elite?270:220)*u,width*.52f);
+            float h=boss?72:elite?54:40;
+            Rect r=new Rect((width-w)*.5f,10*u,w,h*u);blockedRects.Add(r);
+            Fill(r,new Color(card.r,card.g,card.b,boss?1:.85f));
+            if(boss||elite)Border(r,boss?gold*.5f:muted*.4f);
+            float inset=boss?10:7,tagWidth=boss?52:elite?42:34;
+            float levelWidth=boss?50:43,headingHeight=boss?24:20;
+            Text(new Rect(r.x+inset*u,r.y+4*u,w-(inset*2+tagWidth+levelWidth+8)*u,headingHeight*u),target.TargetName,Mathf.RoundToInt((boss?14:12)*u),pale,true);
+            Text(new Rect(r.xMax-(inset+tagWidth+levelWidth+4)*u,r.y+5*u,levelWidth*u,headingHeight*u),"Lv."+target.Level,Mathf.RoundToInt((boss?11:10)*u),muted,true);
+            string tier=boss?"Boss":elite?"精英":"普通";
+            Rect tag=new Rect(r.xMax-(inset+tagWidth)*u,r.y+5*u,tagWidth*u,(boss?22:18)*u);
+            if(boss||elite)SkillStateTag(tag,tier,gold,Mathf.RoundToInt(10*u));
+            else Text(tag,tier,Mathf.RoundToInt(9*u),muted,false,false,TextAnchor.MiddleRight);
+            Rect bar=new Rect(r.x+inset*u,r.y+(boss?38:elite?29:27)*u,w-2*inset*u,(boss?22:elite?16:7)*u);
+            Bar(bar,target.Health/Mathf.Max(1,target.MaxHealth),new Color(.78f,.18f,.21f));
+            if(boss||elite)Text(bar,Mathf.CeilToInt(target.Health)+" / "+Mathf.CeilToInt(target.MaxHealth)+(boss?"  ·  "+(Mathf.Clamp01(target.Health/Mathf.Max(1,target.MaxHealth))*100).ToString("0.#")+"%":""),Mathf.RoundToInt((boss?11:10)*u),pale,true,false,TextAnchor.MiddleCenter);
+            if(r.Contains(Mouse))tooltip=target.TraitDescription;
+        }
         private void DrawDungeonStatus()
         {
-            if (!session.InDungeon || session.ChapterFinished) return;
-            if(session.DungeonCleared)return;
-            EnemyController boss = null;
-            for (int i = 0; i < session.Enemies.Count; i++)
-            {
-                EnemyController enemy = session.Enemies[i];
-                if (enemy != null && enemy.IsBoss && !enemy.IsDead) { boss = enemy; break; }
-            }
-            if (boss == null) return;
-            float bossWidth=Mathf.Clamp(width-860,160,462);
-            Rect bossBar = new Rect((width-bossWidth)*.5f,8,bossWidth,58);
-            blockedRects.Add(bossBar);
-            Box(bossBar, new Color(1f, .4f, .32f));
-            Text(new Rect(bossBar.x + 14, bossBar.y + 8, bossBar.width-28, 25), boss.DisplayName, 16, gold, true, false, TextAnchor.MiddleCenter);
-            Bar(new Rect(bossBar.x + 17, bossBar.y + 40, bossBar.width-34, 8), boss.Health / Mathf.Max(1, boss.MaxHealth), new Color(.89f, .33f, .28f));
+            if(!session.InDungeon||session.DungeonCleared)return;
+            if(session.Player!=null&&session.Player.AimTarget!=null&&!session.Player.AimTarget.IsDead)return;
+            foreach(var enemy in session.Enemies)if(enemy!=null&&enemy.IsBoss&&!enemy.IsDead){DrawEnemyTargetPanel(enemy);break;}
         }
 
         private void DrawHotbar()
@@ -1119,6 +1128,12 @@ namespace Emberfall
                 Fill(cooldown,ink);Border(cooldown,jade);
                 DrawIcon(new Rect(cooldown.x+4,cooldown.y+4,36,36),UIIconAtlas.Utility("blink"),new Color(1,1,1,.4f));
                 Text(cooldown,session.Player.DodgeCooldown.ToString("0.0"),18,Color.white,true,false,TextAnchor.MiddleCenter);
+                if(session.Player.BlinkFollowupRemaining>0)
+                {
+                    Rect cue=new Rect(cooldown.x-166,cooldown.y+7,158,30);
+                    Fill(cue,ink);Border(cue,gold);
+                    Text(cue,"左键 · "+session.Player.BlinkFollowupName,14,gold,true,false,TextAnchor.MiddleCenter);
+                }
             }
 
             float x = bar.x;
@@ -1319,7 +1334,7 @@ namespace Emberfall
             float inset=3;
             float top=MobileControls.Active?inset:12;
             DrawIcon(new Rect(r.x+inset,r.y+top,r.width-inset*2,r.height-top-inset),UIIconAtlas.Utility(icon),Color.white);
-            Badge(r,icon=="inventory"?NewEquipmentAttention||Attention.LootPending:icon=="skills"?Attention.Skills:icon=="camp"?Attention.Rewards:icon=="achievement"?session.Progression.ClaimableAchievements>0:false);
+            Badge(r,icon=="inventory"?NewEquipmentAttention||Attention.LootPending:icon=="skills"?Attention.Skills:icon=="camp"?Attention.Rewards:icon=="achievement"?CachedAchievementAttention:false);
             if (!MobileControls.Active) DrawFunctionKey(r,key);
             if (!string.IsNullOrEmpty(badge))
             {
@@ -1338,6 +1353,7 @@ namespace Emberfall
             GameProfile p = session.Progression.Profile;
             float x = width - 330;
             float y = 18;
+            bool hudEnabled=GUI.enabled;GUI.enabled=CanSwitchFunction&&!UITransitionBlocked;
             if(HubServicesAvailable)
             {
                 if(IconButton(new Rect(x + 46,y,38,38),"shop","P","商店",jade))OpenHubService(HubNpcKind.Merchant);
@@ -1349,6 +1365,7 @@ namespace Emberfall
                 TogglePanel(Panel.Inventory);
             if (IconButton(new Rect(x + 184, y, 38, 38), "skills", "K", "技能", jade, p.skillPoints > 0 ? "+" + p.skillPoints : null))
                 TogglePanel(Panel.Skills);
+            GUI.enabled=hudEnabled;
             if (IconButton(new Rect(x, y, 38, 38), "camp", "H", "回到起点", jade))
                 session.ReturnToOrigin();
             if (IconButton(new Rect(x + 276, y, 38, 38), "settings", "Esc", "设置", jade)) session.SetPaused(true);
@@ -1415,6 +1432,7 @@ namespace Emberfall
 
         private void SelectSkill(int skill)
         {
+            blinkFollowupSelected=false;
             selectedSkill = Mathf.Clamp(skill, 0, GameBalance.SkillCount - 1);
             skillScroll.y = Mathf.Clamp(GameBalance.SkillTreeRow(selectedSkill) * 102 - 150, 0, 738 - 468);
         }
@@ -1630,11 +1648,14 @@ namespace Emberfall
             if (branchHeading.Contains(Mouse)) tooltip = "达到对应等级自动习得与进阶。";
             Rect viewport = new Rect(w.x + 24, w.y + 147, 506, 468);
             Fill(viewport, new Color(.025f, .05f, .075f));
-            Rect content = new Rect(0, 0, 490, 468);
+            Rect content = new Rect(0, 0, 490, 530);
             GUIStyle priorThumb = GUI.skin.verticalScrollbarThumb;
             GUI.skin.verticalScrollbarThumb = scrollThumb;
             skillScroll.y = Mathf.Clamp(skillScroll.y, 0, content.height - viewport.height);
             skillScroll = BeginTouchScroll("skills",viewport,skillScroll,content);
+            Rect followupNode=new Rect(170,136,144,54);
+            Fill(new Rect(241,58,2,78),jade*.5f);
+            DrawBlinkFollowupNode(followupNode,1);
             var treeNodes=skillTreeNodes;
             for(int skill=0;skill<treeNodes.Length;skill++)treeNodes[skill]=SkillNodeRect(skill);
             for (int skill = 0; skill < GameBalance.SkillCount; skill++)
@@ -1661,24 +1682,25 @@ namespace Emberfall
                 bool canLearn = string.IsNullOrEmpty(session.Progression.SkillLockReason(i));
                 Rect node = SkillNodeRect(i);
                 Color accent = rank > 0 ? jade : canLearn ? gold : muted;
-                Surface(node, selectedSkill == i ? new Color(.12f, .20f, .23f) : rank > 0 ? new Color(.06f, .145f, .15f) : card);
-                SurfaceFrame(node, selectedSkill == i ? gold : new Color(accent.r, accent.g, accent.b, rank > 0 || canLearn ? .7f : .25f));
+                Surface(node, !blinkFollowupSelected && selectedSkill == i ? new Color(.12f, .20f, .23f) : rank > 0 ? new Color(.06f, .145f, .15f) : card);
+                SurfaceFrame(node, !blinkFollowupSelected && selectedSkill == i ? gold : new Color(accent.r, accent.g, accent.b, rank > 0 || canLearn ? .7f : .25f));
                 DrawSkillIdentity(new Rect(node.x+5,node.y+7,24,24),p.heroClass,i,rank,rank>0||canLearn,24);
                 Text(new Rect(node.x + 32, node.y + 7, 107, 24), GameBalance.SkillName(p.heroClass, i), 14, rank > 0 || canLearn ? pale : muted, true, false, TextAnchor.MiddleCenter);
                 Text(new Rect(node.x + 5, node.y + 35, 134, 18), "Lv." + required + " · " + (rank>0?GameBalance.SkillRankName(rank):"未解锁"), 11, passive ? new Color(.82f, .74f, .98f) : muted, false, false, TextAnchor.MiddleCenter);
                 string state = rank > 0 ? GameBalance.SkillRankName(rank) + (canLearn ? " · 可进阶" : " · 已学习") : canLearn ? "可学习" : p.level < required ? "等级未达" : "自动习得";
                 if(node.Contains(Mouse))tooltip=state;
                 Badge(node,Attention.LearnableSkills.Contains(i));
-                if (GUI.Button(node, GUIContent.none, invisibleButton)) selectedSkill = i;
+                if (GUI.Button(node, GUIContent.none, invisibleButton)) {selectedSkill = i;blinkFollowupSelected=false;}
             }
             EndTouchScroll();
             GUI.skin.verticalScrollbarThumb = priorThumb;
-            DrawSkillDetail(new Rect(w.x + 550, w.y + 112, 586, GameBalance.IsPassive(selectedSkill) ? 393 : 510), selectedSkill);
+            if(blinkFollowupSelected)DrawBlinkFollowupDetail(new Rect(w.x+550,w.y+112,586,393),1);
+            else DrawSkillDetail(new Rect(w.x + 550, w.y + 112, 586, GameBalance.IsPassive(selectedSkill) ? 393 : 510), selectedSkill);
         }
 
         private static Rect SkillNodeRect(int skill)
         {
-            return new Rect(10 + GameBalance.SkillTreeColumn(skill) * 160, 6 + GameBalance.SkillTreeRow(skill) * 66, 144, 54);
+            return new Rect(10 + GameBalance.SkillTreeColumn(skill) * 160, 4 + GameBalance.SkillTreeRow(skill) * 66, 144, 54);
         }
 
         private void OpenBindings()
@@ -1884,6 +1906,17 @@ namespace Emberfall
 
         private void DrawDeath()
         {
+            if(session.RevivalPending)
+            {
+                Fill(new Rect(0,0,width,height),new Color(.12f,.19f,.24f,.26f));
+                float u=MobileControls.Active?TouchRatio:1,w=Mathf.Min(500*u,width-24*u),x=(width-w)*.5f,y=height*.18f;
+                Text(new Rect(x,y-36*u,w,28*u),"幽灵状态",Mathf.RoundToInt(19*u),pale,true,false,TextAnchor.MiddleCenter);
+                Rect revive=new Rect(x,y,(w-12*u)*.5f,48*u),finish=new Rect(revive.xMax+12*u,y,revive.width,revive.height);
+                blockedRects.Add(revive);blockedRects.Add(finish);
+                if(PrimaryButton(revive,"复活 R · "+session.Progression.Profile.revivalStones,gold,session.Progression.Profile.revivalStones>0))
+                {if(session.ReviveInDungeon()){ClosePanel();BlockUITransition();}return;}
+                if(Button(finish,"结束战斗",muted)){session.EndDeathBattle();BlockUITransition();}return;
+            }
             if(DrawStructuredRunRecap(true)){ClosePanel();session.Respawn();}
         }
 
@@ -1900,7 +1933,7 @@ namespace Emberfall
             bool overlay = panel != Panel.None || session.Paused || session.IsDead;
             string notice=PlatformText(session.Notification);
             float noticeHeight=Mathf.Max(40,Style(14,true,true,TextAnchor.MiddleCenter).CalcHeight(new GUIContent(notice),522)+12);
-            Rect r = new Rect((width - 550) * .5f, overlay ? height - noticeHeight - 9 : 26, 550, noticeHeight);
+            Rect r = new Rect((width - 550) * .5f, overlay ? height - noticeHeight - 9 : 90, 550, noticeHeight);
             Box(r, gold);
             Text(new Rect(r.x + 14, r.y + 6, r.width - 28, r.height - 12),notice,14,pale,true,true,TextAnchor.MiddleCenter);
         }

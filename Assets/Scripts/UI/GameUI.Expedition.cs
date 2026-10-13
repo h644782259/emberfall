@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Emberfall
 {
@@ -171,8 +171,8 @@ namespace Emberfall
             if(session.NearDungeonReturn){Rect exit=new Rect((width-240)*.5f,height-225,240,48);blockedRects.Add(exit);if(Button(exit,"传送点 [E]",gold))OpenDungeonExit();}
             else if(session.NearChapterExit){Rect next=new Rect((width-300)*.5f,height-225,300,48);blockedRects.Add(next);if(Button(next,"沿星路前进 [E]",gold))session.EnterNextChapterRoom();}
             else if(session.NearRoomExit){Rect next=new Rect((width-300)*.5f,height-225,300,48);blockedRects.Add(next);if(Button(next,"进入下一间 [E]",gold))session.EnterNextRoom();}
-            else if(!session.InDungeon&&session.IsNearDungeonEntrance&&!session.InputBlocked&&!session.DungeonSelectionOpen)
-            {Rect entrance=new Rect((width-300)*.5f,height-225,300,48);blockedRects.Add(entrance);if(Button(entrance,"进入沉星遗迹 [E]",gold))session.EnterDungeon();}
+            else if(!session.InDungeon&&(session.IsNearDungeonEntrance||session.IsNearChapterEntrance)&&!session.InputBlocked&&!session.DungeonSelectionOpen)
+            {Rect entrance=new Rect((width-300)*.5f,height-225,300,48);blockedRects.Add(entrance);if(Button(entrance,session.IsNearChapterEntrance?"进入星路章节 [E]":"进入普通副本 [E]",gold))session.EnterDungeon();}
             if(session.SideEventAvailable)
             { Rect r=new Rect((width-410)*.5f,height-260,410,48);blockedRects.Add(r);
               if(Button(r,"开启晶核挑战 [E] · 2名守卫",gold,true,"额外一名遗迹守卫与一名魔灵；全部击败才获得1碎片和补给。"))session.StartSideEvent(); }
@@ -183,28 +183,29 @@ namespace Emberfall
         private void DrawBossCombatWarning()
         {
             if(panel!=Panel.None||session.InputBlocked||!session.InDungeon||session.Player==null||session.IsDead)return;
-            string message=null;float remaining=0;bool opportunity=false;
+            string message=null;float remaining=0,progress=0;bool opportunity=false;
             foreach(var enemy in session.Enemies)
             {
                 if(enemy==null||!enemy.IsBoss||enemy.IsDead||!enemy.enabled||!enemy.gameObject.activeInHierarchy)continue;
+                if(enemy.IsBossParalyzed){message="首领瘫痪 · 受到伤害 +35%";opportunity=true;progress=enemy.BossParalysisRemaining/EnemyController.BossParalysisDuration;break;}
                 var mechanic=enemy.GetComponent<LargeExpeditionBoss>();
                 var state=mechanic==null?null:mechanic.State;
                 if(state!=null&&state.Phase==LargeBossPhase.Windup)
-                {message=state.IsFollowup?"追加扫射蓄力 · 用控制技能打断":"环流扫射蓄力 · 打断或摧毁供能锚";remaining=state.Remaining;break;}
+                {message=state.IsFollowup?"追加扫射蓄力 · 用控制技能打断":"环流扫射蓄力 · 打断或摧毁供能锚";remaining=state.Remaining;progress=1-remaining/LargeBossPhaseState.WindupSeconds;break;}
                 if(state!=null&&state.Phase==LargeBossPhase.Beam)
-                {message=state.LiveAnchorMask!=0?"环流扫射 · 避开光束，摧毁供能锚":"追加扫射 · 避开光束";remaining=state.Remaining;break;}
+                {message=state.LiveAnchorMask!=0?"环流扫射 · 避开光束，摧毁供能锚":"追加扫射 · 避开光束";remaining=state.Remaining;progress=remaining/LargeBossPhaseState.BeamSeconds;break;}
                 if(enemy.IsPreparingAttack)
-                {message=enemy.CanBeSkillInterrupted?"首领正在蓄力 · 控制技能可打断":"首领正在蓄力 · 避开地面预警";remaining=enemy.AttackWindupRemaining;break;}
+                {message=enemy.CanBeSkillInterrupted?"首领正在蓄力 · 控制技能可打断":"首领正在蓄力 · 避开地面预警";remaining=enemy.AttackWindupRemaining;progress=enemy.AttackWindupProgress;break;}
                 if(state!=null&&state.Phase==LargeBossPhase.Exposed)
-                {message="核心暴露 · 伤害提高35%，集中攻击";remaining=state.Remaining;opportunity=true;}
+                {message="核心暴露 · 伤害提高35%，集中攻击";remaining=state.Remaining;progress=remaining/LargeBossPhaseState.ExposureSeconds;opportunity=true;}
             }
             if(string.IsNullOrEmpty(message))return;
             bool mobile=MobileControls.Active;
             float w=mobile?Mathf.Min(360*TouchRatio,width*.50f):Mathf.Min(460,width-620);
             if(w<180)return;
             int font=mobile?TouchFont(12):15;
-            string label=message+"  "+remaining.ToString("0.0")+"秒";
-            float h=Mathf.Max(mobile?36*TouchRatio:38,Style(font,true,true,TextAnchor.MiddleCenter).CalcHeight(new GUIContent(label),w-20)+12);
+            string label=message;
+            float h=Mathf.Max(mobile?36*TouchRatio:38,Style(font,true,true,TextAnchor.MiddleCenter).CalcHeight(new GUIContent(label),w-20)+24);
             float top=mobile?TouchRect(MobileControls.Layout.BossHealth).yMax+12*TouchRatio:100;
             // Notifications and registered HUD controls have priority over this strip.
             Rect notice=mobile?TouchRect(MobileControls.Layout.Notice):new Rect((width-550)*.5f,26,550,
@@ -216,7 +217,8 @@ namespace Emberfall
                 if(overlaps)continue;
                 Color tint=opportunity?jade:gold;
                 Fill(r,new Color(.025f,.035f,.05f,.82f));Fill(new Rect(r.x,r.y,3,r.height),tint);
-                Text(new Rect(r.x+10,r.y+6,r.width-20,r.height-12),label,font,tint,true,true,TextAnchor.MiddleCenter);
+                Text(new Rect(r.x+10,r.y+6,r.width-20,r.height-24),label,font,tint,true,true,TextAnchor.MiddleCenter);
+                Bar(new Rect(r.x+10,r.yMax-12,r.width-20,5),progress,tint);
                 return;
             }
         }

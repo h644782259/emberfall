@@ -106,9 +106,17 @@ namespace Emberfall
                 cover[i]=Mathf.Clamp01(edge*patch);if(distance>1||!CombatSight.Area(center,point)||WorldTraversal.IsOpenWater(point,.01f))cover[i]=0;
                 float h=WorldTraversal.SurfaceHeight(point,.012f);heights[i]=h;point.y=h+.005f+fine*.0015f;world[i]=point;
                 vertices.Add(transform.InverseTransformPoint(point));
-                float sample=.045f,hx=WorldTraversal.SurfaceHeight(point+Vector3.right*sample,.012f)-WorldTraversal.SurfaceHeight(point-Vector3.right*sample,.012f),hz=WorldTraversal.SurfaceHeight(point+Vector3.forward*sample,.012f)-WorldTraversal.SurfaceHeight(point-Vector3.forward*sample,.012f);
-                normals.Add(new Vector3(-Mathf.Clamp(hx,-sample,sample),sample*2,-Mathf.Clamp(hz,-sample,sample)).normalized);
+                normals.Add(Vector3.up);
                 uv.Add(new Vector2(point.x,point.z));colors.Add(new Color(broad,fine,1,cover[i]));
+            }
+            // Reuse the already sampled support heights instead of four extra
+            // terrain/obstacle queries for every cosmetic deposit vertex.
+            for(int z=0;z<=steps;z++)for(int x=0;x<=steps;x++)
+            {
+                int left=Mathf.Max(0,x-1),right=Mathf.Min(steps,x+1),down=Mathf.Max(0,z-1),up=Mathf.Min(steps,z+1);
+                float hx=(heights[z*side+right]-heights[z*side+left])/((right-left)*cell);
+                float hz=(heights[up*side+x]-heights[down*side+x])/((up-down)*cell);
+                normals[z*side+x]=new Vector3(-Mathf.Clamp(hx,-.5f,.5f),1,-Mathf.Clamp(hz,-.5f,.5f)).normalized;
             }
             var top=new List<int>();
             for(int z=0;z<steps;z++)for(int x=0;x<steps;x++)

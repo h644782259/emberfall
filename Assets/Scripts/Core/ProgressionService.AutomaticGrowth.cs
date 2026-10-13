@@ -1,11 +1,17 @@
-using System;
+﻿using System;
 namespace Emberfall
 {
     public sealed class AchievementDefinition
     {
         public readonly string Id,Title;public readonly int Category,Target,Gold,Shards;
+        public int RevivalStones;
+        public int Refinement => Id.StartsWith("trial/")||Gold==0?0:Math.Min(30,Math.Max(2,Gold/1000));
+        public int Reforge => Gold>=10000?2:Gold>=6000?1:0;
+        public int GearSlot => Id=="level/30"||Id=="level/100"?0:Id=="level/60"?1:Id=="kills/10000"?2:-1;
+        public Rarity GearRarity => Id=="level/100"||Id=="kills/10000"?Rarity.Legendary:Rarity.Epic;
+        public int FashionSlotIndex => Id=="clears/50"?0:Id=="clears/100"?1:-1;
         public AchievementDefinition(string id,string title,int category,int target,int gold,int shards)
-        {Id=id;Title=title;Category=category;Target=target;Gold=gold;Shards=shards;}
+        {Id=id;Title=title;Category=category;Target=target;Gold=gold==0?0:Math.Max(500,gold*10);Shards=shards;}
         public int Progress(GameProfile p)
         {
             if(Id.StartsWith("refine-max/"))return p.refinementMaxCount;
@@ -18,6 +24,7 @@ namespace Emberfall
             if(Id.StartsWith("fashion/"))return p.fashions==null?0:p.fashions.Count;
             if(Id.StartsWith("gear/")){int best=0;if(p.slotUpgradeRanks!=null)foreach(int rank in p.slotUpgradeRanks)best=Math.Max(best,rank);return best;}
             var parts=Id.Split('/');int key;if(parts.Length<2||!int.TryParse(parts[1],out key))return 0;
+            if(parts[0]=="revival")return ChapterProgression.CompletedTier(p,(ChapterNode)key,ChapterDifficulty.Heroic);
             if(parts[0]=="chapter-unlock")return p.level;
             if(parts[0]=="chapter-clear")return key>=0&&key<3&&(p.chapterCompletedMask&(1<<key))!=0?1:0;
             if(parts[0]=="chapter-band")return p.chapterBestLevels!=null&&key>=0&&key<p.chapterBestLevels.Length?p.chapterBestLevels[key]:0;
@@ -89,7 +96,7 @@ namespace Emberfall
                 string name=GameBalance.ClassName((HeroClass)hero);
                 string[] tasks={"普攻命中并回复能量","成功闪避一次预警攻击",new[]{"完美闪避后反击命中","碎冰命中或刷新灼烧","引爆三层毒素","召唤物命中目标"}[hero],"穿戴一件装备"};
                 for(int step=0;step<4;step++)all.Add(new AchievementDefinition("trial/"+hero+"/"+step,name+" · "+tasks[step],1,1,step==2?50:25,1));
-                foreach(var gem in BuildCatalog.MechanicsFor((HeroClass)hero))
+                foreach(var gem in hero==0?BuildCatalog.GemsFor(HeroClass.Vanguard):new EquipmentMechanic[0])
                 {
                     string id=((int)gem).ToString(),title=BuildCatalog.GemName(gem);
                     all.Add(new AchievementDefinition("core/"+id,"获得 "+title,3,1,50,1));
@@ -123,18 +130,18 @@ namespace Emberfall
         public bool AchievementClaimed(string id)
         {return Profile.achievementReceipts!=null&&Profile.achievementReceipts.Contains(id);}
         public int ClaimableAchievements
-        {get{int count=0;foreach(var a in Achievements)if(!AchievementClaimed(a.Id)&&a.Progress(Profile)>=a.Target)count++;return count;}}
+        {get{int count=0;foreach(var a in AvailableAchievements)if(!AchievementClaimed(a.Id)&&a.Progress(Profile)>=a.Target)count++;return count;}}
         public bool ClaimAllAchievements()
         {
             if(IsPracticeOnly)return Fail("当前模式不能领取成就奖励。");
             var candidate=Snapshot();
             if(candidate.achievementReceipts==null)candidate.achievementReceipts=new System.Collections.Generic.List<string>();
             int count=0;
-            foreach(var a in Achievements)
+            foreach(var a in AvailableAchievements)
             {
                 if(AchievementClaimed(a.Id)||a.Progress(Profile)<a.Target)continue;
                 if(candidate.gold>MaximumGold-a.Gold||candidate.mechanicMaterials>999999-a.Shards)return Fail("货币已达上限，请消耗后再领取。");
-                candidate.achievementReceipts.Add(a.Id);candidate.gold+=a.Gold;candidate.mechanicMaterials+=a.Shards;count++;
+                if(!ApplyAchievementReward(candidate,a))return false;count++;
             }
             if(count==0)return Fail("暂无可领取奖励。");
             return CommitCandidate(candidate,true);
@@ -142,12 +149,12 @@ namespace Emberfall
         public bool ClaimAchievement(string id)
         {
             if(IsPracticeOnly)return Fail("当前模式不能领取成就奖励。");
-            var achievement=Array.Find(Achievements,a=>a.Id==id);
+            var achievement=System.Linq.Enumerable.FirstOrDefault(AvailableAchievements,a=>a.Id==id);
             if(achievement==null||AchievementClaimed(id))return Fail("奖励已领取或成就不存在。");
             if(achievement.Progress(Profile)<achievement.Target)return Fail("成就尚未完成。");
             if(Profile.gold>MaximumGold-achievement.Gold||Profile.mechanicMaterials>999999-achievement.Shards)return Fail("货币已达上限，请消耗后再领取。");
             var candidate=Snapshot();if(candidate.achievementReceipts==null)candidate.achievementReceipts=new System.Collections.Generic.List<string>();
-            candidate.achievementReceipts.Add(id);candidate.gold+=achievement.Gold;candidate.mechanicMaterials+=achievement.Shards;
+            if(!ApplyAchievementReward(candidate,achievement))return false;
             return CommitCandidate(candidate,true);
         }
         public string LastGrowthReward {get;private set;}
@@ -166,7 +173,7 @@ namespace Emberfall
                 var node=(ChapterNode)i;int required=ChapterProgression.UnlockLevel(node);
                 if(p.level<required)
                     return new ProgressionGoalState{Identity="main/level/"+required,Title="升至 "+required+" 级 · 解锁"+ChapterDefinition.Get(node).Name,Step="挑战副本或原野敌人积累经验 · 当前 "+p.level+" 级",RequiredAdventureTier=Math.Max(1,Math.Min(10,p.level/10))};
-                return new ProgressionGoalState{Identity="main/chapter/"+i,Title="通关章节 · "+ChapterDefinition.Get(node).Name,Step=ChapterDefinition.Get(node).StoryIntro+""};
+                return new ProgressionGoalState{Identity="main/chapter/"+i,Title="星路章节 · "+ChapterDefinition.Get(node).Name,Step="前往营地西侧「星路章节」紫色入口"};
             }
             int best=HighestCompletedAdventureTier(p);
             if(best<10)

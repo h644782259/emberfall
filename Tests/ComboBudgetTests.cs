@@ -40,7 +40,7 @@ public static class ComboBudgetTests
         {
             var clock=new SkillBasicRecoveryClock();clock.Begin(HeroClass.Vanguard,charged?9:0,charged);
             float limit=clock.Remaining,elapsed=0;int updates=0;
-            while(clock.Blocked){clock.Advance(dt);elapsed+=dt;updates++;Check(updates<40,"bounded recovery");}
+            while(clock.Blocked){clock.Advance(dt);elapsed+=dt;updates++;Check(updates<120,"recovery completes within one second at 120 Hz");}
             Check(elapsed+.00001f>=limit&&elapsed<limit+dt+.00001f,"recovery releases on first gameplay update crossing boundary");
             float[] frames=Enumerable.Repeat(dt,Math.Max(4,(int)Math.Ceiling(1/dt))).ToArray();
             string expected=RecoveryTrace(frames,1,charged);
@@ -50,22 +50,22 @@ public static class ComboBudgetTests
         foreach(float dt in new[]{0f,-1,float.NaN,float.PositiveInfinity})recovery.Advance(dt);
         Check(recovery.Remaining==remaining,"pause and invalid deltas do not release recovery");
         recovery.Advance(.2f);Check(recovery.Blocked,"200ms spike does not prematurely release charged judgment");
-        recovery.Advance(.04f);Check(!recovery.Blocked,"next gameplay update releases judgment without queued attacks");
+        recovery.Advance(.19f);Check(!recovery.Blocked,"next gameplay update releases judgment without queued attacks");
         recovery.Begin(HeroClass.Vanguard,9,true);recovery.Clear();Check(!recovery.Blocked,"dodge/cancel/death/epoch retirement clear shared clock");
         recovery.Begin(HeroClass.Vanguard,9,true);recovery.Begin(HeroClass.Vanguard,0,false);
-        Check(Near(recovery.Remaining,.0884f),"a newer successful skill replaces prior pose recovery, preserving old policy");
+        Check(Near(recovery.Remaining,.18f),"a newer successful skill replaces prior pose recovery, using its own recovery");
         Check(RecoveryTrace(new[]{.2f},0,false).Split(';').Length==1,"200ms frame produces one attack, never catch-up hits or energy");
     }
     public static string Run(string artifactDirectory=null)
     {
         checks=0;
         RecoveryClockCases();
-        Check(Near(SkillDamageBudgets.SkillBasicRecovery(HeroClass.Ranger,0,false),.0884f),"opening recovery retains nominal 88.4ms");
-        Check(Near(SkillDamageBudgets.SkillBasicRecovery(HeroClass.Arcanist,5,false),.1092f),"advanced recovery retains nominal 109.2ms");
-        Check(Near(SkillDamageBudgets.SkillBasicRecovery(HeroClass.Ranger,9,true),.1456f),"ultimate recovery retains nominal 145.6ms");
-        Check(Near(SkillDamageBudgets.SkillBasicRecovery(HeroClass.Vanguard,9,true),.238636f),"charged judgment retains pre-contact plus recovery window");
+        Check(Near(SkillDamageBudgets.SkillBasicRecovery(HeroClass.Ranger,0,false),.12f),"quick arrow recovery lasts 120ms");
+        Check(Near(SkillDamageBudgets.SkillBasicRecovery(HeroClass.Arcanist,5,false),.12f),"stride recovery lasts 120ms");
+        Check(Near(SkillDamageBudgets.SkillBasicRecovery(HeroClass.Ranger,9,true),.28f),"ranger ultimate recovery lasts 280ms");
+        Check(Near(SkillDamageBudgets.SkillBasicRecovery(HeroClass.Vanguard,9,true),.38f),"judgment recovers for 380ms after release");
         var held=ComboBudgetSimulation.Run(HeroClass.Vanguard,50,new ComboBudgetSimulation.Recipe("held-after-skill",false,0),.4f);
-        Check(held.BasicHits==1 && held.Hits.First(h=>h.Category=="basic").Time>=.0884f && held.Hits.First(h=>h.Category=="basic").Time<.1f,
+        Check(held.BasicHits==1 && held.Hits.First(h=>h.Category=="basic").Time>=.18f && held.Hits.First(h=>h.Category=="basic").Time<.2f,
             "held basic releases once at first eligible step, without recovery catch-up burst");
         var judgment=ComboBudgetSimulation.SkillTimeline(HeroClass.Vanguard,9,3).OrderBy(h=>h.Time).ToArray();
         Check(Near(judgment[0].Time,.15f)&&judgment[0].Coefficient>judgment[1].Coefficient&&judgment[1].Time>judgment[0].Time,
@@ -84,7 +84,7 @@ public static class ComboBudgetTests
             {
                 Check(r.Ranks[cast.Skill]>0&&!GameBalance.IsPassive(cast.Skill),"locked/passive skills never committed");
                 Check(Near(cast.Cost,GameBalance.SkillEnergyCost(r.Hero,cast.Skill)),"each committed cast pays production cost once");
-                Check(cast.Committed-cast.Started+.011f>=SkillDamageBudgets.ChargeSeconds(r.Hero,cast.Skill),"charge commitment precedes cost and damage");
+                Check(cast.Committed-cast.Started+.011f>=SkillDamageBudgets.ChargeSeconds(r.Hero,cast.Skill),"charged effect waits for preparation");
                 var prior=r.Casts.LastOrDefault(c=>c.Skill==cast.Skill&&c.Id<cast.Id);
                 if(cast.Skill==SkillRuntime.StockSkill(r.Hero))
                 {
@@ -96,7 +96,7 @@ public static class ComboBudgetTests
                 else if(prior!=null)Check(cast.Committed-prior.Committed+.02f>=GameBalance.EffectiveCooldown(r.Hero,cast.Skill,cast.Rank),"same skill observes actual cooldown");
             }
             Check(r.EnergySamples.All(e=>e>=0&&e<=SkillRuntime.MaximumEnergy)&&r.MinimumEnergy>=0&&r.MaximumEnergy<=100,"energy never negative or over cap");
-            Check(Near(r.EnergySpent,r.Casts.Sum(c=>c.Cost))&&Near(r.EnergyRemaining,100-r.EnergySpent+r.EnergyRestored,.02f),"resource ledger reconciles with actual SkillRuntime energy");
+            Check(Near(r.EnergySpent,r.Casts.Sum(c=>c.Cost)+r.UnreleasedCost)&&Near(r.EnergyRemaining,100-r.EnergySpent+r.EnergyRestored,.02f),"resource ledger reconciles with actual SkillRuntime energy");
             Check(r.Hits.All(h=>h.Time>=0&&h.Time<=r.Seconds+.0001f&&h.Coefficient>0&&!float.IsNaN(h.Coefficient)),"only delivered finite positive damage enters window");
             Check(Near(r.Category("basic"),r.BasicHits*SkillDamageBudgets.BasicCoefficient(r.Hero),.005f),"basic damage equals confirmed hits times production coefficient");
             foreach(var basic in r.Hits.Where(h=>h.Category=="basic"))
@@ -153,18 +153,18 @@ public static class ComboBudgetTests
         }
         var chargeRecipe=new ComboBudgetSimulation.Recipe("charge-only",false,1);
         var before=ComboBudgetSimulation.Run(HeroClass.Arcanist,50,chargeRecipe,.4f,false);
-        Check(before.ChargesStarted==1&&before.PendingCharge==1&&before.Casts.Count==0&&before.EnergySpent==0&&before.Damage==0,"precommit charged cast has no cost or damage");
+        Check(before.ChargesStarted==1&&before.PendingCharge==1&&before.Casts.Count==0&&before.EnergySpent==GameBalance.SkillEnergyCost(HeroClass.Arcanist,1)&&before.Damage==0,"charged input pays immediately but produces no early damage");
         var committed=ComboBudgetSimulation.Run(HeroClass.Arcanist,50,chargeRecipe,.6f,false);
         Check(committed.Casts.Count==1&&committed.EnergySpent==GameBalance.SkillEnergyCost(HeroClass.Arcanist,1)&&committed.Damage==0,"commit pays once but delayed meteor has not yet landed");
         var cancelled=ComboBudgetSimulation.Run(HeroClass.Arcanist,50,chargeRecipe,.4f,false,.2f);
-        Check(cancelled.ChargesCancelled==1&&cancelled.Casts.Count==0&&cancelled.EnergySpent==0,"cancelled charge never pays twice or schedules hits");
+        Check(cancelled.ChargesCancelled==1&&cancelled.Casts.Count==0&&cancelled.EnergySpent==GameBalance.SkillEnergyCost(HeroClass.Arcanist,1),"cancelled charge keeps the input cost without scheduling hits");
         var locked=ComboBudgetSimulation.Run(HeroClass.Vanguard,20,new ComboBudgetSimulation.Recipe("locked",false,9),10,false);
         Check(locked.Casts.Count==0&&locked.ChargesStarted==0&&locked.Damage==0,"level20 cannot cast level30 ultimate");
         var delayed=ComboBudgetSimulation.Run(HeroClass.Ranger,50,new ComboBudgetSimulation.Recipe("field",false,2),.2f,false);
         Check(delayed.Casts.Count==1&&delayed.Damage==0&&delayed.PendingSkillCoefficient>0,"field startup not delivered prematurely");
         foreach(var r in rows.Where(r=>r.Hero==HeroClass.Arcanist&&r.Recipe=="frost_meteor"||r.Hero==HeroClass.Ranger&&r.Recipe=="poison_fan"))
             Check(r.Category("reaction")>0,"actual frost-to-meteor and three-poison-to-fan combo appears");
-        var pets=ComboBudgetSimulation.Run(HeroClass.Summoner,100,new ComboBudgetSimulation.Recipe("treant-lifetime",false,9),35,false);
+        var pets=ComboBudgetSimulation.Run(HeroClass.Summoner,100,new ComboBudgetSimulation.Recipe("treant-lifetime",false,9),40,false);
         Check(pets.Casts.Count==1&&pets.MaximumPets==2,"one actual treant plus starter, no invented recasts or extra pets");
         float end=pets.Casts[0].Committed+CompanionRules.ContractLifetime(2,pets.Ranks[9],false);
         Check(pets.Hits.Where(h=>h.Category=="pet_2").All(h=>h.Time<end)&&pets.Hits.Any(h=>h.Category=="pet_0"&&h.Time>end),"timed treant expires while legitimate foundation partner remains");

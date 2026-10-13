@@ -9,7 +9,8 @@ namespace Emberfall
         private float performanceUntil;private int performanceBeatFrame=-1;
         internal void BeginSkillPerformance(int skill,float duration,float cadence,int castId)
         {
-            if(!isHero||duration<1.2f)return;
+            performanceRemaining=0;performancePrepared=performanceLaunch=false;
+            if(!isHero||!SkillCastingPolicy.Channeled(heroClass,skill)||duration<1.2f)return;
             performanceCast=castId;performanceSkill=skill;performanceRemaining=duration;
             performanceBeatAge=0;performanceCadence=Mathf.Max(.12f,cadence);performancePrepared=performanceLaunch=false;performanceUntil=0;performanceBeatFrame=Time.frameCount;
         }

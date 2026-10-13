@@ -31,6 +31,12 @@ namespace Emberfall
         bool framingDirty=true;
         bool equipmentFraming,equipmentDetail;
         bool centerOnAvatar;
+        public bool TransparentBackground {get;set;}
+        public bool SceneLighting {get;set;}
+        public bool FullSilhouette {get;set;}
+        public bool HideTurnRing {get;set;}
+        public float MaximumFrameRate {get;set;}
+        float lastPresentation=-1;
         public void SetCenterOnAvatar(bool enabled)
         {if(centerOnAvatar==enabled)return;centerOnAvatar=enabled;framingDirty=true;state.Invalidate();}
         int equipmentHighlightSlot=-1;
@@ -103,6 +109,9 @@ namespace Emberfall
         public Texture Render(HeroClass hero,ItemData weapon,ItemData armor,ItemData relic,FashionData wings,FashionData fashionWeapon)
         {
             if(Event.current==null||Event.current.type!=EventType.Repaint)return texture!=null&&texture.IsCreated()?texture:null;
+            if(texture!=null&&texture.IsCreated()&&MaximumFrameRate>0&&Time.unscaledTime-lastPresentation<1f/MaximumFrameRate)return texture;
+            float presentationDelta=lastPresentation<0?Time.unscaledDeltaTime:Mathf.Clamp(Time.unscaledTime-lastPresentation,0,.1f);
+            lastPresentation=Time.unscaledTime;
             if(stage==null||camera==null)
             {
                 float yaw=state.Yaw;var mode=composition;var surface=requested;var localMotion=motion;
@@ -117,7 +126,7 @@ namespace Emberfall
             if(texture==null)return null;
             if(!texture.IsCreated()){texture.Create();state.InvalidateTexture();}
             if(!texture.IsCreated())return null;
-            if(motion.Advance(Time.unscaledDeltaTime,Time.frameCount))state.Invalidate();
+            if(motion.Advance(presentationDelta,Time.frameCount))state.Invalidate();
             if(rendererGroup!=null&&rendererGroup.Dirty){state.Invalidate();framingDirty=true;}
             if(!state.ShouldRender(true,Time.frameCount))return texture;
             if(state.NeedsModel)
@@ -140,7 +149,9 @@ namespace Emberfall
             if(framingDirty){FrameModel();framingDirty=false;}
             model.SamplePreview(motion.Time,motion.Action,motion.Progress,motion.OrbitYaw);
 
+            turnRing.gameObject.SetActive(!SceneLighting&&!HideTurnRing);
             turnRing.localRotation=Quaternion.Euler(0,motion.RingYaw,0);
+            camera.backgroundColor=TransparentBackground?Color.clear:new Color(.035f,.06f,.09f);
             RenderIsolated();state.Rendered(Time.frameCount);
             return texture;
         }
@@ -195,13 +206,13 @@ namespace Emberfall
             {
                 model.SamplePreview(0,(CollectionPreviewAction)action,step*.25f);
                 foreach(var renderer in renderers)
-                    if(renderer!=null&&renderer.enabled&&renderer.gameObject.activeInHierarchy&&InComposition(renderer.transform)&&(!centerOnAvatar||composition!=CollectionPreviewComposition.Full||IsBodyRenderer(renderer.transform)))
+                    if(renderer!=null&&renderer.enabled&&renderer.gameObject.activeInHierarchy&&InComposition(renderer.transform)&&(FullSilhouette||!centerOnAvatar||composition!=CollectionPreviewComposition.Full||IsBodyRenderer(renderer.transform)))
                     {if(!found){bounds=renderer.bounds;found=true;}else bounds.Encapsulate(renderer.bounds);}
             }
             if(!found)bounds=new Bounds(avatar.transform.position+Vector3.up*1.3f,new Vector3(1.3f,1.6f,1));
             if(composition==CollectionPreviewComposition.Back)
                 bounds.Encapsulate(new Bounds(avatar.transform.position+Vector3.up*1.4f,new Vector3(1,1.3f,.7f)));
-            if(centerOnAvatar)
+            if(centerOnAvatar&&!SceneLighting)
             {
                 // Keep the body centered even when a weapon or an attack pose extends sideways.
                 Vector3 center=bounds.center;float bodyX=avatar.transform.position.x;
@@ -211,7 +222,13 @@ namespace Emberfall
             }
             camera.aspect=(float)texture.width/texture.height;
             camera.orthographicSize=CollectionPreviewFraming.Size(bounds.extents.x,bounds.extents.y,bounds.extents.z,camera.aspect,composition);
-            camera.transform.position=bounds.center+new Vector3(0,1.1134f,7.9221f);camera.transform.LookAt(bounds.center);
+            Vector3 focus=bounds.center;
+            if(SceneLighting)
+            {
+                camera.orthographicSize*=1.06f/1.16f;
+                focus.y=avatar.transform.position.y+camera.orthographicSize*.80f;
+            }
+            camera.transform.position=focus+new Vector3(0,1.1134f,7.9221f);camera.transform.LookAt(focus);
         }
         void RenderIsolated()
         {
@@ -229,7 +246,7 @@ namespace Emberfall
             {
                 for(int i=0;i<sceneLights.Length;i++)if(sceneLights[i]!=null)
                 {sceneMasks[i]=sceneLights[i].cullingMask;if(!sceneLights[i].transform.IsChildOf(stage.transform))sceneLights[i].cullingMask&=~(1<<PreviewLayer);}
-                RenderSettings.ambientMode=UnityEngine.Rendering.AmbientMode.Flat;RenderSettings.ambientLight=new Color(.38f,.42f,.5f);RenderSettings.fog=false;
+                RenderSettings.ambientMode=UnityEngine.Rendering.AmbientMode.Flat;RenderSettings.ambientLight=SceneLighting?new Color(.22f,.28f,.38f):new Color(.38f,.42f,.5f);RenderSettings.fog=false;
                 BeginEquipmentHighlight();
                 camera.Render();
             }
@@ -246,9 +263,9 @@ namespace Emberfall
             var lens=new GameObject("Preview camera");lens.transform.SetParent(stage.transform,false);camera=lens.AddComponent<Camera>();
             camera.enabled=false;camera.useOcclusionCulling=false;camera.orthographic=true;camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=new Color(.035f,.06f,.09f);
             camera.cullingMask=1<<PreviewLayer;camera.nearClipPlane=.1f;camera.farClipPlane=30;camera.allowHDR=false;camera.allowMSAA=true;
-            AddLight("Preview key",new Vector3(35,155,0),1.05f,new Color(1,.91f,.8f));
-            AddLight("Preview fill",new Vector3(15,30,0),.45f,new Color(.63f,.78f,1));
-            AddLight("Preview rim",new Vector3(20,-65,0),.6f,new Color(.76f,.86f,1));
+            AddLight("Preview key",new Vector3(35,155,0),SceneLighting?.75f:1.05f,SceneLighting?new Color(.7f,.81f,1):new Color(1,.91f,.8f));
+            AddLight("Preview fill",new Vector3(15,30,0),SceneLighting?.25f:.45f,new Color(.63f,.78f,1));
+            AddLight("Preview rim",new Vector3(20,-65,0),SceneLighting?.8f:.6f,SceneLighting?new Color(1,.62f,.28f):new Color(.76f,.86f,1));
             CreateContact();
         }
         void AddLight(string name,Vector3 angle,float intensity,Color color)

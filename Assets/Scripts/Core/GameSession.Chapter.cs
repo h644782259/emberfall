@@ -1,9 +1,19 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 namespace Emberfall
 {
     public sealed partial class GameSession
     {
+        public bool TryMainObjectivePosition(out Vector3 destination)
+        {
+            destination=Vector3.zero;if(!HasStarted||IsDead||Player==null)return false;
+            if(ChapterActive&&ChapterRun.DoorUnlocked&&!ChapterFinished&&chapterPlan!=null){destination=chapterPlan.Exit;return true;}
+            if(InDungeon)return false;
+            var goal=Progression.SelectedProgressionGoal(IsInCamp);
+            if((goal.Identity??"").StartsWith("main/chapter/")){destination=ChapterEntrancePosition;return true;}
+            if((goal.Identity??"").StartsWith("main/tier/")){destination=new Vector3(0,0,11);return true;}
+            return false;
+        }
         public ChapterNode SelectedChapterNode {get;set;}
         private readonly int[] selectedChapterTiers=new int[9];
         public ChapterDifficulty SelectedChapterDifficulty
@@ -18,8 +28,8 @@ namespace Emberfall
         private int chapterEntryPotions,chapterBossDeathFrame=-1;
         private bool chapterResultSkipped;
         private float chapterFirstSealSeconds,chapterSecondSealSeconds;
-        public bool ChapterResultReady {get{return ChapterFinished&&(ChapterRun.Failed||chapterResultSkipped||chapterBossDeathFrame<0||Time.frameCount>chapterBossDeathFrame&&!LargeBossShutdownVisual.IsPresenting(this));}}
-        public void ContinueChapterResult(){if(SceneLoading||!ChapterFinished)return;chapterResultSkipped=true;LargeBossShutdownVisual.Skip(this);}
+        public bool ChapterResultReady {get{return ChapterFinished&&(ChapterRun.Failed||chapterResultSkipped||FinishedResultReady);}}
+        public void ContinueChapterResult(){if(SceneLoading||!ChapterFinished)return;chapterResultSkipped=true;victoryTransitionRemaining=0;LargeBossShutdownVisual.Skip(this);}
         public bool ChapterActive {get{return ChapterRun!=null;}}
         public bool ChapterFinished {get{return ChapterActive&&ChapterRun.Finished;}}
         public bool ChapterRewardPending {get{return ChapterFinished&&!ChapterRun.Failed&&!ChapterRun.RewardClaimed;}}
@@ -27,7 +37,7 @@ namespace Emberfall
         public ChapterDifficulty ActiveChapterDifficulty {get{return ChapterActive?ChapterRun.Difficulty:ChapterDifficulty.Normal;}}
         public int ChapterRoomIndex {get{return ChapterActive?ChapterRun.RoomIndex:-1;}}
         public int ChapterSeed {get{return ChapterActive?ChapterRun.Seed:0;}}
-        public bool OpenChapterSelectionAllowed {get{return !SceneLoading&&HasStarted&&!InDungeon&&!IsDead&&!Paused&&!BackgroundPaused&&(IsInCamp||NearPortal());}}
+        public bool OpenChapterSelectionAllowed {get{return !SceneLoading&&HasStarted&&!InDungeon&&!IsDead&&!Paused&&!BackgroundPaused&&(IsInCamp||IsNearChapterEntrance);}}
         public bool NearChapterExit {get{return ChapterActive&&!ChapterFinished&&ChapterRun.DoorUnlocked&&chapterPlan!=null&&Player!=null&&Vector3.Distance(Player.transform.position,chapterPlan.Exit)<3.8f;}}
         private ChapterRunReceipt chapterReceipt;
         private ChapterRoomPlan chapterPlan;
@@ -227,7 +237,8 @@ namespace Emberfall
                     ChapterRun.Advance(Time.deltaTime,true,RoomTacticalRegion.ContainsPlayer(CombatFx.Flat(Player.transform.position-ChapterObjectivePoint).sqrMagnitude),contested);
                 }
             }
-            if(ChapterRun.DoorUnlocked){if(chapterExit!=null)chapterExit.SetActive(true);}
+            FinalizeChapterBoss();
+            if(!ChapterFinished&&ChapterRun.DoorUnlocked){if(chapterExit!=null)chapterExit.SetActive(true);}
 
         }
         public bool IsChapterHuntTarget(EnemyController enemy){return ChapterActive&&!ChapterFinished&&ChapterRun.Objective==RoomObjective.Hunt&&LiveRoomEnemy(enemy)&&enemy==chapterSupplier;}
@@ -290,7 +301,7 @@ namespace Emberfall
         private void FailChapter(string reason)
         {if(!ChapterActive||ChapterFinished)return;ChapterResult=CaptureChapterResult(true,reason);ChapterRun.Fail();RunChoices.Reset();Progression.CancelChapterRun();if(!Progression.FinishDungeonRewards())Notify(Progression.LastError);Notify(reason);SuspendInputs();UpdateTimeScale();}
         private void FinalizeChapter()
-        {ChapterResult=CaptureChapterResult(false,null);DungeonCleared=true;RetireRemainingEncounterEnemies();chapterEnemies.Clear();TrySettleChapterReward();LastRunSummary=BuildRunSummary(true);UpdateTimeScale();GameAudio.Play(SoundCue.Victory);}
+        {ChapterResult=CaptureChapterResult(false,null);DungeonCleared=true;RetireRemainingEncounterEnemies();chapterEnemies.Clear();TrySettleChapterReward();LastRunSummary=BuildRunSummary(true);UpdateTimeScale();BeginVictoryTransition();GameAudio.Play(SoundCue.Victory);}
         public bool TrySettleChapterReward()
         {
             if(!ChapterRewardPending)return true;

@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 namespace Emberfall
 {
     public sealed partial class GameUI
@@ -8,7 +8,7 @@ namespace Emberfall
         private PlayerController classSwitchHero;
         private ProgressionService.ClassSwitchTransaction classSwitchPreview;
         private string classSwitchFingerprint,classSwitchMessage;
-        private Vector2 classSwitchScroll;
+        private Vector2 classSwitchScroll,classSelectionScroll;
         internal bool ClassSwitchHasPendingEdit {get{return allocationDraft!=null||reforgeOwner!=null;}}
         private void OpenClassSwitch()
         {
@@ -33,27 +33,31 @@ namespace Emberfall
             }
             if(skillSection!=2)return;
             string[] roles={"近战 · 斩击 · 耐久","法术 · 控制 · 爆发","远程 · 灵活 · 射击","召唤 · 协同 · 灵兽"};
-            float gap=10*u,cardWidth=(body.width-3*gap)/4,cardHeight=Mathf.Min(280*u,body.height-48*u);
-            float top=body.y+Mathf.Max(0,(body.height-cardHeight-40*u)*.5f);
+            int columns=body.width/u<600?2:4,rows=(4+columns-1)/columns;
+            float gap=12*u,cardWidth=(body.width-18*u-(columns-1)*gap)/columns;
+            float cardHeight=columns==2?240*u:Mathf.Min(350*u,body.height-48*u);
+            float total=rows*(cardHeight+gap)+40*u;
+            classSelectionScroll=BeginTouchScroll("class-selection-models",body,classSelectionScroll,new Rect(0,0,body.width-18*u,Mathf.Max(body.height,total)));
+            float top=0;
             string reason=session.ClassSwitchLockReason();
             for(int i=0;i<4;i++)
             {
                 var hero=(HeroClass)i;bool current=hero==session.Progression.Profile.heroClass;
-                Rect choice=new Rect(body.x+i*(cardWidth+gap),top,cardWidth,cardHeight);
+                Rect choice=new Rect((i%columns)*(cardWidth+gap),top+(i/columns)*(cardHeight+gap),cardWidth,cardHeight);
                 Color accent=GameBalance.ClassColor(hero);
                 Fill(choice,new Color(.055f,.09f,.13f));Border(choice,current?gold:accent*.45f,current?2:1);
-                float crest=Mathf.Min(cardWidth*.58f,cardHeight*.42f);
-                DrawCrest(new Rect(choice.center.x-crest*.5f,choice.y+cardHeight*.15f,crest,crest),hero,accent);
+                DrawHeroPortrait(new Rect(choice.x+8*u,choice.y+24*u,choice.width-16*u,cardHeight-96*u),hero,"switch-"+i);
                 Text(new Rect(choice.x+4*u,choice.y+5*u,choice.width-8*u,20*u),current?"当前职业":"",Mathf.RoundToInt(11*u),gold,true,false,TextAnchor.MiddleCenter);
-                Text(new Rect(choice.x+4*u,choice.y+cardHeight*.64f,choice.width-8*u,30*u),GameBalance.ClassName(hero),Mathf.RoundToInt(18*u),pale,true,false,TextAnchor.MiddleCenter);
+                Text(new Rect(choice.x+4*u,choice.yMax-66*u,choice.width-8*u,30*u),GameBalance.ClassName(hero),Mathf.RoundToInt(18*u),pale,true,false,TextAnchor.MiddleCenter);
                 if(cardHeight>180*u)Text(new Rect(choice.x+4*u,choice.yMax-34*u,choice.width-8*u,24*u),roles[i],Mathf.RoundToInt(11*u),muted,false,false,TextAnchor.MiddleCenter);
                 if(GUI.Button(choice,GUIContent.none,invisibleButton)&&!current)
                 {
                     if(!string.IsNullOrEmpty(reason))classSwitchMessage=reason;
-                    else {classSwitchOwner=session.Progression;classSwitchHero=session.Player;classSwitchOpen=true;PreviewClassSwitch(hero);BlockUITransition();return;}
+                    else {classSwitchOwner=session.Progression;classSwitchHero=session.Player;classSwitchOpen=true;PreviewClassSwitch(hero);BlockUITransition();EndTouchScroll();return;}
                 }
             }
-            Text(new Rect(body.x,top+cardHeight+8*u,body.width,32*u),!string.IsNullOrEmpty(classSwitchMessage)?classSwitchMessage:!string.IsNullOrEmpty(reason)?reason:"选择职业后确认切换",Mathf.RoundToInt(13*u),gold,false,true,TextAnchor.MiddleCenter);
+            Text(new Rect(0,rows*(cardHeight+gap),body.width-18*u,32*u),!string.IsNullOrEmpty(classSwitchMessage)?classSwitchMessage:!string.IsNullOrEmpty(reason)?reason:"选择职业后确认切换",Mathf.RoundToInt(13*u),gold,false,true,TextAnchor.MiddleCenter);
+            EndTouchScroll();
         }
         private bool CloseClassSwitchSurface()
         {

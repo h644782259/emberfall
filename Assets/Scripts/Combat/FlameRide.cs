@@ -5,7 +5,11 @@ namespace Emberfall
     // damage when the rider circles, stops or doubles back over the same enemy.
     internal sealed class FlameRide : MonoBehaviour
     {
-        private const float BurnRadius=2.2f;
+        private const float BurnRadius=2.2f,TrailLife=3.2f;
+        private readonly System.Collections.Generic.Dictionary<EnemyController,float> contacts=new System.Collections.Generic.Dictionary<EnemyController,float>();
+        private readonly float[] footprintAge=new float[24];
+        private Vector3 previousPosition,lastFootprint;
+        private float nextFootprint;
         private static Mesh tongueMesh;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetArt(){if(tongueMesh!=null)Destroy(tongueMesh);tongueMesh=null;}
@@ -14,8 +18,8 @@ namespace Emberfall
         private int epoch,castId;
         private float duration,age,nextTick,attack;
         private CastFirstHitReceipt receipt;
-        private readonly Vector3[] footprints=new Vector3[3];
-        private readonly FilledSkillVfx.ContactTrackHandle[] footprintVisuals=new FilledSkillVfx.ContactTrackHandle[3];
+        private readonly Vector3[] footprints=new Vector3[24];
+        private readonly FilledSkillVfx.ContactTrackHandle[] footprintVisuals=new FilledSkillVfx.ContactTrackHandle[24];
         private int footprintCount,cursor;
         private Transform mount;
         private Material flame,core;
@@ -26,6 +30,8 @@ namespace Emberfall
             // The birth frame must already use the rider's real world pose;
             // rendering can occur before the producer's first Update.
             ride.transform.SetPositionAndRotation(player.transform.position,player.transform.rotation);
+            ride.previousPosition=ride.lastFootprint=player.transform.position;
+            GameAudio.SustainSkill(player,ride.transform,SkillPerformanceBody.Fire,seconds+TrailLife);
             ride.duration=seconds;ride.attack=power;ride.castId=cast;ride.receipt=player.RetainCastReceipt(cast);
             ride.flame=new Material(Resources.Load<Shader>("SpellEnergySurface"));ride.flame.SetColor("_Tint",new Color(1f,.27f,.045f));ride.flame.SetFloat("_Heat",.35f);
             SkillBodyMaterialLibrary.Bind(ride.flame);
@@ -66,36 +72,57 @@ namespace Emberfall
             if(!Current){Destroy(gameObject);return;}
             transform.SetPositionAndRotation(owner.transform.position,owner.transform.rotation);
             if(session.InputBlocked||Time.deltaTime<=0)return;
-            // No late burst after a stalled frame. At most one tick per update.
-            if(age>=duration){Destroy(gameObject);return;}
+            bool riding=age<duration&&owner.FrostStrideActive;
+            if(!riding)duration=Mathf.Min(duration,age);
+            if(age>=duration+TrailLife){Destroy(gameObject);return;}
+            mount.gameObject.SetActive(riding);
+            if(riding)
+            {
+                Vector3 current=owner.transform.position;
+                using(var targets=CombatTargetSnapshot<EnemyController>.Capture(session.Enemies))
+                for(int i=0;i<targets.Count;i++)
+                {
+                    var enemy=targets[i];if(enemy==null||enemy.IsDead)continue;
+                    Vector3 segment=CombatFx.Flat(current-previousPosition),offset=CombatFx.Flat(enemy.transform.position-previousPosition);
+                    float t=segment.sqrMagnitude<.0001f?0:Mathf.Clamp01(Vector3.Dot(offset,segment)/segment.sqrMagnitude);
+                    Vector3 nearest=previousPosition+segment*t;
+                    float radius=1.65f+enemy.NavigationRadius;
+                    if(CombatFx.Flat(enemy.transform.position-nearest).sqrMagnitude>radius*radius||!CombatSight.Area(nearest,enemy.transform.position))continue;
+                    float last;if(contacts.TryGetValue(enemy,out last)&&age-last<.8f)continue;
+                    contacts[enemy]=age;owner.RegisterSkillHit(castId);
+                    enemy.TakeDamage(attack*SkillDamageBudgets.FrostWalkerPulse(session.Progression.Profile.skillRanks[5]),current-previousPosition,.3f,0,practiceCastId:castId);
+                    if(!enemy.IsDead)enemy.StatusEffects?.FrostMark(2f);
+                }
+                previousPosition=current;
+                if(age>=nextFootprint&&(footprintCount==0||CombatFx.Flat(current-lastFootprint).sqrMagnitude>=.36f))
+                {
+                    nextFootprint=age+.12f;lastFootprint=current;
+                    int slot=cursor;footprintVisuals[slot].Retire();footprints[slot]=current;footprintAge[slot]=age;
+                    float expires=age+TrailLife;
+                    footprintVisuals[slot]=FilledSkillVfx.ContactTrack(owner,current,BurnRadius,()=>Current?Mathf.Max(0,expires-age):0);
+                    cursor=(cursor+1)%footprints.Length;footprintCount=Mathf.Min(footprints.Length,footprintCount+1);
+                }
+            }
             if(age>=nextTick)
             {
                 nextTick=age+SkillDamageBudgets.FlameRideInterval;
-                // A visual slot has exactly the same immutable world location
-                // and replacement boundary as its authoritative damage slot.
-                footprintVisuals[cursor].Retire();
-                footprints[cursor]=owner.transform.position;
-                footprintVisuals[cursor]=FilledSkillVfx.ContactTrack(owner,footprints[cursor],BurnRadius,
-                    ()=>Current?Mathf.Max(0,duration-age):0);
-                cursor=(cursor+1)%footprints.Length;
-                footprintCount=Mathf.Min(footprints.Length,footprintCount+1);
                 for(int i=session.Enemies.Count-1;i>=0&&Current;i--)
                 {
                     var enemy=session.Enemies[i];if(enemy==null||enemy.IsDead)continue;
                     for(int p=0;p<footprintCount;p++)
                     {
+                        if(age-footprintAge[p]>=TrailLife)continue;
                         Vector3 delta=CombatFx.Flat(enemy.transform.position-footprints[p]);
                         float radius=BurnRadius+(enemy.IsBoss?.85f:.4f)+enemy.HitFootprintBonus;
                         if(delta.sqrMagnitude>radius*radius||!CombatSight.Area(footprints[p],enemy.transform.position))continue;
                         owner.RegisterSkillHit(castId);
                         enemy.TakeDamage(attack*SkillDamageBudgets.FlameRideTick,delta.normalized,0,0,practiceCastId:castId);
-                        ElementalCombatVfx.OnEnemy(enemy,ElementalCombatVfx.Element.Fire,.6f);
-                        break;
+                        ElementalCombatVfx.OnEnemy(enemy,ElementalCombatVfx.Element.Fire,.6f);break;
                     }
                 }
             }
             age+=Time.deltaTime;
-            DrawAppearance();
+            if(riding)DrawAppearance();
         }
         private void OnDestroy(){foreach(var visual in footprintVisuals)visual.Retire();receipt?.Release();if(flame!=null)Destroy(flame);if(core!=null)Destroy(core);}
     }

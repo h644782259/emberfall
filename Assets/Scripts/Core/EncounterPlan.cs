@@ -14,8 +14,8 @@ namespace Emberfall
     /// the runtime resolves obstacles, navigation and the current player's safe radius.</summary>
     public static class EncounterPlan
     {
-        public const int MaximumSimultaneous = 14;
-        public const int MaximumWavePopulation = 96;
+        public const int MaximumSimultaneous = 24;
+        public const int MaximumWavePopulation = 24;
         public const int FinalWave = 5;
         public const float MinimumSpacing = 1.8f;
         public const float EntranceExclusion = 7f;
@@ -49,13 +49,13 @@ namespace Emberfall
             // select one of the authored environments without integer overflow.
             layout = ((layout % 4) + 4) % 4;
             var random = new Generator(tier, wave, layout, seed);
-            int archetype = random.Next(4);
+            int archetype = (int)DungeonWaveTactics.Select(seed, layout, wave);
             bool narrow = (layout & 1) != 0;
             bool final = wave == FinalWave;
             int tierBonus = Math.Min(5, (tier - 1) / 2);
             int ordinary = final ? 14 + random.Next(3)
-                : Math.Max(26, Math.Min(MaximumWavePopulation / 3, 26 + random.Next(4) + tierBonus + (wave > 1 ? 1 : 0) - (narrow ? 1 : 0)));
-            ordinary = (ordinary + (final ? 1 : 0)) * 3 - (final ? 1 : 0);
+                : Math.Max(18, Math.Min(MaximumWavePopulation, 18 + random.Next(4) + tierBonus + (wave > 1 ? 1 : 0) - (narrow ? 1 : 0)));
+            // Every planned enemy is present at wave start; no hidden threefold reinforcement reserve.
             var result = new List<EncounterSpawn>(ordinary + (final ? 1 : 0));
             if (final)
             {

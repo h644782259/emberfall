@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 namespace Emberfall
@@ -107,7 +107,7 @@ namespace Emberfall
    if(ModeRun!=null&&ModeFinished&&!arenaResultRecorded)
    {
     arenaResultRecorded=true;DungeonCleared=ModeRun.Status==ExpeditionModeStatus.Won;
-    if(DungeonCleared){RetireRemainingEncounterEnemies();arenaEnemies.Clear();TrySettleArenaReward();GameAudio.Play(SoundCue.Victory);}else Notify(ModeObjectiveStatus);
+    if(DungeonCleared){RetireRemainingEncounterEnemies();arenaEnemies.Clear();TrySettleArenaReward();BeginVictoryTransition();GameAudio.Play(SoundCue.Victory);}else Notify(ModeObjectiveStatus);
     LastRunSummary=BuildRunSummary(DungeonCleared);SuspendInputs();UpdateTimeScale();
    }
   }

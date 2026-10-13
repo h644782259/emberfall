@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace Emberfall
@@ -14,7 +14,7 @@ namespace Emberfall
         private readonly List<int> staleFingers = new List<int>();
         private static MobileControls instance;
         public static bool SimulationEnabled { get; set; }
-#if UNITY_EDITOR
+#if UNITY_EDITOR || EMBERFALL_VISUAL_VALIDATION
         public static bool ValidationUsesSimulation { get; set; }
         public static bool ValidationTablet { get; set; }
         public static float ValidationDpi { get; set; }
@@ -24,7 +24,7 @@ namespace Emberfall
         {
             get
             {
-#if UNITY_EDITOR
+#if UNITY_EDITOR || EMBERFALL_VISUAL_VALIDATION
                 if (ValidationUsesSimulation) return SimulationEnabled;
 #endif
 #if UNITY_IOS || UNITY_ANDROID
@@ -62,7 +62,7 @@ namespace Emberfall
         private static int cachedPosition;
         private static bool cachedIPad;
         public static bool IsIPad { get {
-#if UNITY_EDITOR
+#if UNITY_EDITOR || EMBERFALL_VISUAL_VALIDATION
             if(ValidationUsesSimulation)return Active&&ValidationTablet;
 #endif
             return Active && MobileTitleLayout.IsIPad(SystemInfo.deviceModel); } }
@@ -72,7 +72,7 @@ namespace Emberfall
 #if (UNITY_IOS || UNITY_ANDROID) && !UNITY_EDITOR
                 dpi=MobileControlLayout.RenderDpi(dpi,Screen.width,Screen.height,Display.main.systemWidth,Display.main.systemHeight);
 #endif
-#if UNITY_EDITOR
+#if UNITY_EDITOR || EMBERFALL_VISUAL_VALIDATION
                 if(ValidationUsesSimulation&&ValidationDpi>0)dpi=ValidationDpi;
 #endif
                 Vector3 input=new Vector3(safe.width,safe.height,dpi);
@@ -125,7 +125,7 @@ namespace Emberfall
             if (!Active || session == null || !session.HasStarted) { ResetInput(); return; }
             Rect safe=SafeArea;
             if(safe!=lastSafe) { ResetInput();lastSafe=safe; }
-            if (session.InputBlocked)
+            if (session.InputBlocked&&!session.RevivalPending)
             {
                 Move = Vector2.zero; AttackHeld = dodge = potion = jump = false; moveFinger = -1000;hasJoystickOrigin=false;cameraGesture.Cancel();worldPointerOwner=null;worldPointerTarget=null;
                 staleFingers.Clear();
@@ -168,7 +168,13 @@ namespace Emberfall
             if (phase == TouchPhase.Began)
             {
                 if(fingers.ContainsKey(finger))return true;
-                if (ui != null && ui.TryBeginTouchSkill(finger, screen)) role = Role.Skill;
+                if(session.RevivalPending)
+                {
+                    if(session.Paused||session.BackgroundPaused||!IsMovementStart(screen))return false;
+                    role=moveFinger==-1000?Role.Move:Role.Consumed;
+                    if(role==Role.Move){moveFinger=finger;joystickOrigin=point;hasJoystickOrigin=true;}
+                }
+                else if (ui != null && ui.TryBeginTouchSkill(finger, screen)) role = Role.Skill;
                 else if (session.InputBlocked) return false;
                 else if (IsOpportunityPoint(point)) role = Role.Consumed;
                 else if (Attack.Contains(point))
@@ -211,7 +217,7 @@ namespace Emberfall
             {
                 Vector2 delta = (point - joystickOrigin) / 52f;
                 float length=delta.magnitude;float strength=MobileControlLayout.DeadZone(length);
-                Move = ended || session.InputBlocked || length<.001f ? Vector2.zero : new Vector2(delta.x,-delta.y)/length*strength;
+                Move = ended || (session.InputBlocked&&!session.RevivalPending) || length<.001f ? Vector2.zero : new Vector2(delta.x,-delta.y)/length*strength;
                 if (ended) { moveFinger = -1000;hasJoystickOrigin=false; }
             }
             else if(role==Role.Camera)
@@ -242,7 +248,7 @@ namespace Emberfall
         {
             if (!Active || session == null) return;
             if(Event.current!=null)CaptureKeyboardDodge(Event.current.type,Event.current.keyCode,session.InputBlocked||!session.HasStarted);
-            if(session.InputBlocked) return;
+            if(session.InputBlocked&&!session.RevivalPending) return;
             if (disc == null)
             {
                 disc = new Texture2D(96, 96, TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave,filterMode=FilterMode.Bilinear,wrapMode=TextureWrapMode.Clamp };
@@ -260,11 +266,12 @@ namespace Emberfall
                 Rect thumb = new Rect(origin.x - 25 + Move.x * 45, origin.y - 25 - Move.y * 45, 50, 50);
                 Circle(thumb, new Color(.38f, .78f, .71f, .82f), "",false);
             }
+            if(session.RevivalPending){GUI.matrix=oldMatrix;GUI.color=oldColor;return;}
             SkillTargetingController targeting = session.Player.GetComponent<SkillTargetingController>();
             SkillChargeController charge = session.Player.GetComponent<SkillChargeController>();
             var hero=session.Player;
             ActionCircle(VisualRect(Attack),targeting!=null&&targeting.IsTargeting?"confirm":"attack",hero!=null&&hero.BasicActionReady);
-            ActionCircle(VisualRect(Dodge),"blink",hero!=null&&!hero.IsJumping&&hero.DodgeCooldown<=0);
+            ActionCircle(VisualRect(Dodge),hero.BlinkFollowupRemaining>0?"followup":"blink",hero.BlinkFollowupRemaining>0||!hero.IsJumping&&hero.DodgeCooldown<=0);
             ActionCircle(PotionVisualRect(),"potion",hero!=null&&PotionCount>0&&hero.Health<hero.MaxHealth-.5f);
             if(CanCancel)ActionCircle(VisualRect(Cancel),"cancel",true);
             else ActionCircle(VisualRect(Jump),"jump",hero!=null&&!hero.IsJumping);
@@ -279,7 +286,7 @@ namespace Emberfall
             GUI.color=ready?new Color(.35f,1f,.76f,.85f*opacity):new Color(.65f,.76f,.84f,.8f*opacity);
             GUI.DrawTexture(rect,UIIconAtlas.ControlRing(),ScaleMode.ScaleToFit,true);
             GUI.color=ready?new Color(1,1,1,opacity):new Color(.72f,.77f,.82f,.85f*opacity);
-            float size=rect.width*.84f;GUI.DrawTexture(new Rect(rect.center.x-size*.5f,rect.center.y-size*.5f,size,size),(icon=="attack"?AuthoredIconArt.BasicAttack(session.Progression.Profile.heroClass):UIIconAtlas.Utility(icon)),ScaleMode.ScaleToFit,true);GUI.color=Color.white;
+            float size=rect.width*.84f;GUI.DrawTexture(new Rect(rect.center.x-size*.5f,rect.center.y-size*.5f,size,size),(icon=="followup"?AuthoredIconArt.Skill(session.Progression.Profile.heroClass,0):icon=="attack"?AuthoredIconArt.BasicAttack(session.Progression.Profile.heroClass):UIIconAtlas.Utility(icon)),ScaleMode.ScaleToFit,true);GUI.color=Color.white;
         }
         private Rect PotionVisualRect()
         { return VisualRect(Potion); }

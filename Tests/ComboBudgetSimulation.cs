@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -30,7 +30,7 @@ public static class ComboBudgetSimulation
     public sealed class Result
     {
         public HeroClass Hero; public int Level; public string Recipe; public float Seconds;
-        public int[] Ranks; public int ChargesStarted,ChargesCancelled,PendingCharge,MaximumPets,PetCommands;
+        public float UnreleasedCost; public int[] Ranks; public int ChargesStarted,ChargesCancelled,PendingCharge,MaximumPets,PetCommands;
         public float EnergySpent,EnergyRestored,EnergyRemaining,MinimumEnergy=100,MaximumEnergy=100,PendingSkillCoefficient;
         public readonly List<Cast> Casts=new List<Cast>(); public readonly List<Hit> Hits=new List<Hit>();
         public readonly List<float> EnergySamples=new List<float>();
@@ -99,7 +99,7 @@ public static class ComboBudgetSimulation
                 if(!cancelled&&cancelAt>=0&&time+1e-5f>=cancelAt&&charging>=0){charging=-1;cancelled=true;result.ChargesCancelled++;}
                 bool committedCharge=false;
                 if(charging>=0&&time+1e-5f>=chargeEnd)
-                {int skill=charging;charging=-1;Commit(skill,chargeStart);committedCharge=true;}
+                {int skill=charging;charging=-1;Commit(skill,chargeStart,true);committedCharge=true;}
                 if(charging<0&&!committedCharge&&time+1e-5f>=nextInput)
                 {
                     nextInput=time+InputInterval;
@@ -108,7 +108,7 @@ public static class ComboBudgetSimulation
                         if(skill<0||skill>=result.Ranks.Length||GameBalance.IsPassive(skill)||result.Ranks[skill]==0||runtime.Remaining(skill)>0||runtime.Energy<GameBalance.SkillEnergyCost(hero,skill))continue;
                         if(recipe.WaitForPoison&&hero==HeroClass.Ranger&&skill==0&&poisonStacks<3)continue;
                         float charge=SkillDamageBudgets.ChargeSeconds(hero,skill);
-                        if(charge>0){charging=skill;chargeStart=time;chargeEnd=time+charge;result.ChargesStarted++;}
+                        if(charge>0){if(!runtime.TryConsume(skill,result.Ranks[skill]))continue;float paid=GameBalance.SkillEnergyCost(hero,skill);result.EnergySpent+=paid;result.UnreleasedCost+=paid;charging=skill;chargeStart=time;chargeEnd=time+charge;result.ChargesStarted++;}
                         else Commit(skill,time);
                         break;
                     }
@@ -127,12 +127,12 @@ public static class ComboBudgetSimulation
             result.PendingCharge=charging>=0?1:0;result.EnergyRemaining=runtime.Energy;
             result.PendingSkillCoefficient=pending.Sum(e=>e.Coefficient);return result;
         }
-        private void Commit(int skill,float started)
+        private void Commit(int skill,float started,bool prepaid=false)
         {
             int rank=result.Ranks[skill];float before=runtime.Energy;
-            if(!runtime.TryConsume(skill,rank))return;
+            if(!prepaid&&!runtime.TryConsume(skill,rank))return;
             basicRecovery.Begin(hero,skill,SkillDamageBudgets.ChargeSeconds(hero,skill)>0);
-            float spent=before-runtime.Energy;result.EnergySpent+=spent;int cast=++nextCast;
+            float spent=prepaid?GameBalance.SkillEnergyCost(hero,skill):before-runtime.Energy;if(prepaid)result.UnreleasedCost-=spent;else result.EnergySpent+=spent;int cast=++nextCast;
             result.Casts.Add(new Cast{Skill=skill,Rank=rank,Id=cast,Started=started,Committed=time,Cost=spent});
             if(hero==HeroClass.Summoner&&(skill==2||skill==4||skill==9)){Contract(skill,rank,cast);return;}
             foreach(ScheduledImpact impact in SkillTimeline(hero,skill,rank))

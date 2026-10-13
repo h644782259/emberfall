@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Emberfall
 {
@@ -54,6 +54,7 @@ namespace Emberfall
         internal bool Tick(float delta)
         {
             if (stopped || State == null) return false;
+            if(game!=null&&game.RevivalPending)return State.OwnsAttacks;
             bool alive = boss != null && !boss.IsDead && boss.enabled && gameObject.activeInHierarchy &&
                 game != null && game.HasStarted && game.Player != null && !game.IsDead && ChapterOwnerValid;
             if (!alive) { StopEncounter(); return false; }
@@ -80,7 +81,7 @@ namespace Emberfall
                 DrawBeam(from,to,direction);
                 if (State.DamagePulse && !game.InputBlocked && !boss.IsDead && !game.Player.IsDead &&
                     BeamContains(game.Player.transform.position,from,to))
-                    game.Player.TakeDamageFrom(boss.AttackDamage*.55f,"星环执政官 · 环流扫射");
+                    game.Player.TakeDamageFrom(boss.AttackDamage*.55f,"星环执政官 · 环流扫射",phaseCenter,PlayerHitReaction.Push);
             }
             return State.OwnsAttacks;
         }
@@ -207,7 +208,7 @@ namespace Emberfall
         private void OnDisable(){StopEncounter();}
         // Runs even with timeScale zero: terminal menus must not retain live hazards.
         private void LateUpdate()
-        {if(!stopped&&(game==null||!game.HasStarted||game.IsDead||game.ModeFinished||!ChapterOwnerValid||boss==null||boss.IsDead))StopEncounter();}
+        {if(game!=null&&game.RevivalPending)return;if(!stopped&&(game==null||!game.HasStarted||game.IsDead||game.ModeFinished||!ChapterOwnerValid||boss==null||boss.IsDead))StopEncounter();}
         private void OnDestroy(){StopEncounter();}
     }
 }

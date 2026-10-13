@@ -76,6 +76,7 @@ namespace Emberfall
             scenePreparation.Report(.03f, "准备人物与怪物模型");
             yield return CombatModel.PrewarmModels(p => scenePreparation.Report(.03f + p * .17f, "准备人物与怪物模型"));
             scenePreparation.Report(.20f, "准备技能实体与材质");
+            yield return GameAudio.PrewarmSkillAudio();
             yield return FilledSkillVfx.Prewarm();
             yield return ElementalCombatVfx.Prewarm();
             yield return PhysicalSkillVfx.PrewarmAssets();
@@ -96,12 +97,13 @@ namespace Emberfall
         private IEnumerator PrepareZone(bool dungeon, float start = .08f)
         {
             scenePreparation.Report(start, "准备技能与场景资源");
+            yield return GameAudio.PrewarmSkillAudio();
             yield return FilledSkillVfx.Prewarm();
             yield return ElementalCombatVfx.Prewarm();
             yield return PhysicalSkillVfx.PrewarmAssets();
             yield return CombatShaderWarmup.Prewarm();
             yield return WorldBuilder.BuildAsync(dungeon ? ZoneKind.Dungeon : ZoneKind.Wilderness,
-                DungeonLayout, Progression.HighestAdventureTier, CurrentHub, ChapterSeed,
+                DungeonLayout, Progression.HighestAdventureTier, CurrentHub, UsesWaveTactics ? runSeed : ChapterSeed,
                 root => world = root, (p, stage) => scenePreparation.Report(start + p * (.72f - start), stage));
             if (!dungeon) WorldBuilder.ApplyChapterLandmark(world, Progression.Profile.chapterCompletedMask);
             scenePreparation.Report(.74f, "安置角色与镜头");
@@ -118,7 +120,7 @@ namespace Emberfall
                 if (ChapterActive) BeginChapterRoom();
                 else if (RoomChainRun != null) BeginRoomChainScene();
                 else if (ModeRun != null) BeginArenaScene();
-                else { SpawnDungeonWave(); BuildSideEvent(); }
+                else { SpawnDungeonWave(); while(wavePreparing)yield return null; BuildSideEvent(); }
             }
             else
             {
@@ -131,7 +133,7 @@ namespace Emberfall
         private IEnumerator PrepareRoom(bool chapter)
         {
             yield return WorldBuilder.BuildAsync(ZoneKind.Dungeon, DungeonLayout, Progression.HighestAdventureTier,
-                CurrentHub, ChapterSeed, root => world = root,
+                CurrentHub, UsesWaveTactics ? runSeed : ChapterSeed, root => world = root,
                 (p, stage) => scenePreparation.Report(.08f + p * .62f, stage));
             scenePreparation.Report(.74f, "准备房间敌人与目标");
             Player.Teleport(chapter ? chapterPlan.Entrance : DungeonPoint(TacticalRoomGeometry.Entrance));
