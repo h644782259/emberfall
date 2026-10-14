@@ -6,8 +6,7 @@ namespace Emberfall
         private string SkillNumbers(GameProfile profile,int skill,int rank)
         {
             rank=Mathf.Clamp(rank,1,3);var hero=profile.heroClass;float power=CombatBalance.RankPower(rank);
-            float attack=session.Progression.GetStats().Damage;
-            System.Func<float,string> damage=c=>(c*100).ToString("0.#")+"%攻击（基础约 "+Mathf.RoundToInt(attack*c)+"）";
+            System.Func<float,string> damage=c=>(c*100).ToString("0.#")+"%攻击 + "+SkillDamageBudgets.BaseDamage(profile.level,c).ToString("0.#");
             string text="";
             if(skill==3)return "";
             if(skill==8)

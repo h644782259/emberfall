@@ -12,6 +12,20 @@ namespace Emberfall
             yield return SetResolution(1600,900);SetField("selectedClass",HeroClass.Arcanist);Invoke("StartSelectedHero");yield return WaitForSceneReady();
             foreach(var enemy in session.Enemies)if(enemy!=null)enemy.gameObject.SetActive(false);session.Enemies.Clear();
             var p=session.Player;session.Progression.Profile.level=100;p.RefreshStats(true);
+            var gemProfile=new GameProfile{heroClass=HeroClass.Arcanist,pendingChestRulesRevision=3,pendingChestGemSource=true,pendingChestChapterSource=true,pendingChestMode=2,pendingChestTier=9,legendaryEquipmentMisses=29};
+            int legendaryGems=0;
+            for(int roll=0;roll<100;roll++){
+                var reward=ProgressionService.BuildSingleChestRoll(gemProfile,roll,0,0,false,"gem-only-"+roll);
+                Check(reward.primaryKind==4&&reward.primaryCount==1,"Star platform always grants one gem, even at equipment pity");
+                if(reward.gemRarity==Rarity.Legendary)legendaryGems++;
+            }
+            Check(legendaryGems==20,"Star platform gem rarity is exactly 20 percent legendary");
+            var playerType=typeof(PlayerController);
+            float attackOnly=(float)playerType.GetProperty("CombatAttack",PrivateInstance).GetValue(p);
+            float skillAttack=(float)playerType.GetProperty("SkillAttack",PrivateInstance).GetValue(p);
+            Check(Mathf.Abs(skillAttack-attackOnly-SkillDamageBudgets.BaseDamageUnit(100))<.01f,"Skill attack adds independent level-based flat damage");
+            Check(SkillDamageBudgets.BaseDamage(100,4)==1680,"400 percent coefficient has 1680 flat damage at level 100");
+
             p.Teleport(WorldTraversal.NearestWalkable(new Vector3(0,0,-5),.45f));
             yield return new WaitForSeconds(.7f); // Scene-entry protection must expire before the hit fixture.
             Vector3 before=p.transform.position;float hp=p.Health;

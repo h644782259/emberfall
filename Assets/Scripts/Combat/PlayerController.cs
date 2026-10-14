@@ -302,7 +302,7 @@ namespace Emberfall
                 if (HeroClass == HeroClass.Vanguard)
                 {
                     FilledSkillVfx.Impact(this,transform.position,guardRadius,FilledVfxKind.Sword,new Color(1f,.84f,.4f),CombatVisualPriority.RealContact,guardCastId);
-                    HitArea(transform.position, guardRadius, CombatAttack * guardPower, .5f, .2f,guardCastId);
+                    HitArea(transform.position, guardRadius, SkillAttack * guardPower, .5f, .2f,guardCastId);
                 }
             }
             // A guard counter can finish a mode reentrantly. Paid victory wins that
@@ -713,9 +713,10 @@ namespace Emberfall
                 castDamageRoll >= 0 ? castDamageRoll : Random.value, (bonus == null ? 1.65f : bonus.CriticalMultiplier)+stats.CritDamageBonus);
         }
 
-        private CombatDamage Damage(float multiplier)
+        private float SkillAttack {get{return CombatAttack+SkillDamageBudgets.BaseDamageUnit(session.Progression.Profile.level);}}
+        private CombatDamage Damage(float multiplier,bool basic=false)
         {
-            return RollDirectDamage(CombatAttack * multiplier);
+            return RollDirectDamage((basic?CombatAttack:SkillAttack) * multiplier);
         }
 
         private EnemyController ResolveDesktopBasicTarget()
@@ -783,7 +784,7 @@ namespace Emberfall
                 bool wasDodgeCounter = perfectDodgeCounterTime > 0;
                 float power = (wasCounter ? 1.75f : SkillDamageBudgets.BasicCoefficient(HeroClass)) * (HasMechanic(EquipmentMechanic.ReturningBlade) && !ReturningCounterVariant ? .92f : 1f);
                 counterTime = 0; // Consume only the captured bonus; on-hit procs may grant a NEW one.
-                bool hit = Melee(2.8f, 110f, Damage(power), .3f, .12f, basic: true, counterThrust: thrust);
+                bool hit = Melee(2.8f, 110f, Damage(power,true), .3f, .12f, basic: true, counterThrust: thrust);
                 counterTime = PlayerUpgradeRules.CounterAfterAttack(previousCounter, counterTime, hit);
                 if (hit && wasCounter)
                 {
@@ -801,7 +802,7 @@ namespace Emberfall
                 // The projectile and its collision sweep start at the same physical point.
                 Vector3 muzzle=BasicAttackMuzzle(ranger);
                 Vector3 target=ValidAimTarget(AimTarget)?EnemyBodyPoint(AimTarget):new Vector3(aimPoint.x,muzzle.y,aimPoint.z);
-                CombatProjectile.BasicShot(this,session,muzzle,target,Damage(SkillDamageBudgets.BasicCoefficient(HeroClass)*(mobilityTime>0?1f+.12f*mobilityRank:1f)),color,ranger,AimTarget);
+                CombatProjectile.BasicShot(this,session,muzzle,target,Damage(SkillDamageBudgets.BasicCoefficient(HeroClass)*(mobilityTime>0?1f+.12f*mobilityRank:1f),true),color,ranger,AimTarget);
             }
 
             }
@@ -1126,12 +1127,12 @@ namespace Emberfall
             if(HeroClass==HeroClass.Vanguard)
             {
                 passiveReduction=.2f+rank*.1f;
-                if(rank==3) HitArea(transform.position,radius,CombatAttack*1.6f,.9f,.65f);
+                if(rank==3) HitArea(transform.position,radius,SkillAttack*1.6f,.9f,.65f);
             }
             else if(HeroClass==HeroClass.Arcanist || HeroClass==HeroClass.Summoner)
             {
                 passiveReduction=0;
-                HitArea(transform.position,radius,CombatAttack*(.6f+rank*.3f),.2f,.2f);
+                HitArea(transform.position,radius,SkillAttack*(.6f+rank*.3f),.2f,.2f);
                 skillRuntime.RestoreEnergy(2f+rank*2f);
                 if(rank==3) ControlArea(transform.position,radius,1.5f);
             }
@@ -1465,7 +1466,7 @@ namespace Emberfall
             if (HeroClass == HeroClass.Summoner)
             {
                 {
-                    SummonerSpell.Cast(this, session, slot, rank, target, (slot == 2 || slot == 4 || slot == 6 || slot == 9 ? stats.Damage : CombatAttack) * power, executingChargedSkill ? charge.TargetEnemy : AimTarget, executingChargedSkill,castId);
+                    SummonerSpell.Cast(this, session, slot, rank, target, (slot == 2 || slot == 4 || slot == 6 || slot == 9 ? stats.Damage+SkillDamageBudgets.BaseDamageUnit(session.Progression.Profile.level) : SkillAttack) * power, executingChargedSkill ? charge.TargetEnemy : AimTarget, executingChargedSkill,castId);
                     if (slot == 0)
                         using (var interruptTargets = CombatTargetSnapshot<EnemyController>.Capture(session.Enemies))
                         for (int targetIndex = 0; targetIndex < interruptTargets.Count; targetIndex++)
@@ -1495,7 +1496,7 @@ namespace Emberfall
                     guardReduction=0;guardRadius=2.8f*range;burnStrideTime=guardTime;
                     frostStrideDirection=CombatFx.Flat(transform.forward).normalized;
                     FrostFlameStrideVisual.Spawn(this,()=>guardTime);
-                    FlameRide.Spawn(this,session,guardTime,CombatAttack,castId);
+                    FlameRide.Spawn(this,session,guardTime,SkillAttack,castId);
 
                 }
                 else if(slot==6&&HeroClass==HeroClass.Arcanist)
@@ -1556,7 +1557,7 @@ namespace Emberfall
                     if(rank>=2) CombatArea.Spawn(this,session,transform.position,3.7f*range,Damage(SkillDamageBudgets.OpeningImpact(HeroClass,slot,rank,1)),0,.5f,0,1f,new Color(.51f,.92f,1f),statusSkill:0,statusRank:rank,castId:castId,visual:SkillVisualRecipe.Ice);
                     if(rank==3)
                     {
-                        var shards=new ProjectileVolleyBudget<EnemyController>(CombatAttack,1.8f);
+                        var shards=new ProjectileVolleyBudget<EnemyController>(SkillAttack,1.8f);
                         for(int i=0;i<8;i++)
                         {
                         Vector3 shard=Quaternion.Euler(0,i*45f,0)*Vector3.forward;
@@ -1574,7 +1575,7 @@ namespace Emberfall
                     if (HasMechanic(EquipmentMechanic.CinderTrail))
                     {
                         // Four ticks total 40% of the base first meteor impact.
-                        CombatArea.Spawn(this,session,target,3f*range*session.Progression.MechanicRangeMultiplier(EquipmentMechanic.CinderTrail)*BuildCatalog.CinderTrailRadiusMultiplier(MechanicVariant(EquipmentMechanic.CinderTrail)==1),CombatAttack*SkillDamageBudgets.MeteorTrailTick(rank,MechanicVariant(EquipmentMechanic.CinderTrail)==1)*session.Progression.MechanicPowerMultiplier(EquipmentMechanic.CinderTrail),0,1.2f,1.5f,.5f,new Color(1f,.43f,.22f),castId:castId,visual:SkillVisualRecipe.Fire,trackedMechanic:0);
+                        CombatArea.Spawn(this,session,target,3f*range*session.Progression.MechanicRangeMultiplier(EquipmentMechanic.CinderTrail)*BuildCatalog.CinderTrailRadiusMultiplier(MechanicVariant(EquipmentMechanic.CinderTrail)==1),SkillAttack*SkillDamageBudgets.MeteorTrailTick(rank,MechanicVariant(EquipmentMechanic.CinderTrail)==1)*session.Progression.MechanicPowerMultiplier(EquipmentMechanic.CinderTrail),0,1.2f,1.5f,.5f,new Color(1f,.43f,.22f),castId:castId,visual:SkillVisualRecipe.Fire,trackedMechanic:0);
                         session.RecordCombatAction("余烬地带");
                     }
                 }
@@ -1590,7 +1591,7 @@ namespace Emberfall
                         return;
                     }
                     int arrows = 5+(rank-1)*2;
-                    var volley=new ProjectileVolleyBudget<EnemyController>(CombatAttack,SkillDamageBudgets.FanTargetCap(rank));
+                    var volley=new ProjectileVolleyBudget<EnemyController>(SkillAttack,SkillDamageBudgets.FanTargetCap(rank));
                     for (int i=0;i<arrows;i++)
                     {
                         Vector3 dir=Quaternion.Euler(0,Mathf.Lerp(-25,25,i/(float)(arrows-1)),0)*transform.forward;

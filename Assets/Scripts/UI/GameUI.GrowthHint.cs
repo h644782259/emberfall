@@ -11,7 +11,10 @@ namespace Emberfall
             float yaw=Camera.main==null?session.Player.transform.eulerAngles.y:Camera.main.transform.eulerAngles.y;
             float angle=Mathf.Atan2(delta.x,delta.z)*Mathf.Rad2Deg-yaw;
             Rect arrow=new Rect(r.x,r.y,24*u,24*u);var matrix=GUI.matrix;
-            GUIUtility.RotateAroundPivot(angle,arrow.center);Text(arrow,"▲",Mathf.RoundToInt(16*u),gold,true,false,TextAnchor.MiddleCenter);GUI.matrix=matrix;
+            // Rotate in the objective card's GUI coordinates, before the screen-scale transform.
+            Vector3 pivot=new Vector3(arrow.center.x,arrow.center.y,0);
+            GUI.matrix=matrix*Matrix4x4.Translate(pivot)*Matrix4x4.Rotate(Quaternion.Euler(0,0,angle))*Matrix4x4.Translate(-pivot);
+            Text(arrow,"▲",Mathf.RoundToInt(16*u),gold,true,false,TextAnchor.MiddleCenter);GUI.matrix=matrix;
             Text(new Rect(r.x+28*u,r.y,r.width-28*u,24*u),delta.magnitude<3?"已到达":Mathf.CeilToInt(delta.magnitude)+" 米",Mathf.RoundToInt(11*u),gold,true,false,TextAnchor.MiddleLeft);
         }
         private bool TryGrowthHudHint(out string title,out string detail)

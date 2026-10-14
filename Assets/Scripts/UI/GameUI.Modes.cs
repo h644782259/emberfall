@@ -297,7 +297,7 @@ namespace Emberfall
    int enemyTier=chapter?session.SelectedChapterTier:tier;
    bool hasBoss=chapter?session.SelectedChapterNode==ChapterNode.StarPlatform:mode==-1||mode==2||mode==3;
    // Each reachable quality has its own identity and graphic. Slot count comes from the completed-tier table.
-   for(int slotIndex=0;slotIndex<3;slotIndex++)
+   for(int slotIndex=0;slotIndex<3&&!(chapter&&session.SelectedChapterNode==ChapterNode.StarPlatform);slotIndex++)
    {
     var slot=(ItemSlot)slotIndex;int count=DropPreviewRules.SlotCount(mode,tier,slot);if(count==0)continue;
     foreach(var rarity in DropPreviewRules.ClearRarities(mode,tier))
@@ -307,7 +307,7 @@ namespace Emberfall
    foreach(var gem in BuildCatalog.GemsFor(session.Progression.Profile.heroClass))foreach(var rarity in new[]{Rarity.Epic,Rarity.Legendary})
     result.Add(new EntryRewardPreview{Key="gem:"+gem+":"+rarity,Clear=true,Rarity=rarity,Name=BuildCatalog.GemName(gem),Icon=UIIconAtlas.Utility("gem"),Tint=GameBalance.RarityColor(rarity),Description=GemRewardDescription(gem,rarity)});
    if(!(chapter&&session.SelectedChapterNode==ChapterNode.StarPlatform))result.Add(new EntryRewardPreview{Key="refinement",Clear=true,Rarity=Rarity.Epic,Name="装备洗练石\n"+ProgressionService.ChestStackMinimum(true,tier)+"～"+ProgressionService.ChestStackMaximum(true,tier),Icon=UIIconAtlas.Utility("gem"),Tint=GameBalance.RarityColor(Rarity.Epic),Description="装备洗练石\n数量  "+ProgressionService.ChestStackMinimum(true,tier)+"～"+ProgressionService.ChestStackMaximum(true,tier)+"\n提高装备属性数值，不会降低。"});
-   result.Add(new EntryRewardPreview{Key="shard",Clear=true,Rarity=Rarity.Rare,Name="星烬碎片\n"+ProgressionService.ChestStackMinimum(false,tier)+"～"+ProgressionService.ChestStackMaximum(false,tier),Icon=UIIconAtlas.Utility("shard"),Tint=jade,Description="星烬碎片\n数量："+ProgressionService.ChestStackMinimum(false,tier)+"～"+ProgressionService.ChestStackMaximum(false,tier)+"\n用于机制宝石兑换、升阶与升华。"});
+   if(!(chapter&&session.SelectedChapterNode==ChapterNode.StarPlatform))result.Add(new EntryRewardPreview{Key="shard",Clear=true,Rarity=Rarity.Rare,Name="星烬碎片\n"+ProgressionService.ChestStackMinimum(false,tier)+"～"+ProgressionService.ChestStackMaximum(false,tier),Icon=UIIconAtlas.Utility("shard"),Tint=jade,Description="星烬碎片\n数量："+ProgressionService.ChestStackMinimum(false,tier)+"～"+ProgressionService.ChestStackMaximum(false,tier)+"\n用于机制宝石兑换、升阶与升华。"});
    if(AdventureRewardRules.ChestFashion(mode,chapter))foreach(var rarity in new[]{Rarity.Legendary})foreach(var slot in new[]{FashionSlot.Weapon,FashionSlot.Wings})
     result.Add(new EntryRewardPreview{Key="fashion:"+slot+":"+rarity,AppearanceSlot=slot,Clear=true,Rarity=rarity,Name=ProgressionService.FashionName(slot,rarity,session.Progression.Profile.heroClass),Icon=UIIconAtlas.FashionCardIcon(slot,(int)rarity,session.Progression.Profile.heroClass),Tint=GameBalance.RarityColor(rarity),Description=ProgressionService.FashionName(slot,rarity,session.Progression.Profile.heroClass)+"\n"+(slot==FashionSlot.Weapon?"兵装":"羽翼")+" · "+GameBalance.RarityName(rarity)+"\n"+ProgressionService.FashionBonus(slot,rarity)});
    if(AdventureRewardRules.ChestAffixReforge(chapter?(int)session.SelectedChapterNode:mode,chapter)){var reforge=ResourceItemPreview("affix-reforge",1);reforge.Clear=true;result.Add(reforge);}
@@ -339,6 +339,7 @@ namespace Emberfall
   {
    string context=chapter?"chapter"+session.SelectedChapterNode+":"+session.SelectedChapterDifficulty+":"+session.SelectedChapterTier:mode+":"+tier;
    if(entryRewardContext!=context){entryRewardContext=context;entryRewardSelection=null;entryRewardHoverKey=null;entryRewardPopupScroll=Vector2.zero;}
+   bool gemChest=chapter&&session.SelectedChapterNode==ChapterNode.StarPlatform;
    var groups=GroupEntryRewards(EntryRewardPreviews(mode,tier,chapter));int columns=Mathf.Max(1,Mathf.FloorToInt(available/(compact?68:88)));float cell=available/columns,end=0;
    float iconSize=compact?28:40,labelY=iconSize+(compact?2:4);int labelFont=compact?10:11;
    for(int section=0;section<2;section++)
@@ -351,13 +352,13 @@ namespace Emberfall
      {
       Rect odds=new Rect((available-90)*u,end*u,82*u,(compact?16:22)*u);
       Text(odds,"概率说明 ⓘ",Mathf.RoundToInt((compact?9:10)*u),muted,false,false,TextAnchor.MiddleRight);
-      var info=new EntryRewardPreview{Key="chest-odds",Name="通关宝箱概率",Rarity=Rarity.Legendary,Icon=UIIconAtlas.Utility("inventory"),Description="通关宝箱概率\n传说装备概率  "+AdventureRewardRules.LegendaryChance(tier)+"%\n每箱获得一件物品或一组材料。\n连续未获得传说装备时，第30箱必出；获得后重新计数。"};
+      var info=new EntryRewardPreview{Key="chest-odds",Name="通关宝箱概率",Rarity=Rarity.Legendary,Icon=UIIconAtlas.Utility("inventory"),Description=gemChest?"每箱1颗宝石\n史诗80% · 传说20%\n重复宝石转为碎片。":"通关宝箱概率\n传说装备概率  "+AdventureRewardRules.LegendaryChance(tier)+"%\n每箱获得一件物品或一组材料。\n连续未获得传说装备时，第30箱必出；获得后重新计数。"};
       InspectRewardItem(MobileControls.Active?new Rect(odds.x,odds.y,odds.width,44*u):odds,info);
       int remaining=Mathf.Max(1,AdventureRewardRules.LegendaryPityChests-session.Progression.Profile.legendaryEquipmentMisses);
       Rect pity=new Rect(8*u,(end+(compact?18:26))*u,(available-16)*u,(compact?26:34)*u);
       Fill(pity,new Color(.22f,.12f,.025f));Border(pity,gold,u);
       Fill(new Rect(pity.x,pity.y,3*u,pity.height),gold);
-      Text(new Rect(pity.x+8*u,pity.y,pity.width-16*u,pity.height),remaining==1?"下一箱必出传说装备":"再开 "+remaining+" 箱内必出传说装备",Mathf.RoundToInt((compact?11:14)*u),new Color(1f,.82f,.35f),true,true,TextAnchor.MiddleCenter);
+      Text(new Rect(pity.x+8*u,pity.y,pity.width-16*u,pity.height),gemChest?"每箱1颗宝石 · 史诗80% · 传说20%":remaining==1?"下一箱必出传说装备":"再开 "+remaining+" 箱内必出传说装备",Mathf.RoundToInt((compact?11:14)*u),new Color(1f,.82f,.35f),true,true,TextAnchor.MiddleCenter);
      }
     }
     end+=clear?(compact?50:68):(compact?22:24);

@@ -24,7 +24,7 @@ namespace Emberfall
             float x=r.x+16*u,w=r.width-32*u;
             Text(new Rect(x,r.y+14*u,w,32*u),session.Player.BlinkFollowupName,Mathf.RoundToInt(22*u),pale,true);
             Text(new Rect(x,r.y+52*u,w,24*u),session.Player.BlinkFollowupLearned?"Lv.5 · 已习得":"Lv.5 · 自动习得",Mathf.RoundToInt(12*u),jade,true);
-            string damage=(session.Player.BlinkFollowupDamageMultiplier*100).ToString("0")+"%攻击力";
+            string damage=(session.Player.BlinkFollowupDamageMultiplier*100).ToString("0")+"%攻击 + "+SkillDamageBudgets.BaseDamage(session.Progression.Profile.level,session.Player.BlinkFollowupDamageMultiplier).ToString("0.#");
             string effect=session.Player.HeroClass==HeroClass.Vanguard?"对前方3米、130°扇形内敌人造成"+damage+"伤害，击退并震慑0.2秒。":session.Player.HeroClass==HeroClass.Arcanist?"对周围3米内敌人造成"+damage+"伤害，小幅击退并震慑0.2秒。":session.Player.HeroClass==HeroClass.Ranger?"贯穿前方7米内敌人，造成"+damage+"伤害，小幅击退并震慑0.1秒。":"在6米内目标位置引爆，造成"+damage+"的2.6米范围伤害，震慑0.55秒。";
             int effectFont=Mathf.RoundToInt(14*u);float effectHeight=Mathf.Max(66*u,Style(effectFont,false,true).CalcHeight(new GUIContent(effect),w));
             Text(new Rect(x,r.y+90*u,w,effectHeight),effect,effectFont,pale,false,true);

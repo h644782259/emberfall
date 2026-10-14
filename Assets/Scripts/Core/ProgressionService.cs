@@ -1766,7 +1766,7 @@ namespace Emberfall
 
         public string ChestOpenCaption {get{return pendingChestRoll!=null||Profile.pendingChestDraw!=null?"继续开启":"开启宝箱";}}
         public string ActiveDungeonChestRules {
-            get {if(Profile.pendingChestRulesRevision>=3)return "开启获得一件物品或一组材料；传说装备"+AdventureRewardRules.LegendaryChance(Profile.pendingChestTier)+"%，第30箱保底。";if(!Profile.pendingAdventureChest)return DungeonChestRules(Profile.pendingChestTier,LastChestReward);
+            get {if(Profile.pendingChestGemSource)return "每箱1颗宝石 · 史诗80% · 传说20%（重复宝石转为碎片）";if(Profile.pendingChestRulesRevision>=3)return "开启获得一件物品或一组材料；传说装备"+AdventureRewardRules.LegendaryChance(Profile.pendingChestTier)+"%，第30箱保底。";if(!Profile.pendingAdventureChest)return DungeonChestRules(Profile.pendingChestTier,LastChestReward);
                 int mode=Profile.pendingChestMode,tier=Profile.pendingChestTier;
                 return AdventureRewardRules.EquipmentSummary(mode,tier)+"\n装备 × "+AdventureRewardRules.EquipmentCount(mode,tier)+" · 等级匹配角色\n星烬碎片 × "+AdventureRewardRules.MaterialsMinimum(mode,tier)+"～"+AdventureRewardRules.MaterialsMaximum(mode,tier)+"\n"+
                 (mode==-1?"时装：史诗保底 · 史诗 "+AdventureRewardRules.UpgradeChance(-1,tier)+"% · 传说 "+AdventureRewardRules.LegendaryChance(tier)+"%\n":"")+"金币随阶数增长 · 开箱调整后入背包";
@@ -1812,7 +1812,7 @@ namespace Emberfall
             bool legendary=qualityRoll<AdventureRewardRules.LegendaryChance(profile.pendingChestTier)||profile.legendaryEquipmentMisses>=AdventureRewardRules.LegendaryPityChests-1;
             bool fashion=AdventureRewardRules.ChestFashion(profile.pendingChestMode,profile.pendingChestChapterSource);
             bool reforge=AdventureRewardRules.ChestAffixReforge(profile.pendingChestMode,profile.pendingChestChapterSource);
-            r.primaryKind=legendary||qualityRoll<40?1:qualityRoll>=95&&reforge?7:profile.pendingChestGemSource?(qualityRoll<75?4:3):qualityRoll<70?3:qualityRoll<85&&fashion?2:5;
+            r.primaryKind=profile.pendingChestGemSource?4:legendary||qualityRoll<40?1:qualityRoll>=95&&reforge?7:qualityRoll<70?3:qualityRoll<85&&fashion?2:5;
             r.primaryRarity=legendary?Rarity.Legendary:Rarity.Epic;
             if(r.primaryKind==1)r.primarySlot=(int)AdventureRewardRules.EquipmentSlot(profile.pendingChestMode,profile.pendingChestMode==3?slotRoll:0);
             else if(r.primaryKind==2)
@@ -1826,7 +1826,7 @@ namespace Emberfall
             {
                 uint seed=2166136261;foreach(char c in id)seed=unchecked((seed^c)*16777619);
                 var gems=BuildCatalog.GemsFor(profile.heroClass);r.gemMechanic=gems[(int)(seed%(uint)gems.Length)];
-                r.gemRarity=seed/(uint)gems.Length%100<20?Rarity.Legendary:Rarity.Epic;
+                r.gemRarity=qualityRoll<20?Rarity.Legendary:Rarity.Epic;
             }
             else if(r.primaryKind==7){r.primaryCount=1;r.primaryRarity=Rarity.Legendary;}
             else r.primaryCount=ChestStackMinimum(r.primaryKind==5,profile.pendingChestTier)+quantityRoll%(ChestStackMaximum(r.primaryKind==5,profile.pendingChestTier)-ChestStackMinimum(r.primaryKind==5,profile.pendingChestTier)+1);
@@ -1912,7 +1912,7 @@ namespace Emberfall
                 else if(receipt.primaryKind==5){candidate.refinementStones+=receipt.primaryCount;receipt.refinementStonesDelta=receipt.primaryCount;receipt.name="装备洗练石";}
                 else {candidate.fashionThreads+=receipt.primaryCount;receipt.threadsDelta=receipt.primaryCount;receipt.name="星纹";}
             }
-            candidate.legendaryEquipmentMisses=receipt.primaryKind==1&&receipt.primaryRarity==Rarity.Legendary?0:Math.Min(AdventureRewardRules.LegendaryPityChests-1,candidate.legendaryEquipmentMisses+1);
+            if(!candidate.pendingChestGemSource)candidate.legendaryEquipmentMisses=receipt.primaryKind==1&&receipt.primaryRarity==Rarity.Legendary?0:Math.Min(AdventureRewardRules.LegendaryPityChests-1,candidate.legendaryEquipmentMisses+1);
             // Reflect duplicate conversions in the chosen slot; keep the other saved contents.
             if(receipt.contents!=null&&receipt.contents.Length==3&&receipt.selectedChest>=0&&receipt.selectedChest<3)
                 receipt.contents[receipt.selectedChest]=ChestContent(candidate,receipt);

@@ -36,7 +36,8 @@ namespace Emberfall
             preview.SetCenterOnAvatar(true);
             preview.SetYaw(20+Mathf.Sin(Time.unscaledTime*.45f+(int)hero)*7);
             float pixelWidth=area.width*Mathf.Abs(GUI.matrix.m00),pixelHeight=area.height*Mathf.Abs(GUI.matrix.m11);
-            float resolutionScale=Mathf.Min(1,640/Mathf.Max(pixelWidth,pixelHeight));
+            // Render at physical display resolution; single portraits get modest supersampling.
+            float resolutionScale=inScene?1.25f:1f;
             preview.SetViewport(pixelWidth*resolutionScale,pixelHeight*resolutionScale,MobileControls.Active);
             Texture image=preview.RenderSafe(hero,save?.PreviewWeapon,save?.PreviewArmor,save?.PreviewRelic,save?.PreviewWings,save?.PreviewFashionWeapon);
             if(image!=null)GUI.DrawTexture(area,image,ScaleMode.ScaleToFit,true);

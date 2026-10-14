@@ -379,7 +379,7 @@ namespace Emberfall
             int[] learned = session.Progression.Profile.skillRanks;
             rank = CompanionRules.EffectiveRank((int)Form, IsStarter, IsPermanent, rank, learned[2], learned[4]);
             StatBlock stats = session.Progression.GetStats();
-            damage = stats.Damage * CompanionRules.RankPower(rank)*(session.Progression.Profile.summonerRoute==SummonerRoute.Bonded?1.2f:.8f);
+            damage = (stats.Damage + SkillDamageBudgets.BaseDamageUnit(session.Progression.Profile.level)) * CompanionRules.RankPower(rank)*(session.Progression.Profile.summonerRoute==SummonerRoute.Bonded?1.2f:.8f);
             baseMaxHealth = stats.MaxHealth * CompanionRules.HealthFraction((int)Form, rank, IsStarter);
             float maximum = baseMaxHealth * (Owner.HasMechanic(EquipmentMechanic.TwinSummonResonance)&&session.Progression.AttachmentVariant(EquipmentMechanic.TwinSummonResonance)==1?1.65f:CompanionRules.HealthMultiplier(Owner.HasMechanic(EquipmentMechanic.TwinSummonResonance)))*session.Progression.MechanicRangeMultiplier(EquipmentMechanic.TwinSummonResonance);
             // Build/gear/rank changes must not heal a damaged living body. This
