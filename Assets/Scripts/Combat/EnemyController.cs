@@ -22,7 +22,7 @@ namespace Emberfall
         public bool CanBeSkillInterrupted { get { return IsPreparingAttack && controlPolicy != null && controlPolicy.CanInterruptWindup; } }
         public float ControlRecoveryRemaining { get { return controlPolicy == null ? 0 : controlPolicy.InterruptRecovery; } }
         public float AttackWindupRemaining { get { return largeBoss != null && largeBoss.State.Interruptible ? largeBoss.State.Remaining : preparing ? windup : 0; } }
-        public const float BossParalysisDuration=4f, BossParalysisMultiplier=1.35f;
+        public const float BossParalysisDuration=8f, BossParalysisMultiplier=1.35f;
         public float BossParalysisRemaining {get;private set;}
         public bool IsBossParalyzed => IsBoss&&!IsDead&&BossParalysisRemaining>0;
         public float AttackWindupProgress => Mathf.Clamp01(1-AttackWindupRemaining/Mathf.Max(.001f,largeBoss!=null&&largeBoss.State.Interruptible?LargeBossPhaseState.WindupSeconds:totalWindup));
@@ -645,6 +645,7 @@ namespace Emberfall
             if(type==AttackType.Slam)windup=Mathf.Max(windup,1.35f);
             else if(type==AttackType.Charge)windup=Mathf.Max(windup,1.5f);
             else if(Kind==EnemyKind.Slime)windup=Mathf.Max(windup,1.05f);
+            if(IsBoss)windup*=2f;
             totalWindup = windup;
             CreateWarning();
             if (IsBoss) session.SpawnMechanismText(transform.position + Vector3.up * (3.1f*BodyScale),

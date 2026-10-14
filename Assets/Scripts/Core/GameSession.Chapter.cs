@@ -10,7 +10,7 @@ namespace Emberfall
             if(ChapterActive&&ChapterRun.DoorUnlocked&&!ChapterFinished&&chapterPlan!=null){destination=chapterPlan.Exit;return true;}
             if(InDungeon)return false;
             var goal=Progression.SelectedProgressionGoal(IsInCamp);
-            if((goal.Identity??"").StartsWith("main/chapter/")){destination=ChapterEntrancePosition;return true;}
+            if((goal.Identity??"").StartsWith("main/chapter/")||goal.Identity=="main/complete"){destination=ChapterEntrancePosition;return true;}
             if((goal.Identity??"").StartsWith("main/tier/")){destination=new Vector3(0,0,11);return true;}
             return false;
         }

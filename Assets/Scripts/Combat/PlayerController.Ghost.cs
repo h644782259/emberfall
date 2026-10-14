@@ -5,21 +5,38 @@ namespace Emberfall
     {
         private Renderer[] ghostRenderers;
         private Material[][] ghostOriginals;
-        private Material ghostMaterial;
+        private readonly System.Collections.Generic.Dictionary<Material,Material> ghostMaterials=new System.Collections.Generic.Dictionary<Material,Material>();
         internal void BeginGhost()
         {
-            if(ghostMaterial!=null)return;
+            if(ghostRenderers!=null)return;
             guardTime=burnStrideTime=0;
             model.transform.localRotation=Quaternion.identity;
-            ghostMaterial=new Material(Shader.Find("Sprites/Default")){color=new Color(.45f,.85f,1f,.34f)};
+            Shader ghostShader=Resources.Load<Shader>("GhostActorSurface");
             ghostRenderers=model.GetComponentsInChildren<Renderer>();ghostOriginals=new Material[ghostRenderers.Length][];
             for(int i=0;i<ghostRenderers.Length;i++)
-            {ghostOriginals[i]=ghostRenderers[i].sharedMaterials;var mats=new Material[ghostOriginals[i].Length];for(int j=0;j<mats.Length;j++)mats[j]=ghostMaterial;ghostRenderers[i].sharedMaterials=mats;}
+            {
+                ghostOriginals[i]=ghostRenderers[i].sharedMaterials;var mats=new Material[ghostOriginals[i].Length];
+                for(int j=0;j<mats.Length;j++)
+                {
+                    Material original=ghostOriginals[i][j],ghost;
+                    if(original==null){mats[j]=null;continue;}
+                    if(!ghostMaterials.TryGetValue(original,out ghost))
+                    {
+                        ghost=new Material(ghostShader){name="Ghost / "+original.name};
+                        if(original.HasProperty("_Color"))ghost.color=original.color;
+                        if(original.HasProperty("_MainTex")){ghost.mainTexture=original.mainTexture;ghost.mainTextureScale=original.mainTextureScale;ghost.mainTextureOffset=original.mainTextureOffset;}
+                        if(original.HasProperty("_Cutoff"))ghost.SetFloat("_Cutoff",original.GetFloat("_Cutoff"));
+                        ghostMaterials.Add(original,ghost);
+                    }
+                    mats[j]=ghost;
+                }
+                ghostRenderers[i].sharedMaterials=mats;
+            }
         }
         internal void EndGhost()
         {
             if(ghostRenderers!=null)for(int i=0;i<ghostRenderers.Length;i++)if(ghostRenderers[i]!=null)ghostRenderers[i].sharedMaterials=ghostOriginals[i];
-            if(ghostMaterial!=null)Destroy(ghostMaterial);ghostMaterial=null;ghostRenderers=null;ghostOriginals=null;
+            foreach(var ghost in ghostMaterials.Values)if(ghost!=null)Destroy(ghost);ghostMaterials.Clear();ghostRenderers=null;ghostOriginals=null;
             if(model!=null){model.transform.localPosition=Vector3.zero;model.transform.localRotation=Quaternion.identity;}
         }
         private void AdvanceGhost()

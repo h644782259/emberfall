@@ -84,7 +84,7 @@ namespace Emberfall
             yield return new WaitForSeconds(.5f);Check(boss.transform.position==bossAt&&!boss.IsPreparingAttack,"Paralyzed boss neither navigates nor attacks");
             session.SetPaused(true);float paralysis=boss.BossParalysisRemaining;yield return new WaitForSecondsRealtime(.2f);Check(boss.BossParalysisRemaining==paralysis,"Pause freezes paralysis");session.SetPaused(false);
             yield return Capture("boss-paralyzed-top-panel",0);
-            yield return new WaitForSeconds(4);Check(!boss.IsBossParalyzed,"Boss paralysis expires");
+            yield return new WaitForSeconds(EnemyController.BossParalysisDuration);Check(!boss.IsBossParalyzed,"Boss paralysis expires");
             session.Enemies.Remove(boss);Destroy(bossRoot);
             var service=session.Progression;service.Profile.gold=100000;
             int stones=service.Profile.revivalStones;
@@ -197,6 +197,8 @@ namespace Emberfall
             Check(session.DungeonSelectionOpen&&GetField("panel").ToString()!="Chapter","Ordinary portal opens ordinary adventures");yield return Capture("ordinary-adventure-entrance",.2f);session.CancelDungeonSelection();
             session.Progression.Profile.chapterCompletedMask=7;p.RefreshStats(true);
             p.Teleport(new Vector3(0,0,-10));session.SelectedChapterNode=ChapterNode.Redrock;session.SelectedChapterTier=1;
+            service.Profile.fashions.Add(new FashionData{id="ghost-wing-test",slot=FashionSlot.Wings,rarity=Rarity.Legendary,name="Ghost wing fixture"});
+            Check(service.EquipFashion("ghost-wing-test"),"Equip textured wings before ghost test");
             Check(session.ConfirmChapterEnter(),"Enter real Redrock dungeon");yield return WaitForSceneReady();
             yield return new WaitForSeconds(.8f);
             Check(p.SelectNearestTabTarget()&&p.AimTarget!=null&&p.AimTarget.Level>0,"Tab selects a nearby living enemy with level metadata");
@@ -205,6 +207,11 @@ namespace Emberfall
             p.TakeDamageFrom(1e12f,"Revival fixture");
             Check(session.IsDead&&session.RevivalPending&&!session.ChapterRun.Failed&&Time.timeScale==1,"Death offers ghost state without failing or pausing dungeon");
             Check(!p.IsSkillAvailable(0)&&!p.TryBlink(Vector3.right),"Ghost cannot release skills or blink");
+            var ghostMap=(System.Collections.IDictionary)typeof(PlayerController).GetField("ghostMaterials",PrivateInstance).GetValue(p);
+            bool texturedGhost=false;
+            foreach(System.Collections.DictionaryEntry entry in ghostMap){var source=(Material)entry.Key;var ghost=(Material)entry.Value;Check(ghost.shader.name=="Emberfall/Ghost Actor Surface","Ghost uses detailed surface shading");if(source.HasProperty("_MainTex")&&source.mainTexture!=null){Check(ghost.mainTexture==source.mainTexture,"Ghost preserves original cutout texture");texturedGhost=true;}}
+            Check(texturedGhost,"Ghost wing texture remains present");
+
             Vector3 ghostStart=p.transform.position;var movingEnemy=session.Enemies[0];Vector3 enemyStart=movingEnemy.transform.position;
             PerformanceMove=Vector2.right;yield return new WaitForSeconds(1);PerformanceMove=Vector2.zero;
             Check(Vector3.Distance(ghostStart,p.transform.position)>.3f,"Ghost can move freely");

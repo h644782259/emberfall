@@ -362,7 +362,7 @@ namespace Emberfall
             UpdateMobileFrameRate();
         }
 
-        public static readonly Vector3 ChapterEntrancePosition=new Vector3(-9,0,-8);
+        public static readonly Vector3 ChapterEntrancePosition=new Vector3(-12,0,-17);
         public bool IsNearChapterEntrance => !InDungeon&&Player!=null&&PortalInteractionPolicy.IsNear((Player.transform.position-ChapterEntrancePosition).sqrMagnitude);
         public bool IsNearDungeonEntrance {get{return NearPortal();}}
         private bool NearPortal() { return Player != null && PortalInteractionPolicy.IsNear((Player.transform.position-new Vector3(0,0,11)).sqrMagnitude); }
@@ -753,7 +753,7 @@ namespace Emberfall
             // Retire them only after checked acquisition/recovery storage succeeds.
             // A failed preservation must retain both the pickup and its save error.
             if (PreserveWorldLoot()) Progression.Save();
-            Notify(string.IsNullOrEmpty(Progression.LastError)?"你暂时倒下了。已赚金币、装备、经验与技能均保留；未完成奖励不发放。":Progression.LastError);
+            Notify(string.IsNullOrEmpty(Progression.LastError)?string.Empty:Progression.LastError);
             UpdateTimeScale();
         }
 

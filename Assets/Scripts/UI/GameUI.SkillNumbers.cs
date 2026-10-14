@@ -3,6 +3,16 @@ namespace Emberfall
 {
     public sealed partial class GameUI
     {
+        private static string StyledSkillNumbers(string value)
+        {
+            var lines=value.Split('\n');
+            for(int i=0;i<lines.Length;i++)
+            {
+                bool range=lines[i].Contains("米")&&!lines[i].Contains("攻击");
+                lines[i]="<color="+(range?"#8BCDDD":"#FFC777")+">"+lines[i]+"</color>";
+            }
+            return string.Join("\n",lines);
+        }
         private string SkillNumbers(GameProfile profile,int skill,int rank)
         {
             rank=Mathf.Clamp(rank,1,3);var hero=profile.heroClass;float power=CombatBalance.RankPower(rank);

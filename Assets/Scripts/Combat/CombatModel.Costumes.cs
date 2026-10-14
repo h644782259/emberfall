@@ -12,20 +12,24 @@ namespace Emberfall
         }
         private void BuildFashionWingShape(FashionData wings,Color color)
         {
-            fashionWings.localPosition += RearSilhouette.WingOffset(heroClass);
+            // Shoulder-blade mount: keep the hinge on the torso instead of offsetting
+            // the whole silhouette behind the cape and above the shoulders.
+            fashionWings.localPosition = new Vector3(0,.22f,-.22f);
             int tier=Mathf.Clamp((int)wings.VisualRarity,0,3);
             fashionWings.localScale=Vector3.one*(.70f+tier*.13f)*(1f+.025f*wings.upgradeRank);
             Color metal=tier<2?new Color(.62f,.7f,.79f):new Color(.88f,.65f,.27f);
             for(int side=-1;side<=1;side+=2)
             {
-                var wing=NewJoint("Layered feather wing",fashionWings,new Vector3(side*.12f,.08f,0));
+                var wing=NewJoint("Layered feather wing",fashionWings,new Vector3(side*.04f,0,0));
                 wing.localRotation=Quaternion.Euler(8,side*RearSilhouette.WingYaw(heroClass),0);
                 wing.gameObject.AddComponent<MeshFilter>().sharedMesh=FeatherWingMesh.PaintedSurface(side);
                 var renderer=wing.gameObject.AddComponent<MeshRenderer>();
                 renderer.sharedMaterial=FeatherWingMesh.PaintedMaterial(tier);
                 renderer.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;
                 wing.gameObject.AddComponent<FeatherWingSway>().Initialize(side,tier,renderer);
-                if(tier>0)GlowingPart("Wing heart jewel",PrimitiveType.Sphere,new Vector3(side*.39f,.38f,-.10f),Vector3.one*(.075f+tier*.014f),tier==2?new Color(.7f,.35f,1):new Color(.28f,.7f,1),fashionWings);
+                var mount=Part("Wing shoulder-blade bridge",PrimitiveType.Sphere,new Vector3(side*.15f,.02f,-.025f),new Vector3(.38f,.14f,.16f),metal,fashionWings,VisualSurface.Metal);
+                mount.localRotation=Quaternion.Euler(0,side*12,side*12);
+                if(tier>0)GlowingPart("Wing heart jewel",PrimitiveType.Sphere,new Vector3(side*.25f,.04f,-.065f),Vector3.one*(.075f+tier*.014f),tier==2?new Color(.7f,.35f,1):new Color(.28f,.7f,1),fashionWings);
             }
             Part("Engraved wing clasp",PrimitiveType.Sphere,Vector3.zero,new Vector3(.18f,.22f,.1f),metal,fashionWings,VisualSurface.Metal);
         }

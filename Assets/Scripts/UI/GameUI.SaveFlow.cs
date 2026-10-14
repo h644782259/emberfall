@@ -26,14 +26,12 @@ namespace Emberfall
         {
             if (!session.HasStarted || saveFlow.Open) return;
             if (!session.Progression.HasActiveSave) { session.Notify("当前角色没有可覆盖的有效存档，请先读取其他角色。"); return; }
-            saveFlow.RequestManual(session.Progression.CurrentSlotId);
-            saveFlowSourceName = ActiveCharacterName();
-            saveFlowError = null;
-            mobileSaveFlowScroll=Vector2.zero;mobileSaveFlowProblem=null;
-            saveSelectionFromPause = true;
-            panel = Panel.SaveSelection;
-            session.SetPaused(true);
-            session.SetUIBlocking(true);
+            try
+            {
+                if (session.SaveBeforeLeaving()) { saveSlotsDirty = true; session.Notify("保存成功"); }
+                else session.Notify(session.Progression.LastError);
+            }
+            catch (System.Exception error) { session.Notify("保存未完成：" + error.Message); }
             BlockUITransition();
         }
         private void RequestLoadSelectedSave(SaveSlotInfo target)

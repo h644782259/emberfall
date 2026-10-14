@@ -1377,15 +1377,9 @@ namespace Emberfall
         internal bool ConfirmTargetedSkill(int skill,Vector3 worldPoint)
         {
             if (CombatReviewEvents.Enabled) CombatReviewEvents.Emit("skillattempt",CombatReviewObjectId.Get(this),skill:skill);
-            if(!SkillTargetingController.RequiresConfirmation(HeroClass,skill) || !CanBeginSkillTargeting(skill) || !MobilePinnedActionAllowed(skill,true)) return false;
-            EnemyController selected=AimTarget;
-            aimPoint=IsMobileSelfCenteredSkill(skill)?transform.position:CombatSight.GroundPoint(transform.position,worldPoint);
-            // Ground spell placement normally owns a point. A selected summon
-            // contract also owns that enemy until charge snapshots it; clearing
-            // here would lose mobile autoaim before Begin can capture identity.
-            AimTarget=HeroClass==HeroClass.Summoner&&skill==9&&ValidAimTarget(selected)&&
-                CombatSight.Direct(transform.position,selected.transform.position)&&
-                CombatFx.Flat(selected.transform.position-aimPoint).sqrMagnitude<=1f?selected:null;
+            if(!SkillTargetingController.RequiresConfirmation(HeroClass,skill) || !CanBeginSkillTargeting(skill)) return false;
+            aimPoint=CombatSight.GroundPoint(transform.position,worldPoint);
+            AimTarget=null;
             if(!IsMobileSelfCenteredSkill(skill))FaceAim();
             if (SkillChargeController.Duration(HeroClass, skill) > 0) return charge.Begin(skill);
             int before=nextCastId;CastSkill(skill);

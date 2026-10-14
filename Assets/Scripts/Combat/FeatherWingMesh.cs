@@ -24,8 +24,11 @@ namespace Emberfall
             {
                 float u=x/(float)columns,v=y/(float)rows;
                 // Curved, thick two-sided shell, attached at the shoulder, never camera-facing.
-                float depth=-.10f-Mathf.Sin(u*Mathf.PI*.82f)*.28f+Mathf.Pow(v-.5f,2)*.20f+face*.045f;
-                vertices.Add(new Vector3(side*u*1.7f,(v-.44f)*2.16f,depth));
+                float depth=-Mathf.Sin(u*Mathf.PI*.82f)*.18f+Mathf.Pow(v-.58f,2)*.12f+face*.045f;
+                // Compress the transparent central artwork margin into the back mount.
+                float across=Mathf.Max(0,u*1.7f-.16f);
+                float height=(v-.50f)*2.16f;
+                vertices.Add(new Vector3(side*across,height,depth));
                 uv.Add(new Vector2(.5f+side*u*.5f,v));
             }
             int plane=(columns+1)*(rows+1);

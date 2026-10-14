@@ -480,7 +480,7 @@ namespace Emberfall
             int key = size + (bold ? 100 : 0) + (wrap ? 200 : 0) + (int)align * 1000;
             GUIStyle result;
             if (styles.TryGetValue(key, out result)) return result;
-            result = new GUIStyle { font = font, fontSize = size, fontStyle = bold ? FontStyle.Bold : FontStyle.Normal, wordWrap = wrap, alignment = align, clipping = TextClipping.Clip };
+            result = new GUIStyle { richText = true, font = font, fontSize = size, fontStyle = bold ? FontStyle.Bold : FontStyle.Normal, wordWrap = wrap, alignment = align, clipping = TextClipping.Clip };
             result.normal.textColor = Color.white;
             styles.Add(key, result);
             return result;
@@ -531,15 +531,15 @@ namespace Emberfall
         private string SkillTooltip(GameProfile profile, int skill, int rank)
         {
             HeroClass hero = profile.heroClass;
-            string result = GameBalance.SkillName(hero, skill) + " · " + GameBalance.SkillRankName(rank) + "\n" + GameBalance.SkillDescription(hero, skill);
+            string result = "<b><color=#FFE0A3>" + GameBalance.SkillName(hero, skill) + "</color></b>  " + GameBalance.SkillRankName(rank) + "\n\n" + GameBalance.SkillDescription(hero, skill);
             string venom=BuildCatalog.VenomSkillOverride(profile,skill,rank);
-            if(venom.Length>0)result=venom;
+            if(venom.Length>0)result="<b>"+GameBalance.SkillName(hero,skill)+"</b>\n\n"+venom;
             if (GameBalance.IsPassive(skill)) return result;
             float cost = GameBalance.SkillEnergyCost(hero, skill);
             result += (skill==SkillStockRules.Skill(hero)?"\n储存2次 · 每 "+SkillStockRules.Seconds(hero)+" 秒逐次回复 ·":"\n冷却 " + GameBalance.EffectiveCooldown(hero, skill, rank).ToString("0.#")) +
                 (cost == 0 ? " 秒 · 无需能量" : (skill==SkillStockRules.Skill(hero)?" 每次消耗 ":" 秒 · 消耗 ") + cost.ToString("0") + " " + GameBalance.EnergyName(hero));
             string budget=BuildCatalog.ConcentratedVenomEquipped(profile)&&hero==HeroClass.Ranger&&skill==0?"":SkillBudgetHint(hero,skill,rank);if(budget.Length>0)result+="\n"+budget;
-            result+="\n"+SkillNumbers(profile,skill,rank);
+            result+="\n\n"+StyledSkillNumbers(SkillNumbers(profile,skill,rank));
             float charge = SkillChargeController.Duration(hero, skill);
             if (charge > 0) result += "\n蓄力 " + charge.ToString("0.##") + " 秒";
             return result;
@@ -1913,8 +1913,17 @@ namespace Emberfall
                 Text(new Rect(x,y-36*u,w,28*u),"幽灵状态",Mathf.RoundToInt(19*u),pale,true,false,TextAnchor.MiddleCenter);
                 Rect revive=new Rect(x,y,(w-12*u)*.5f,48*u),finish=new Rect(revive.xMax+12*u,y,revive.width,revive.height);
                 blockedRects.Add(revive);blockedRects.Add(finish);
-                if(PrimaryButton(revive,"复活 R · "+session.Progression.Profile.revivalStones,gold,session.Progression.Profile.revivalStones>0))
+                int stones=session.Progression.Profile.revivalStones;
+                if(PrimaryButton(revive,"",gold,stones>0))
                 {if(session.ReviveInDungeon()){ClosePanel();BlockUITransition();}return;}
+                string reviveLabel=MobileControls.Active?"复活":"复活 R",stoneCount=stones.ToString();
+                int reviveFont=Mathf.RoundToInt(15*u);
+                float labelWidth=Style(reviveFont,true).CalcSize(new GUIContent(reviveLabel)).x,countWidth=Style(reviveFont,true).CalcSize(new GUIContent(stoneCount)).x;
+                float labelX=revive.center.x-(labelWidth+countWidth+36*u)*.5f;
+                Color reviveInk=stones>0?new Color(1f,.95f,.84f):muted;
+                Text(new Rect(labelX,revive.y,labelWidth,revive.height),reviveLabel,reviveFont,reviveInk,true,false,TextAnchor.MiddleLeft);
+                DrawIcon(new Rect(labelX+labelWidth+6*u,revive.center.y-12*u,24*u,24*u),UIIconAtlas.Utility("core"),GameBalance.RarityColor(Rarity.Epic));
+                Text(new Rect(labelX+labelWidth+36*u,revive.y,countWidth,revive.height),stoneCount,reviveFont,reviveInk,true,false,TextAnchor.MiddleLeft);
                 if(Button(finish,"结束战斗",muted)){session.EndDeathBattle();BlockUITransition();}return;
             }
             if(DrawStructuredRunRecap(true)){ClosePanel();session.Respawn();}

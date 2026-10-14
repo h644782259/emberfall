@@ -67,13 +67,9 @@ namespace Emberfall
         public bool Begin(int index)
         {
             if(castFrame==Time.frameCount||owner==null||index<0||index>=GameBalance.SkillCount||GameBalance.IsPassive(index))return false;
-            if(MobileControls.Active){if(!owner.MobilePinnedActionAllowed(index,true))return false;owner.PrepareMobileSkillAim(index);}
+            bool ground = RequiresConfirmation(owner.HeroClass,index);
+            if(MobileControls.Active && !ground){if(!owner.MobilePinnedActionAllowed(index,true))return false;owner.PrepareMobileSkillAim(index);}
             if(!owner.CanBeginSkillTargeting(index))return false;
-            if(MobileControls.Active&&RequiresConfirmation(owner.HeroClass,index))
-            {
-                if(!owner.ConfirmTargetedSkill(index,owner.AimPoint))return false;
-                Cancel();castFrame=Time.frameCount;return true;
-            }
             if (!RequiresConfirmation(owner.HeroClass, index))
             {
                 if (!owner.CastImmediateSkill(index)) return false;
@@ -86,7 +82,7 @@ namespace Emberfall
             CurrentPreview = Describe(owner.HeroClass, index, session.Progression.Profile.skillRanks[index]);
             EnsureVisuals();
             visuals.SetActive(true); // Show terrain-following placement and cast-range circles.
-            SetTarget(owner.AimPoint);
+            SetTarget(MobileControls.Active ? owner.transform.position + owner.transform.forward * 5f : owner.AimPoint);
             return true;
         }
 
@@ -139,7 +135,7 @@ namespace Emberfall
         {
             if (!IsTargeting) return ConsumedThisFrame;
             if (Invalid()) { Cancel(); return true; }
-            // Mobile skills auto-confirm before reaching this state;
+            // Mobile placement is handled by the dedicated touch aim gesture;
             // a joystick finger must never act as a simulated mouse confirmation.
             if (MobileControls.Active) return true;
             if (owner.GameplayCancelAllowed && (AdventureCamera.CancelSkillRequested || Input.GetKeyDown(KeyCode.Escape))) { Cancel(); return true; }
@@ -147,8 +143,7 @@ namespace Emberfall
             {
                 Camera camera = Camera.main;
                 float enter;
-                if (owner.AimTarget != null) SetTarget(owner.AimTarget.transform.position);
-                else if (camera != null)
+                if (camera != null)
                 {
                     Ray ray = camera.ScreenPointToRay(Input.mousePosition);
                     if (new Plane(Vector3.up, Vector3.zero).Raycast(ray, out enter)) SetTarget(ray.GetPoint(enter));

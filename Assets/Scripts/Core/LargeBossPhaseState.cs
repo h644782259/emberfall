@@ -7,7 +7,7 @@ namespace Emberfall
     // Two optional counterplay phases, never an invulnerability or mandatory kill gate.
     public sealed class LargeBossPhaseState : IDisposable
     {
-        public const float WindupSeconds = 2.2f, BeamSeconds = 14f, ExposureSeconds = 6f;
+        public const float WindupSeconds = 4.4f, BeamSeconds = 14f, ExposureSeconds = 12f;
         public const float BeamTickSeconds = .65f, BeamDegreesPerSecond = 24f;
         public const float BeamHalfWidth = .55f, BeamLength = 9f, CoreDamageMultiplier = 1.35f;
         public LargeBossPhase Phase { get; private set; }

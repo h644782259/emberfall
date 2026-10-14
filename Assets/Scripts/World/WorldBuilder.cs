@@ -175,6 +175,7 @@ namespace Emberfall
             Vector3[] mainRoad = { new Vector3(1,0,-24), new Vector3(0,0,-16), new Vector3(0,0,-10), new Vector3(-1,0,-5), new Vector3(0,0,-1), new Vector3(2,0,4), new Vector3(0,0,11), new Vector3(2,0,19) };
             Ribbon(parent, r, "Caravan road", mainRoad, 3.5f, .022f, earth);
             Ribbon(woodland, r, "Woodland branch path", new[] { new Vector3(0,0,-9), new Vector3(-7,0,-7), new Vector3(-12,0,-2), new Vector3(-14,0,6), new Vector3(-20,0,14) }, 1.9f, .026f, earth);
+            Ribbon(camp,r,"Star chapter approach",new[]{new Vector3(0,0,-16),new Vector3(-4,0,-19),new Vector3(-10,0,-20),GameSession.ChapterEntrancePosition},3.2f,.027f,earth);
             Ribbon(ruins, r, "Courtyard branch path", new[] { new Vector3(1,0,4), new Vector3(7,0,7), new Vector3(13,0,12), new Vector3(11,0,21) }, 2.2f, .029f, stone);
             Vector3[] stream = { new Vector3(-37,0,5), new Vector3(-18,0,4), new Vector3(-11,0,2), new Vector3(-5,0,.5f), new Vector3(0,0,-1), new Vector3(7,0,-2), new Vector3(14,0,-5), new Vector3(22,0,-7), new Vector3(37,0,-10) };
             WorldTraversal.SetRiver(stream, 2.4f, new Rect(-1.9f, -3.9f, 3.8f, 5.8f));
@@ -206,6 +207,7 @@ namespace Emberfall
                 float angle = i * 2.399963f;
                 float radius = 24.6f + (float)random.NextDouble() * 3.7f;
                 Vector3 p = new Vector3(Mathf.Cos(angle) * radius, 0, Mathf.Sin(angle) * radius);
+                if((p-GameSession.ChapterEntrancePosition).sqrMagnitude<49)continue;
                 // Trees cluster in the west instead of forming a uniform ring.
                 if (p.x < -7 || (p.z < -17 && i % 2 == 0)) Tree(woodland, r, p, 1.05f + (float)random.NextDouble() * .85f, i);
                 else if (i % 3 == 0) Rock(parent, r, p, .8f + (float)random.NextDouble() * 1.6f, i);
@@ -240,6 +242,7 @@ namespace Emberfall
             {
                 Vector3 p = new Vector3((float)random.NextDouble() * 39 - 19.5f, .03f, (float)random.NextDouble() * 37 - 18.5f);
                 if (p.magnitude > 20 || Mathf.Abs(p.x) < 3 || Mathf.Abs(p.z) < 5) continue;
+                if((p-GameSession.ChapterEntrancePosition).sqrMagnitude<25)continue;
                 Material flowers = r.Material(i % 2 == 0 ? new Color(.65f,.58f,.8f) : new Color(.63f,.76f,.53f));
                 Primitive(parent, "Wildflowers", PrimitiveType.Sphere, p + Vector3.up * .08f, new Vector3(.16f,.19f,.16f), flowers);
                 Primitive(parent, "Wildflowers", PrimitiveType.Sphere, p + new Vector3(.23f,.03f,.11f), new Vector3(.12f,.14f,.12f), flowers);

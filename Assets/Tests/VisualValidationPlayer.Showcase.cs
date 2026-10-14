@@ -1,4 +1,4 @@
-﻿#if EMBERFALL_VISUAL_VALIDATION
+#if EMBERFALL_VISUAL_VALIDATION
 using System.Collections;
 using System.Reflection;
 using UnityEngine;
@@ -29,6 +29,11 @@ namespace Emberfall
             Check(fps>=50,"Four animated class previews sustain at least 50 FPS; observed="+fps);
             SetField("selectedClass",HeroClass.Arcanist);Invoke("StartSelectedHero");yield return WaitForSceneReady();
             session.Player.enabled=false;
+            Vector3 gate=GameSession.ChapterEntrancePosition;
+            for(int i=0;i<=12;i++)Check(WorldTraversal.IsWalkable(Vector3.Lerp(gate+Vector3.back*3,gate,i/12f),.45f),"Chapter entrance approach remains walkable");
+            session.Player.Teleport(gate+Vector3.back*3);
+            yield return Capture("chapter-entrance-clearing",1);
+
             string wingId="fashion-"+(int)FashionSlot.Wings+"-3";
             session.Progression.Profile.fashions.Add(new FashionData{id=wingId,slot=FashionSlot.Wings,rarity=Rarity.Legendary,name="展示羽翼"});
             Check(session.Progression.EquipFashion(wingId),"Large wings are included in the scene composition fixture");
@@ -46,7 +51,7 @@ namespace Emberfall
                 var mannequin=(GameObject)typeof(CollectionModelPreview).GetField("avatar",PrivateInstance).GetValue(wear);
                 int wingCount=0;foreach(var renderer in mannequin.GetComponentsInChildren<Renderer>(true))if(renderer.name.Contains("wing")||renderer.name.Contains("Wing")){wingCount++;Debug.Log("WING_RENDER "+rarity+" "+renderer.name+" enabled="+renderer.enabled+" active="+renderer.gameObject.activeInHierarchy+" bounds="+renderer.bounds+" shader="+renderer.sharedMaterial.shader.name+" supported="+renderer.sharedMaterial.shader.isSupported);}
                 Check(wingCount>=2,"Preview contains both wing renderers for rarity "+rarity);
-                SetField("wearPreviewYaw",180f);yield return Capture("feather-wings-back-"+rarity,.3f);SetField("wearPreviewYaw",20f);
+                SetField("wearPreviewYaw",180f);yield return Capture("feather-wings-back-"+rarity,.3f);SetField("wearPreviewYaw",90f);yield return Capture("feather-wings-side-"+rarity,.3f);SetField("wearPreviewYaw",20f);
             }
             ResetPanels();yield return new WaitForSecondsRealtime(.4f);Invoke("OpenHubService",HubNpcKind.Merchant);yield return Capture("merchant-legendary-frame",1);
             session.Progression.Save();

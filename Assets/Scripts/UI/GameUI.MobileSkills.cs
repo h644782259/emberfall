@@ -36,15 +36,17 @@ namespace Emberfall
             DrawSkillTabs(TouchRect(layout.Close.X-276,8,264,44));
             if(skillSection!=0)return;
             float u=TouchRatio,bodyHeight=RouteSkillReturnAvailable?layout.Body.Height:layout.Height-layout.Body.Y-12;
-            float leftWidth=layout.Body.Width*.44f;
-            var listArea=new MobilePanelLayout.Area(layout.Body.X,layout.Body.Y,leftWidth,bodyHeight);
+            bool stacked=!MobileControls.IsIPad||layout.Body.Width<700;
+            float leftWidth=stacked?layout.Body.Width:layout.Body.Width*.44f;
+            float treeHeight=stacked?bodyHeight*.46f:bodyHeight;
+            var listArea=new MobilePanelLayout.Area(layout.Body.X,layout.Body.Y,leftWidth,treeHeight);
             float listWidth=listArea.Width-16;
-            mobileSkillTreeStep=Mathf.Clamp((bodyHeight-8)/7,44,108);
+            mobileSkillTreeStep=stacked?52:Mathf.Clamp((bodyHeight-8)/7,44,108);
             float listHeight=DrawMobileSkillTree(listWidth,false);
             mobileSkillListScroll=BeginTouchScroll("mobile-skill-list",MobilePanelRect(listArea),mobileSkillListScroll,new Rect(0,0,listWidth*u,Mathf.Max(listArea.Height,listHeight)*u));
             DrawMobileSkillTree(listWidth,true);EndTouchScroll();
             if(RouteSkillReturnAvailable&&NavigationButton(MobilePanelRect(layout.FooterButton(0,1)),"返回职业路线",jade)){ClosePanel();BlockUITransition();return;}
-            Rect r=TouchRect(listArea.XMax+12,listArea.Y,layout.Body.Width-leftWidth-12,bodyHeight);
+            Rect r=stacked?TouchRect(listArea.X,listArea.YMax+12,layout.Body.Width,bodyHeight-treeHeight-12):TouchRect(listArea.XMax+12,listArea.Y,layout.Body.Width-leftWidth-12,bodyHeight);
             Surface(r,new Color(.012f,.024f,.038f,.99f));SurfaceFrame(r,new Color(jade.r,jade.g,jade.b,.28f));
             if(blinkFollowupSelected){DrawBlinkFollowupDetail(r,u);return;}
             float tagsWidth=132*u;
@@ -171,8 +173,8 @@ namespace Emberfall
                 string evolution = skill == 2 && p.heroClass != HeroClass.Summoner ? SkillBudgetHint(p.heroClass, skill, stage) : GameBalance.SkillEvolution(p.heroClass, skill, stage);
                 string venom=BuildCatalog.VenomSkillOverride(p,skill,stage);if(venom.Length>0)evolution=venom;
                 evolution=System.Text.RegularExpressions.Regex.Replace(evolution,@"[，；、 ]*(伤害|范围)\+\d+%[，；、。 ]*","");
-                string numbers=SkillNumbers(p,skill,stage);if(numbers.Length>0)MobileSkillParagraph(ref y,width,numbers,14,jade,false,draw);
-                MobileSkillParagraph(ref y, width, evolution, 14, muted, false, draw);
+                string numbers=SkillNumbers(p,skill,stage);if(numbers.Length>0)MobileSkillParagraph(ref y,width,StyledSkillNumbers(numbers),14,pale,false,draw);
+                MobileSkillParagraph(ref y, width, evolution, 14, pale, false, draw);
             }
             return y;
         }
