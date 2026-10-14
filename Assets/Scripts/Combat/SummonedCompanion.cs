@@ -443,7 +443,6 @@ namespace Emberfall
             if (!State(Owner).Cooperation.RegisterHit(enemy, (int)Form, Time.time)) return;
             enemy.TakeDamage(damage * CompanionRules.DamageMultiplier(true) * CompanionRules.CooperationDamage * session.Progression.MechanicPowerMultiplier(EquipmentMechanic.TwinSummonResonance) * Owner.RunAttackMultiplier, Vector3.zero, impact: false);
             AdvancedSkillVfx.Beam(Owner, transform.position + Vector3.up, enemy.transform.position + Vector3.up, new Color(.5f, 1f, .9f), .3f, .2f);
-            session.SpawnMechanismText(enemy.transform.position + Vector3.up * 2f, "异契共鸣", new Color(.5f, 1f, .9f));
             session.RecordCombatAction("双契共鸣");
         }
 

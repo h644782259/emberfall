@@ -26,7 +26,10 @@ namespace Emberfall
             float t=Math.Max(0,Math.Min(1,age/life));
             float expansion=kind==FilledVfxKind.Charge?.55f+t*.45f:.42f+.72f*(1-(float)Math.Pow(1-Math.Min(1,t*2.8f),3));
             float opacity=kind==FilledVfxKind.Charge?Math.Min(1,t*8)*Math.Min(1,(1-t)*8):Math.Min(1,(1-t)*3.5f);
-            return new FilledVfxFrame(t,expansion,Math.Max(0,opacity));
+            // Ease the shared envelope so every family settles without a hard
+            // velocity change at the hold/fade boundary. Contact stays immediate.
+            opacity=Math.Max(0,Math.Min(1,opacity));
+            return new FilledVfxFrame(t,expansion,opacity*opacity*(3-2*opacity));
         }
         // Reusable closed surface adds a luminous body beneath ribbons and shards.
         public static FilledMeshRecipe EnergyCore()

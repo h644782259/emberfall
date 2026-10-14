@@ -45,7 +45,9 @@ Shader "Emberfall/Physical Hero Skill Body"
    v2f vert(appdata v){v2f o;o.pos=UnityObjectToClipPos(v.vertex);o.materialPos=v.vertex.xyz;o.normal=UnityObjectToWorldNormal(v.normal);o.localNormal=v.normal;o.view=WorldSpaceViewDir(v.vertex);o.worldPos=mul(unity_ObjectToWorld,v.vertex).xyz;TRANSFER_SHADOW(o);return o;}
    fixed4 frag(v2f i):SV_Target
    {
-    clip(_Opacity-hash(float3(floor(i.pos.xy),0)));
+    // Spirit material dissolves in coherent world-space wisps, not screen-door pixels.
+    float coverage=_Surface>3.5&&_Surface<4.5?noise(i.worldPos*4):hash(float3(floor(i.pos.xy),0));
+    clip(_Opacity-coverage);
     float3 n=normalize(i.normal),view=normalize(i.view),light=normalize(UnityWorldSpaceLightDir(i.worldPos));
     float attenuation=SHADOW_ATTENUATION(i),rim=pow(1-saturate(abs(dot(n,view))),5);
     float3 diffuse=max(float3(.15,.15,.15),ShadeSH9(float4(n,1)))+_LightColor0.rgb*saturate(dot(n,light))*attenuation;

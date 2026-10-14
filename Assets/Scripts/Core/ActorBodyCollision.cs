@@ -3,7 +3,7 @@ namespace Emberfall
 {
     public static class ActorBodyCollision
     {
-        public const float PlayerRadius=.45f,PlayerHeight=1.8f;
+        public const float PlayerRadius=.30f,PlayerHeight=1.8f;
         public static bool IsClear(Vector3 feet,float radius,float height,Vector3 body,float bodyRadius,float bodyHeight)
         {
             if(feet.y>=body.y+bodyHeight-.015f||feet.y+height<=body.y+.015f)return true;

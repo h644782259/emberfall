@@ -10,6 +10,7 @@ Shader "Emberfall/Filled Spell Volume"
         _Element ("Element family", Float) = 0
         _Seed ("Variation", Float) = 0
         _Sculpted ("Sculpted elemental body", Float) = 0
+        _Ribbon ("Weapon sweep feather", Float) = 0
         _ImpactLight ("Impact pulse", Range(0,1)) = 0
         _EnvelopeMode ("State envelope", Float) = 0
         _EnvelopeAge ("State age", Float) = 0
@@ -34,7 +35,7 @@ Shader "Emberfall/Filled Spell Volume"
             #include "AutoLight.cginc"
             struct appdata { float4 vertex:POSITION; float3 normal:NORMAL; float2 uv:TEXCOORD0; };
             struct v2f { float4 pos:SV_POSITION; float2 uv:TEXCOORD0; float3 normal:TEXCOORD1; float3 local:TEXCOORD2; float3 view:TEXCOORD3; float3 world:TEXCOORD4; float4 screen:TEXCOORD5; float eye:TEXCOORD6; SHADOW_COORDS(7) };
-            fixed4 _Color; float _Opacity, _Progress, _Style, _EnvelopeMode, _EnvelopeAge, _Element, _Seed, _ImpactLight, _Sculpted;
+            fixed4 _Color; float _Opacity, _Progress, _Style, _EnvelopeMode, _EnvelopeAge, _Element, _Seed, _ImpactLight, _Sculpted, _Ribbon;
             sampler2D _FlameTex;
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
             v2f vert(appdata v)
@@ -51,8 +52,8 @@ Shader "Emberfall/Filled Spell Volume"
                 UNITY_LIGHT_ATTENUATION(attenuation,i,i.world);
                 float3 illumination=max(float3(.10,.10,.10),ShadeSH9(float4(normal,1)))+_LightColor0.rgb*saturate(dot(normal,mainDirection))*attenuation;
                 float rim=pow(1-saturate(abs(dot(normal,normalize(i.view)))),2);
-                float time=_Time.y+_Seed*3.17;
-                float3 flow=i.local*5+float3(_Seed,-time*1.7,0);
+                float time=_EnvelopeAge;
+                float3 flow=i.world*3+float3(0,-time*1.7,0);
                 float grain=noise(flow)*.65+noise(flow*2.13+7)*.35;
                 float fine=noise(i.local*23+_Seed);
                 float side=saturate(dot(illumination,float3(.21,.72,.07)));
@@ -78,7 +79,7 @@ Shader "Emberfall/Filled Spell Volume"
                     heat=saturate(rim*.6+grain*.45+i.uv.y*.3);
                 }
                 // A bright interior, moving colored layers and a cooling silhouette share one pass.
-                float bands=.5+.5*sin(i.uv.y*19+grain*6-time*3.5);
+                float bands=noise(i.world*2.1+float3(time*.2,-time*.8,0));
                 float highlights=pow(saturate(fine*.65+rim*.45),4);
                 float dissolve=saturate((_Progress-.62)*2.63)*_Style;
                 float alpha=_Color.a*_Opacity*saturate((pattern+.48-dissolve)*3);
@@ -123,10 +124,20 @@ Shader "Emberfall/Filled Spell Volume"
                 tint+=float3(1,.95,.85)*pow(rim,10)*pow(_ImpactLight,3)*.22;
                 if(_Element>.5&&_Element<1.5)
                 {
-                    float2 flameUV=float2(frac(i.uv.x+.045*sin(time*2+i.local.y*3)),saturate(i.uv.y*.92+.035*sin(time*3)));
-                    float4 combustion=tex2D(_FlameTex,flameUV);
-                    tint=combustion.rgb*float3(.94,.64,.22)*(.74+.16*side);
-                    alpha=_Color.a*_Opacity*smoothstep(.055,.55,combustion.a)*smoothstep(.16,.51,grain)*(.72+.28*abs(dot(normal,normalize(i.view))));
+                    // One world-space current crosses every constituent mesh. Avoid
+                    // stamping the same photographic flame onto each separate face.
+                    float3 current=i.world*2.1-float3(_Time.y*.16,_Time.y*1.8,_Time.y*.11);
+                    float broad=noise(current);
+                    float wisps=noise(current*2.07+float3(broad*1.4,0,broad));
+                    float density=broad*.68+wisps*.32;
+                    float height=saturate(i.uv.y);
+                    float facing=abs(dot(normal,normalize(i.view)));
+                    float silhouette=smoothstep(.02,.5,facing);
+                    float tip=1-smoothstep(.55,1,height);
+                    float fuel=smoothstep(.22,.72,density-height*.12);
+                    float temperature=saturate(density*.75+(1-height)*.32);
+                    tint=lerp(float3(.65,.065,.008),float3(1,.58,.09),smoothstep(.25,.85,temperature));
+                    alpha=_Color.a*_Opacity*fuel*silhouette*tip*saturate(1-dissolve);
                 }
                 float raw=SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture,UNITY_PROJ_COORD(i.screen));
                 float orthographicDepth=raw;
@@ -137,6 +148,12 @@ Shader "Emberfall/Filled Spell Volume"
                 // Real geometry enters the floor smoothly without losing the
                 // above-ground tongues, ice facets or contracted actor envelope.
                 alpha*=saturate((scene-i.eye)/(_Element>.5&&_Element<1.5?.10:.045));
+                if(_Ribbon>.5)
+                {
+                    alpha=_Color.a*_Opacity*smoothstep(0,.12,i.uv.x)*(1-smoothstep(.82,1,i.uv.x))*(1-smoothstep(0,1,i.uv.y));
+                    tint=lerp(_Color.rgb*.65,_Color.rgb*1.12,smoothstep(.3,.85,i.uv.x));
+                    alpha*=saturate((scene-i.eye)/.045);
+                }
                 return fixed4(tint,saturate(alpha));
             }
             ENDCG

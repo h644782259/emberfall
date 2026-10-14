@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Emberfall
@@ -765,7 +765,7 @@ namespace Emberfall
             else model.PlayAction(-1,true,attackCooldown);
             GameAudio.PlayBasicAttack(HeroClass);
             attackAnimation = 1f;
-            Color color = GameBalance.ClassColor(HeroClass);
+            Color color = HeroClass==HeroClass.Vanguard?CombatFx.VanguardColor(-1):GameBalance.ClassColor(HeroClass);
             if (HeroClass == HeroClass.Vanguard)
             {
                 bool thrust = ReturningCounterReady;
@@ -879,7 +879,6 @@ namespace Emberfall
                     if (burning) enemy.StatusEffects.Burn(this, 2f, CombatAttack * .35f);
                     else if (session.Progression.Profile.skillRanks[0] > 0) enemy.StatusEffects.FrostMark(PlayerUpgradeRules.BasicFrostMarkDuration);
                     else enemy.StatusEffects.Freeze(.35f);
-                    session.SpawnMechanismText(position + Vector3.up * 2f, burning ? "灼触" : "霜触", burning ? new Color(1f, .55f, .18f) : new Color(.55f, .95f, 1f));
                     session.RecordCombatAction("职业能力");
                 }
             }
@@ -957,7 +956,6 @@ namespace Emberfall
                 else if (Specialization != ElementalistSpecialization.Burn && status.TryShatter(this, castId))
                 {
                     direct += uncriticalDamage * PlayerUpgradeRules.ShatterMultiplier(Specialization);
-                    session.SpawnMechanismText(enemy.transform.position + Vector3.up * 2f, "碎冰！", new Color(.55f, .95f, 1f));
                     session.RecordCombatAction("碎冰连招");
                     session.RecordClassTutorial(HeroClass.Arcanist);
                 }
@@ -971,7 +969,6 @@ namespace Emberfall
                     VenomSkillVfx.Contact(this,EnemyBodyPoint(enemy),true);
                     bool spread = HasMechanic(EquipmentMechanic.VenomSpread) && !ConcentratedVenom;
                     baseDamage += bonus * (spread ? .8f : 1f);
-                    session.SpawnMechanismText(enemy.transform.position + Vector3.up * 2f, "三毒引爆！", new Color(.6f, 1f, .3f));
                     session.RecordCombatAction(ConcentratedVenom ? "收束毒爆" : "毒层引爆");
                     session.RecordClassTutorial(HeroClass.Ranger);
                     session.RecordCombatAction("职业能力");
@@ -1145,7 +1142,6 @@ namespace Emberfall
             if(HeroClass==HeroClass.Vanguard)AdvancedSkillVfx.Protection(this,transform.position,radius,tint,passiveTime,rank,()=>passiveTime>0,passive:true);
             else if(HeroClass==HeroClass.Ranger)SkillPerformanceVfx.Sustain(this,transform.position,radius,passiveTime,SkillPerformanceBody.Tornado,transform,()=>passiveTime>0);
             else FilledSkillVfx.Impact(this,transform.position,radius,HeroClass==HeroClass.Arcanist?FilledVfxKind.Lightning:FilledVfxKind.Summon,tint,CombatVisualPriority.RealContact,elementalist:HeroClass==HeroClass.Arcanist);
-            session.SpawnMechanismText(transform.position+Vector3.up*2.7f,GameBalance.SkillName(HeroClass,8),tint);
         }
 
         internal void HitArea(Vector3 at, float radius, CombatDamage damage, float knockback = 0, float stun = 0, int castId = 0, ProjectileVolleyBudget<EnemyController> volley = null, bool strictRadius = false)
@@ -1450,7 +1446,7 @@ namespace Emberfall
             attackAnimation = 1;
             float power = 1f + (rank-1)*.3f;
             float range = GameBalance.SkillRangeMultiplier(HeroClass,slot,rank);
-            Color color = GameBalance.ClassColor(HeroClass);
+            Color color = HeroClass==HeroClass.Vanguard?CombatFx.VanguardColor(slot):GameBalance.ClassColor(HeroClass);
             // Mobile elementalist ultimate originates at the player on release, even after moving during charge.
             Vector3 target = IsMobileSelfCenteredSkill(slot)?transform.position:ResolveSkillGroundTarget(executingChargedSkill ? charge.TargetPoint : aimPoint,range,executingChargedSkill);
             SkillCastConduit.Begin(this,model,slot,rank,castId);
@@ -1480,9 +1476,8 @@ namespace Emberfall
                 { BeginRangerVault(rank,castId,Damage(SkillDamageBudgets.RangerVault(rank)),range); }
                 else if (HeroClass == HeroClass.Vanguard && slot == 4)
                 {
-                    guardTime = 6f+(rank-1)*2f; guardPower = 1.2f * power;
-                    guardReduction=.55f+rank*.05f; guardRadius=3.2f*range; guardRank=rank;guardCastId=castId;HoldCastReceipt(ref guardCastReceipt,castId);
-                    AdvancedSkillVfx.Protection(this,transform.position,2.1f*range,new Color(1f,.84f,.4f),guardTime,rank,()=>guardTime>0);
+                    VanguardSwordWave.Spawn(this,session,rank,Damage(VanguardSwordWave.DamageCoefficient(rank)),castId);
+                    CombatFx.WeaponSlash(this,model,transform.position,transform.forward,2.3f,color);
                 }
                 else if (HeroClass == HeroClass.Arcanist && slot == 5)
                 {
@@ -1521,8 +1516,8 @@ namespace Emberfall
                 }
                 else if (slot == 1)
                 {
-                    if(!BlenderSkillVfx.TryPlay(this,range,true)) CombatFx.WeaponSlash(this,model,transform.position,transform.forward,4.8f*range,new Color(1f,.85f,.4f));
-                    else WeaponSlashRibbon.Spawn(this,model,new Color(1f,.85f,.4f));
+                    if(!BlenderSkillVfx.TryPlay(this,range,true)) CombatFx.WeaponSlash(this,model,transform.position,transform.forward,4.8f*range,color);
+                    else WeaponSlashRibbon.Spawn(this,model,color);
                     Melee(4.8f*range,90+(rank-1)*10,Damage(SkillDamageBudgets.OpeningImpact(HeroClass,slot,rank)),1.9f,1.3f+(rank-1)*.3f,1.3f+(rank-1)*.3f,skillIndex:slot,castId:castId);
                     if(rank>=2) CombatArea.Spawn(this,session,CombatSight.GroundPoint(transform.position,transform.position+transform.forward*3f*range),2.3f*range,Damage(SkillDamageBudgets.OpeningImpact(HeroClass,slot,rank,1)),.6f,.25f,0,1,color,false,false,0,rank==3?Damage(SkillDamageBudgets.OpeningImpact(HeroClass,slot,rank,2)):0,castId:castId,visual:SkillVisualRecipe.Steel);
                 }

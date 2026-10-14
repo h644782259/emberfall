@@ -186,7 +186,7 @@ namespace Emberfall
                 if (skill == 0) return new Preview(Shape.Self, 3.4f * r);
                 if (skill == 1) return new Preview(Shape.Cone, 0, 4.8f * r, 90 + (rank - 1) * 10);
                 if (skill == 2) return new Preview(Shape.Self, 4.1f * r);
-                if (skill == 4) return new Preview(Shape.Self, 3.2f * r);
+                if (skill == 4) return new Preview(Shape.Lane,VanguardSwordWave.HalfWidth(rank),VanguardSwordWave.Range(rank));
                 if (skill == 5) return new Preview(Shape.Lane, 1.3f * r, 7 * r)
                 {
                     // HitLine has round end caps. Rank 2 adds a landing burst;

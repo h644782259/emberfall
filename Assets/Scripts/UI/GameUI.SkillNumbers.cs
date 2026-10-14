@@ -53,7 +53,7 @@ namespace Emberfall
                 var field=SkillDamageBudgets.EarlyField(hero,rank);
                 text="每 "+field.Interval+" 秒 "+damage(field.TickCoefficient)+"\n全部命中合计 "+damage(field.TotalCoefficient);
             }
-            else if(hero==HeroClass.Vanguard&&skill==4)text="格挡反击 "+damage(1.2f*power);
+            else if(hero==HeroClass.Vanguard&&skill==4)text="剑气命中 "+damage(VanguardSwordWave.DamageCoefficient(rank))+" · 每个目标一次";
             else if(hero==HeroClass.Vanguard&&skill==6)text="治疗自身最大生命 "+(rank==1?30:rank==2?42:55)+"% · 不造成伤害";
             else if(hero==HeroClass.Arcanist&&skill==5)text="霜环 "+damage(SkillDamageBudgets.FrostWalkerPulse(rank))+"\n火路每 0.5 秒 "+damage(SkillDamageBudgets.FlameRideTick);
             else if(hero==HeroClass.Ranger&&skill==4)text="跃射 "+damage(SkillDamageBudgets.RangerVault(rank));

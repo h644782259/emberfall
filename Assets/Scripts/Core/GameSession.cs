@@ -373,7 +373,7 @@ namespace Emberfall
             if (!Progression.CanEnterDungeon) { Notify("先领取营地恢复栏的装备，并为珍贵战利品腾出位置。"); return; }
             if (Progression.Profile.pendingFashionChest || Progression.Profile.pendingChestReveal) { Notify("请先开启上次通关的宝箱。"); return; }
             if(IsNearChapterEntrance){ui.OpenChapterEntrance();return;}
-            if (!NearPortal()) { Notify("请前往原野北方发光的传送门（小地图菱形），靠近后按 E。"); return; }
+            if (!NearPortal()) return;
             if (Progression.Profile.level < 2) { Notify("遗迹需要 2 级。先在原野战斗，并学习第一个职业技能。"); return; }
             ResetAdventureEntryTiers();
             DungeonSelectionOpen = true;
@@ -612,7 +612,7 @@ namespace Emberfall
         private void SpawnEnemy(EnemyKind kind, int level, Vector3 position, bool boss)
         {
             GameObject go = new GameObject(boss ? "Sentinel · Boss" : "Enemy · " + kind);
-            go.transform.position = WorldTraversal.NearestWalkable(position, boss ? BossSpawnRadius : .45f);
+            go.transform.position = WorldTraversal.NearestWalkable(position, boss ? BossSpawnRadius : BossScaleRules.NavigationRadius(false,false,kind));
             EnemyController enemy = go.AddComponent<EnemyController>();
             using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.EnemySpawn)) enemy.Initialize(this, kind, level, boss);
             Enemies.Add(enemy);
@@ -716,7 +716,7 @@ namespace Emberfall
                 bool settled=TrySettleDungeonReward();
                 LastRunSummary = BuildRunSummary(true);
                 Player.Heal(Player.MaxHealth);
-                Notify(settled?"遗迹通关":"遗迹已通关，但奖励尚未保存。请重试结算，或打开菜单处理存档。");
+                if(!settled)Notify("奖励尚未保存。请重试结算，或打开菜单处理存档。");
             }
             waveRoutine = null;
         }

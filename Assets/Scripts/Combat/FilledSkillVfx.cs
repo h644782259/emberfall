@@ -17,6 +17,7 @@ namespace Emberfall
         private static Mesh icePrimary,firePrimary,energyCore,poisonRoot;
         private static Mesh crescent, crystal, flame, sword, lightning, arcane, rupture, arcaneShard, arrow, vine;
         private static Material sharedMaterial,bodyMaterial;
+        private SkillFlowVolume flowVolume;
         private static bool assetsReady;
         private static int active;
         private readonly Piece[] pieces=new Piece[FilledVfxRecipes.MaximumParts];
@@ -113,6 +114,10 @@ namespace Emberfall
         }
         internal static System.Collections.IEnumerator Prewarm()
         {
+            var flowNoise=SkillFlowVolume.FlowNoise;
+            yield return FloatingNumber.Prewarm();
+            yield return HitFeedback.Prewarm();
+            VanguardSwordWave.Prewarm();yield return null;
             if(assetsReady){if(poisonRoot==null){var cachedRoot=PoisonRoot;}yield break;}
             if(identityBlade==null)identityBlade=AuthoredSpellBases.Load("Sword");
             yield return null;
@@ -266,12 +271,20 @@ namespace Emberfall
             if(type==FilledVfxKind.Fire||type==FilledVfxKind.Ice)ElementalCombatVfx.Burst(hero,at,radius,type==FilledVfxKind.Fire?ElementalCombatVfx.Element.Fire:ElementalCombatVfx.Element.Ice);
             if(priority==CombatVisualPriority.Finale)fx.RegisterFinale(castId);
             float unit=Mathf.Min(1.6f,fx.size*.55f);
+            if(type==FilledVfxKind.Fire)
+            {
+                fx.flowVolume=new SkillFlowVolume(fx.transform,SkillFlowVolume.Kind.Fire,fx.size,Mathf.Min(1.8f,.9f+fx.size*.18f),color,airy:true);
+                fx.flowVolume.Draw(0,.25f);
+                return;
+            }
+            if(type==FilledVfxKind.Ice||type==FilledVfxKind.Summon||type==FilledVfxKind.Arcane)
+                fx.flowVolume=new SkillFlowVolume(fx.transform,type==FilledVfxKind.Ice?SkillFlowVolume.Kind.Frost:SkillFlowVolume.Kind.Spirit,fx.size,Mathf.Min(1.5f,fx.size*.45f),color);
             fx.sculpted=type==FilledVfxKind.Sword||type==FilledVfxKind.Summon||type==FilledVfxKind.Arcane;
             if(elementalist&&(type==FilledVfxKind.Ice||type==FilledVfxKind.Fire||type==FilledVfxKind.Lightning))
             {fx.sculpted=true;fx.ElementalistImpact(type,unit);return;}
             // Allocate landing base, identity silhouette and contact flash BEFORE repeated ornaments.
             // Add's actual budget is still the last authority: mobile 10, reduced 7.
-            if(type!=FilledVfxKind.Fire)fx.Add(rupture,Vector3.up*.07f,new Vector3(fx.size*.58f,.8f,fx.size*.58f),Quaternion.identity,0,5,0,fx.size*.7f,"Landing base",true);
+            if(type!=FilledVfxKind.Fire&&type!=FilledVfxKind.Ice)fx.Add(rupture,Vector3.up*.07f,new Vector3(fx.size*.58f,.8f,fx.size*.58f),Quaternion.identity,0,5,0,fx.size*.7f,"Landing base",true);
             Mesh main=type==FilledVfxKind.Sword?sword:type==FilledVfxKind.Lightning?(identityFork??lightning):type==FilledVfxKind.Arcane?arcane:type==FilledVfxKind.Ice?(icePrimary??crystal):type==FilledVfxKind.Fire?(firePrimary??flame):identityContract;
             int motion=type==FilledVfxKind.Sword?8:type==FilledVfxKind.Lightning?(identityFork!=null?17:9):type==FilledVfxKind.Arcane?10:type==FilledVfxKind.Ice?(icePrimary!=null?13:1):type==FilledVfxKind.Fire?(firePrimary!=null?14:2):(identityContract!=null?16:3);
             Vector3 dimensions=type==FilledVfxKind.Sword?new Vector3(Mathf.Min(1.2f,unit*.7f),Mathf.Min(priority==CombatVisualPriority.Finale?2.5f:1.85f,unit*1.55f),Mathf.Min(1.8f,unit*1.1f)):type==FilledVfxKind.Lightning?new Vector3(1.3f,2.2f,1.3f)*unit:Vector3.one*unit*1.65f;
@@ -286,10 +299,10 @@ namespace Emberfall
                 Vector3 body=type==FilledVfxKind.Fire?new Vector3(1.6f,1.9f,1.6f):type==FilledVfxKind.Ice?new Vector3(1.3f,.85f,1.3f):type==FilledVfxKind.Lightning?new Vector3(.7f,2.3f,.7f):new Vector3(.65f,1.3f,.65f);
                 fx.Add(energyCore,Vector3.up*.08f,body*unit,Quaternion.identity,0,18,2,unit*1.3f,"Luminous elemental body",true);
             }
-            fx.Add(rupture,Vector3.up*.11f,new Vector3(fx.size*.3f,.65f,fx.size*.3f),Quaternion.Euler(0,65,0),0,5,1,fx.size*.38f,"Contact flash",true);
+            if(type!=FilledVfxKind.Ice)fx.Add(rupture,Vector3.up*.11f,new Vector3(fx.size*.3f,.65f,fx.size*.3f),Quaternion.Euler(0,65,0),0,5,1,fx.size*.38f,"Contact flash",true);
             if(priority==CombatVisualPriority.Finale)
                 fx.Add(rupture,Vector3.up*.13f,new Vector3(fx.size*.2f,.35f,fx.size*.2f),Quaternion.identity,.12f,5,0,fx.size*.25f,"Finale short tail",true);
-            int n=EffectPreferences.ReducedEffects?5:type==FilledVfxKind.Summon?6:10;
+            int n=type==FilledVfxKind.Ice?4:EffectPreferences.ReducedEffects?5:type==FilledVfxKind.Summon?6:10;
             for(int i=0;i<n;i++)
             {
                 float angle=i*2.399963f,r=(.18f+(i%3)*.24f)*fx.size;Vector3 radial=new Vector3(Mathf.Cos(angle),0,Mathf.Sin(angle));
@@ -312,7 +325,7 @@ namespace Emberfall
         // All erupting bodies are clipped at construction; animation only contracts XZ.
         private void ElementalistImpact(FilledVfxKind type,float unit)
         {
-            if(type!=FilledVfxKind.Fire)Add(rupture,Vector3.up*.045f,new Vector3(size*.72f,.32f,size*.72f),Quaternion.identity,0,5,0,size*.8f,"Elemental landing fracture",true);
+            if(type!=FilledVfxKind.Fire&&type!=FilledVfxKind.Ice)Add(rupture,Vector3.up*.045f,new Vector3(size*.72f,.32f,size*.72f),Quaternion.identity,0,5,0,size*.8f,"Elemental landing fracture",true);
             Mesh body=type==FilledVfxKind.Ice?(icePrimary??crystal):type==FilledVfxKind.Fire?(firePrimary??flame):(identityFork??lightning);
             int motion=type==FilledVfxKind.Ice?21:type==FilledVfxKind.Fire?22:23;
             Vector3 dimensions=type==FilledVfxKind.Ice?new Vector3(1.45f,2.1f,1.45f):type==FilledVfxKind.Fire?new Vector3(1.35f,2.4f,1.35f):new Vector3(1.4f,3.1f,1.4f);
@@ -321,15 +334,15 @@ namespace Emberfall
             if(type!=FilledVfxKind.Fire)Add(energyCore,Vector3.up*.08f,new Vector3(.38f,1.4f,.38f)*unit,Quaternion.identity,0,18,1,unit*.4f,"Elemental inner light",true);
             for(int i=0;i<4;i++)
             {
-                float angle=(i*90+35)*Mathf.Deg2Rad;
+                float angle=(i*137.5f+23)*Mathf.Deg2Rad;
                 Vector3 radial=new Vector3(Mathf.Cos(angle),0,Mathf.Sin(angle));
-                Vector3 at=radial*size*(type==FilledVfxKind.Ice?.48f:.3f);
+                Vector3 at=radial*size*(type==FilledVfxKind.Ice?.48f:type==FilledVfxKind.Fire?.14f+.025f*i:.3f);
                 Vector3 scale=type==FilledVfxKind.Ice?new Vector3(.48f,1.8f+(i%2)*.5f,.52f):type==FilledVfxKind.Fire?new Vector3(.7f,1.65f+(i%2)*.5f,.7f):new Vector3(.52f,1.5f,.52f);
                 Quaternion tilt=Quaternion.Euler(radial.z*(type==FilledVfxKind.Ice?24:18),i*90,-radial.x*(type==FilledVfxKind.Ice?24:18));
                 Add(type==FilledVfxKind.Ice?crystal:type==FilledVfxKind.Fire?flame:lightning,at,scale*unit,tilt,.035f+i*.025f,motion,i+1,unit*1.6f,"Elemental crown",true);
             }
             // Extra quality tiers add fragments, not another luminous shell over the body.
-            for(int i=0;i<3;i++)
+            for(int i=0;i<(type==FilledVfxKind.Fire?0:3);i++)
             {
                 float angle=i*2.399963f;
                 Add(type==FilledVfxKind.Ice?crystal:arcaneShard,new Vector3(Mathf.Cos(angle),.3f,Mathf.Sin(angle))*size*.38f,
@@ -399,6 +412,7 @@ namespace Emberfall
         {
             var fx=Create(hero,at,Vector3.forward,FilledVfxKind.Vine,radius,color,1.4f,priority:CombatVisualPriority.SustainedBackground);if(fx==null)return;
             fx.sculpted=true;
+            fx.flowVolume=new SkillFlowVolume(fx.transform,SkillFlowVolume.Kind.Poison,radius,1.1f,color);
             GroundSkillSurface.Ensure(fx.transform,hero,at,radius,GroundSkillSurface.Deposit.WetPoison,()=>fx.life-fx.age);
             int roots=EffectPreferences.ReducedEffects?2:3;float rootScale=Mathf.Min(1,radius*.45f);
             for(int i=0;i<roots;i++)
@@ -443,16 +457,14 @@ namespace Emberfall
             fx.sculpted=true;float unit=Mathf.Min(1.6f,radius);fx.Add(mesh,Vector3.up*.07f,new Vector3(1.1f,identity==2?1.6f:1.1f,1.1f)*unit,Quaternion.identity,0,identity==2?23:identity==3?16:19,0,unit,"Identity actual event",true);
             if(identity==3)
             {
-                // Raised facets give the contract a readable body above its ground sigil.
-                fx.Add(arcaneShard,Vector3.up*.08f,new Vector3(.3f,1.8f,.3f)*unit,Quaternion.identity,0,24,0,unit*.45f,"Contract raised core",true);
-                for(int i=0;i<3;i++)
-                {
-                    float angle=i*Mathf.PI*2/3;
-                    fx.Add(crystal,new Vector3(Mathf.Cos(angle),.05f,Mathf.Sin(angle))*unit*.28f,new Vector3(.14f,.95f,.14f)*unit,
-                        Quaternion.identity,.025f+i*.015f,24,i,unit*.3f,"Contract raised shard",true);
-                }
+                fx.flowVolume=new SkillFlowVolume(fx.transform,SkillFlowVolume.Kind.Spirit,radius,1.4f,color);
             }
             return true;
+        }
+        internal static void ContractArrival(PlayerController hero,Vector3 at,bool ember,Color tint)
+        {
+            var fx=Create(hero,at,Vector3.forward,FilledVfxKind.Summon,1.8f,tint,1.1f,priority:CombatVisualPriority.ActionBody);
+            if(fx!=null)fx.flowVolume=new SkillFlowVolume(fx.transform,ember?SkillFlowVolume.Kind.Fire:SkillFlowVolume.Kind.Spirit,1.8f,1.8f,tint);
         }
         public static void Thrust(PlayerController hero,Vector3 start,Vector3 end,Color color,float lifetime,float width,CombatVisualPriority priority=CombatVisualPriority.ActionBody)
         {
@@ -474,7 +486,7 @@ namespace Emberfall
             if(fx==null)return;
             fx.sculpted=true;
             GroundSkillSurface.Ensure(fx.transform,hero,at,.4f,GroundSkillSurface.Deposit.Scorch,()=>fx.life-fx.age);
-            fx.Add(flame,Vector3.zero,new Vector3(.22f,.6f,.22f),Quaternion.identity,0,2,0,.25f,"Burn contact ember",true);
+            fx.flowVolume=new SkillFlowVolume(fx.transform,SkillFlowVolume.Kind.Fire,.4f,.65f,new Color(1,.4f,.05f));
         }
         internal static ContactTrackHandle ContactTrack(PlayerController hero,Vector3 at,float radius,System.Func<float> remaining)
         {
@@ -488,18 +500,7 @@ namespace Emberfall
             fx.contactRemaining=remaining;fx.trackRemaining=left;fx.sculpted=true;
             GroundSkillSurface.Ensure(fx.transform,hero,at,radius,GroundSkillSurface.Deposit.Scorch,
                 ()=>fx.contactTrack?fx.trackRemaining:0,independentLifetime:true);
-            // Small authored tongues sit on the burning soil. Their complete
-            // envelope stays below the mount; ordinary nova bodies remain separate.
-            float horizontal=GroundSkillSurface.HorizontalRadius(flame),height=Mathf.Max(.01f,flame.bounds.size.y);
-            int parts=EffectPreferences.ReducedEffects?2:3;
-            for(int i=0;i<parts;i++)
-            {
-                float angle=i*Mathf.PI*2/parts+.35f,reach=fx.size*.42f;
-                float radial=Mathf.Min(.42f,fx.size*.24f)/horizontal,vertical=.28f/height;
-                Vector3 point=new Vector3(Mathf.Cos(angle)*reach,-flame.bounds.min.y*vertical,Mathf.Sin(angle)*reach);
-                fx.Add(flame,point,new Vector3(radial,vertical,radial),Quaternion.Euler(0,i*117,0),0,27,i*2.1f,
-                    0,"Low burning footprint tongue",true);
-            }
+            fx.flowVolume=new SkillFlowVolume(fx.transform,SkillFlowVolume.Kind.Fire,radius,.65f,new Color(1,.4f,.05f));
             return new ContactTrackHandle(fx);
         }
         private void Add(Mesh mesh,Vector3 at,Vector3 dimensions,Quaternion rotation,float delay,int motion,float phase,float footprint=0,string label="Repeated ornament",bool anchored=false)
@@ -558,6 +559,7 @@ namespace Emberfall
                 if(!confirmedFinale){Retire();return;}
                 terminalAge+=Time.unscaledDeltaTime;age+=Time.unscaledDeltaTime;
                 if(terminalAge>=.65f||age>=life){Retire();return;}
+                flowVolume?.Draw(age,Mathf.SmoothStep(0,1,Mathf.Min(.65f-terminalAge,life-age)/.65f));
                 for(int i=0;i<count;i++)Animate(pieces[i]);
                 return; // Visual-only: no scheduled combat or reward callbacks.
             }
@@ -583,6 +585,7 @@ namespace Emberfall
                     Retire();return;
                 }
             }
+            flowVolume?.Draw(age,Mathf.Min(Mathf.SmoothStep(0,1,age/.12f),Mathf.SmoothStep(0,1,(contactTrack?trackRemaining:life-age)/Mathf.Min(.65f,life*.5f))));
             for(int i=0;i<count;i++)Animate(pieces[i]);
         }
         internal void CompleteAftermath(bool finale=false)
@@ -605,27 +608,27 @@ namespace Emberfall
                 // Authored primary visual beats only: visible at release, quick rise, readable hold, then contraction.
                 // Radial scale only contracts; anchored certification and actual hit time remain unchanged.
                 case 15: float sliceHand=p.Phase<0?-1:1;rotation*=Quaternion.Euler(0,Mathf.Lerp(-12,42,t)*sliceHand,0);scale*=1-t*.15f;break;
-                case 16: scale.y*=.82f+.18f*Mathf.Min(1,local/.08f);break;
+                case 16: scale.y*=.82f+.18f*Mathf.SmoothStep(0,1,local/.08f);break;
                 case 17: scale.y*=1-Mathf.Clamp01(local/.45f)*.25f;break;
                 // Persistent body protection must not grow through head ornaments at birth.
                 case 20: break;
                 case 21: // Ice erupts, holds its facets, then fractures back into the floor.
                     float iceHold=life>2.1f?life-.85f:.48f;
-                    scale.y*=local<.13f?Mathf.Lerp(.18f,1,local/.13f):local<iceHold?1:Mathf.Lerp(1,.12f,Mathf.Clamp01((local-iceHold)/.65f));
+                    scale.y*=local<.13f?Mathf.Lerp(.18f,1,Mathf.SmoothStep(0,1,local/.13f)):local<iceHold?1:Mathf.Lerp(1,.12f,Mathf.SmoothStep(0,1,(local-iceHold)/.65f));
                     scale.x*=1-Mathf.Clamp01((local-.5f)/.5f)*.28f;scale.z=scale.x;break;
                 case 22: // Staggered tongues rise, fold inward and cool separately.
                     float fireHold=life>2.1f?life-.85f:.2f;
-                    scale.y*=local<.12f?Mathf.Lerp(.28f,1,local/.12f):1-Mathf.Clamp01((local-fireHold)/.65f)*.62f;
+                    scale.y*=local<.12f?Mathf.Lerp(.28f,1,Mathf.SmoothStep(0,1,local/.12f)):1-Mathf.SmoothStep(0,1,(local-fireHold)/.65f)*.62f;
                     scale.x*=1-Mathf.Clamp01(local/.8f)*.38f;scale.z*=1-Mathf.Clamp01(local/.8f)*.38f;break;
                 case 23: // A full branching strike on contact, followed by a short re-strike.
                     scale.y*=local<.1f?1:local<.2f?.7f:local<.28f?.95f:1-Mathf.Clamp01((local-.28f)/.6f)*.7f;
                     scale.x*=1-Mathf.Clamp01(local/.8f)*.35f;scale.z*=1-Mathf.Clamp01(local/.8f)*.35f;break;
                 case 24: // Roots emerge vertically without expanding their certified footprint.
-                    scale.y*=local<.18f?Mathf.Lerp(.2f,1,local/.18f):1-Mathf.Clamp01((local-.65f)/.4f)*.6f;break;
+                    scale.y*=local<.18f?Mathf.Lerp(.2f,1,Mathf.SmoothStep(0,1,local/.18f)):1-Mathf.SmoothStep(0,1,(local-.65f)/.4f)*.6f;break;
                 case 27: scale.y*=.94f+.06f*Mathf.Sin(local*5+p.Phase);break; // Rooted fuel flickers below the mount.
                 case 26: break; // Wet soil rests on the floor throughout the actual contact pulse.
                 case 25: // Spirited creatures emerge with a continuous upward/outward impulse.
-                    float drift=Mathf.Min(local,.55f);at+=new Vector3(Mathf.Cos(p.Phase),0,Mathf.Sin(p.Phase))*drift*size*.3f*p.TravelScale;
+                    float drift=.55f*Mathf.SmoothStep(0,1,local/.55f);at+=new Vector3(Mathf.Cos(p.Phase),0,Mathf.Sin(p.Phase))*drift*size*.3f*p.TravelScale;
                     at.y+=.65f*(1-Mathf.Exp(-drift*3));rotation*=Quaternion.Euler(-drift*12,drift*32,0);break;
                 case 18: scale.y*=.65f+.35f*Mathf.Min(1,local/.18f);break;
                 case 19: scale.y*=.82f+.18f*Mathf.Min(1,local/.1f);break;
@@ -669,7 +672,7 @@ namespace Emberfall
             }
             if(p.BodySurface>=0)
             {
-                Color bodyTint=p.BodySurface==0?new Color(.42f,.34f,.25f):p.BodySurface==1?Color.Lerp(new Color(.38f,.42f,.48f),tint,.28f):p.BodySurface==5?new Color(.24f,.29f,.12f):p.BodySurface==6?new Color(.32f,.37f,.14f):tint;
+                Color bodyTint=p.BodySurface==0?new Color(.42f,.34f,.25f):p.BodySurface==1?Color.Lerp(new Color(.38f,.42f,.48f),tint,owner!=null&&owner.HeroClass==HeroClass.Vanguard?.80f:.28f):p.BodySurface==5?new Color(.24f,.29f,.12f):p.BodySurface==6?new Color(.32f,.37f,.14f):tint;
                 block.SetColor("_Tint",bodyTint);block.SetFloat("_Surface",p.BodySurface);block.SetFloat("_Phase",local);
                 block.SetFloat("_Opacity",SkillVisualAftermathTiming.Coverage(life-age));block.SetFloat("_Heat",p.Motion==20?(p.Phase<2.5f?.14f:Mathf.Clamp01(1-local/.32f)*.5f):Mathf.Clamp01(1-local/.18f)*.3f);
                 bool forged=p.BodySurface==1&&kind!=FilledVfxKind.ArrowRain;
@@ -686,7 +689,7 @@ namespace Emberfall
         }
         private void Register(){if(registered)return;registered=true;active++;}
         private void Release(){if(!registered)return;registered=false;active=Mathf.Max(0,active-1);}
-        private void OnDisable(){foreach(var ground in GetComponentsInChildren<GroundSkillSurface>(true))ground.Retire();finales.Remove(this);Release();}
+        private void OnDisable(){flowVolume?.Dispose();flowVolume=null;foreach(var ground in GetComponentsInChildren<GroundSkillSurface>(true))ground.Retire();finales.Remove(this);Release();}
         private void OnEnable()
         {
             if(!gameObject.activeInHierarchy||owner==null||registered)return;

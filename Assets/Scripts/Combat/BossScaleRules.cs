@@ -8,7 +8,7 @@ namespace Emberfall
         internal static bool ReviewLegacyDimensions;
         public static float EnemyMultiplier(bool boss,bool large=false){return !boss||ReviewLegacyDimensions?1:large?LargeBossMultiplier:BossMultiplier;}
         public static float CompanionMultiplier(SummonedCompanion.Kind form){return form==SummonedCompanion.Kind.Treant&&!ReviewLegacyDimensions?TreantMultiplier:1;}
-        public static float NavigationRadius(bool boss,bool large,EnemyKind kind){return (large?1.25f:boss?.9f:kind==EnemyKind.Guardian?.6f:.45f)*EnemyMultiplier(boss,large);}
+        public static float NavigationRadius(bool boss,bool large,EnemyKind kind){return (large?1.25f:boss?.9f:kind==EnemyKind.Guardian?.44f:.32f)*EnemyMultiplier(boss,large);}
         public static float ProjectileRadius(bool boss,bool large){return (large?1.3f:boss?1.05f:.6f)*EnemyMultiplier(boss,large);}
         public static float HitFootprintBonus(bool boss,bool large){float scale=EnemyMultiplier(boss,large);return (large?.45f:0)*scale+(boss?.85f:0)*(scale-1);}
         public static float BodyHeight(bool boss,bool large,EnemyKind kind){return (boss?large?4.4f:3.8f:kind==EnemyKind.Slime?1.3f:kind==EnemyKind.Wisp?2.3f:2.8f)*EnemyMultiplier(boss,large);}

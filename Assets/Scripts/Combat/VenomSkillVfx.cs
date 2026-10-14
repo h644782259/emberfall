@@ -42,7 +42,7 @@ namespace Emberfall
             if(game.InputBlocked)return;
             age+=Time.deltaTime;if(age>=duration){Destroy(gameObject);return;}
             // Shrinking inward communicates expenditure of three stacks, never outward splash.
-            material.SetFloat("_Opacity",Mathf.Clamp01((duration-age)/.18f));
+            material.SetFloat("_Opacity",Mathf.SmoothStep(0,1,(duration-age)/.18f));
         }
         private void OnDestroy(){if(material!=null)Destroy(material);}
     }

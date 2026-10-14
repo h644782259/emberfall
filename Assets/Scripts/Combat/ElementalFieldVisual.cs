@@ -7,6 +7,8 @@ namespace Emberfall
     {
         private static int activeCount;
         private bool counted;
+        private SkillFlowVolume flowVolume;
+        private float flowAge;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetCount(){activeCount=0;if(fieldFlame!=null)Destroy(fieldFlame);if(fieldLightning!=null)Destroy(fieldLightning);fieldFlame=fieldLightning=null;}
         private ElementalCombatVfx.Element element;
@@ -53,6 +55,11 @@ namespace Emberfall
             element = type;
             radius = size;
             onBody = body;
+            if(type==ElementalCombatVfx.Element.Fire)
+            {
+                flowVolume=new SkillFlowVolume(transform,SkillFlowVolume.Kind.Fire,size,onBody?1.1f:1.25f,new Color(1,.35f,.04f),!onBody,airy:!onBody);
+                flowVolume.Draw(0,.35f);return;
+            }
             int count = onBody ? 3 : MobileControls.Active ? 5 : 8;
             if(EffectPreferences.ReducedEffects)count=onBody?2:3;
             if(!onBody&&type==ElementalCombatVfx.Element.Poison)count=EffectPreferences.ReducedEffects?1:2;
@@ -104,7 +111,7 @@ namespace Emberfall
                 bodies[i].gameObject.SetActive(placed[i]);
             }
         }
-        private void Update(){if(Time.deltaTime<=0)return;RefreshPlacement();Draw(Time.time);}
+        private void Update(){if(Time.deltaTime<=0||GameSession.Instance!=null&&GameSession.Instance.InputBlocked)return;if(flowVolume!=null){flowAge+=Time.deltaTime;flowVolume.Draw(flowAge,onBody?.6f:1);return;}RefreshPlacement();Draw(Time.time);}
         private void Draw(float time)
         {
             int count = bodies.Length;
@@ -140,7 +147,7 @@ namespace Emberfall
 
         private void Release(){if(!counted)return;counted=false;activeCount=Mathf.Max(0,activeCount-1);}
         private void OnDisable(){Release();}
-        private void OnEnable(){if(!gameObject.activeInHierarchy||material==null||counted)return;if(activeCount>=(MobileControls.Active?12:20)){gameObject.SetActive(false);return;}activeCount++;counted=true;}
-        private void OnDestroy() { Release();if (material != null) Destroy(material); }
+        private void OnEnable(){if(!gameObject.activeInHierarchy||material==null&&flowVolume==null||counted)return;if(activeCount>=(MobileControls.Active?12:20)){gameObject.SetActive(false);return;}activeCount++;counted=true;flowAge=0;}
+        private void OnDestroy() { flowVolume?.Dispose();Release();if (material != null) Destroy(material); }
     }
 }

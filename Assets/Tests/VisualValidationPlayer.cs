@@ -1,4 +1,4 @@
-﻿#if EMBERFALL_VISUAL_VALIDATION
+#if EMBERFALL_VISUAL_VALIDATION
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -66,7 +66,7 @@ namespace Emberfall
             get
             {
                 ConfigurePaths();
-                PerformanceRun = Array.IndexOf(Environment.GetCommandLineArgs(),"--combat-flow")>=0 || Array.IndexOf(Environment.GetCommandLineArgs(),"--blink-followup")>=0 || Array.IndexOf(Environment.GetCommandLineArgs(),"--cast-poses")>=0 || Array.IndexOf(Environment.GetCommandLineArgs(),"--stride-audio")>=0 || Array.IndexOf(Environment.GetCommandLineArgs(),"--dungeon-tactics") >= 0 || Array.IndexOf(Environment.GetCommandLineArgs(),"--camp-performance") >= 0 || Array.IndexOf(Environment.GetCommandLineArgs(),"--impact-validation")>=0;
+                PerformanceRun = Array.IndexOf(Environment.GetCommandLineArgs(),"--skill-vfx-matrix")>=0 || Array.IndexOf(Environment.GetCommandLineArgs(),"--combat-flow")>=0 || Array.IndexOf(Environment.GetCommandLineArgs(),"--blink-followup")>=0 || Array.IndexOf(Environment.GetCommandLineArgs(),"--cast-poses")>=0 || Array.IndexOf(Environment.GetCommandLineArgs(),"--stride-audio")>=0 || Array.IndexOf(Environment.GetCommandLineArgs(),"--dungeon-tactics") >= 0 || Array.IndexOf(Environment.GetCommandLineArgs(),"--camp-performance") >= 0 || Array.IndexOf(Environment.GetCommandLineArgs(),"--impact-validation")>=0;
                 return saveDirectory;
             }
         }
@@ -231,6 +231,7 @@ namespace Emberfall
             ui = session.GetComponent<GameUI>();
             Check(ui != null, "Runtime IMGUI component exists");
             Check(Path.GetFullPath(session.Progression.SaveDirectory) == SaveDirectory, "Test player uses its isolated save directory");
+            if(System.Array.IndexOf(System.Environment.GetCommandLineArgs(),"--skill-vfx-matrix")>=0){yield return VerifySkillVfxMatrix();yield break;}
             if(System.Array.IndexOf(System.Environment.GetCommandLineArgs(),"--camp-performance")>=0){yield return VerifyCampPerformance();yield break;}
             if(System.Array.IndexOf(System.Environment.GetCommandLineArgs(),"--impact-validation")>=0){yield return VerifyImpactControls();yield break;}
             if(System.Array.IndexOf(System.Environment.GetCommandLineArgs(),"--dungeon-tactics")>=0){yield return VerifyDungeonTactics();yield break;}
@@ -634,7 +635,10 @@ namespace Emberfall
             yield return WaitForSceneReady();
             yield return new WaitForSecondsRealtime(settle);
             yield return new WaitForEndOfFrame();
-            Texture2D image = ScreenCapture.CaptureScreenshotAsTexture();
+            // Explicit world-only VFX review also works with an occluded player.
+            // Keep the normal full-frame UI validation path unchanged.
+            Texture2D image = Array.IndexOf(Environment.GetCommandLineArgs(),"--ground-flame-preview")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"--skill-vfx-matrix")>=0?
+                CaptureGroundFlameCamera():ScreenCapture.CaptureScreenshotAsTexture();
             try
             {
                 Check(image != null && image.width == Screen.width && image.height == Screen.height, "Full player framebuffer captured: " + name);

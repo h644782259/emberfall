@@ -56,6 +56,7 @@ namespace Emberfall
         private Texture2D trackTexture;
         private readonly Texture2D[] crestTextures = new Texture2D[4];
         private string tooltip;
+        private int tooltipSkillRank=-1;
         private Rect tooltipAnchor;
         private string tooltipAnchorText;
         private string tooltipKey;
@@ -357,7 +358,7 @@ namespace Emberfall
                 GUI.matrix = oldMatrix; GUI.color = oldColor; GUI.contentColor = oldContentColor; GUI.enabled = oldEnabled;
                 return;
             }
-            tooltip = null;tooltipAnchorText=null;tooltipKey=null;
+            tooltip = null;tooltipAnchorText=null;tooltipKey=null;tooltipSkillRank=-1;
             bool rewardOverlayEnabled=GUI.enabled;
             bool rewardOverlayPointer=entryRewardPopupVisible&&entryRewardPopupRect.Contains(Mouse);
             BeginEntryRewardPopup();
@@ -506,7 +507,10 @@ namespace Emberfall
             preparation.Dispose();
             using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.TextDraw))
             {
-                if (!MobileControls.Active && color.r+color.g+color.b>.5f) {
+                // Rich-text colors override contentColor, including on the shadow pass.
+                // Draw colored labels once so their shadow cannot become a second colored glyph.
+                if (!MobileControls.Active && color.r+color.g+color.b>.5f &&
+                    (value == null || value.IndexOf("<color", System.StringComparison.OrdinalIgnoreCase) < 0)) {
                     GUI.contentColor=new Color(.005f,.008f,.012f,color.a*.9f);
                     GUI.Label(new Rect(rect.x+1,rect.y+1,rect.width,rect.height),value??"",style);
                 }
@@ -531,7 +535,7 @@ namespace Emberfall
         private string SkillTooltip(GameProfile profile, int skill, int rank)
         {
             HeroClass hero = profile.heroClass;
-            string result = "<b><color=#FFE0A3>" + GameBalance.SkillName(hero, skill) + "</color></b>  " + GameBalance.SkillRankName(rank) + "\n\n" + GameBalance.SkillDescription(hero, skill);
+            string result = "<b><color=#FFE0A3>" + GameBalance.SkillName(hero, skill) + "</color></b>\n\n" + GameBalance.SkillEvolution(hero, skill, rank);
             string venom=BuildCatalog.VenomSkillOverride(profile,skill,rank);
             if(venom.Length>0)result="<b>"+GameBalance.SkillName(hero,skill)+"</b>\n\n"+venom;
             if (GameBalance.IsPassive(skill)) return result;
@@ -1202,6 +1206,7 @@ namespace Emberfall
                 if (hover && GUI.enabled)
                 {
                     tooltip = potion ? PotionTooltip(p) : !mobile&&skill>=0 ? SkillTooltip(p,skill,rank) : null;
+                    tooltipSkillRank=!potion&&!mobile&&skill>=0?rank:-1;
                     if(!string.IsNullOrEmpty(tooltip)){tooltipAnchor=slot;tooltipAnchorText=tooltip;}
                 }
                 if (!session.PracticeActive && !mobile && hover && GUI.enabled && Event.current.type == EventType.MouseDown && Event.current.button == 1)
@@ -1331,8 +1336,10 @@ namespace Emberfall
             bool hover = r.Contains(Mouse) && GUI.enabled;
             Fill(r, hover ? new Color(.11f, .18f, .21f) : ink);
             Border(r, new Color(accent.r, accent.g, accent.b, hover ? .9f : .35f));
-            float inset=3;
-            float top=MobileControls.Active?inset:12;
+            float inset=2;
+            // Match hotbar artwork: the shortcut overlays the image rather than
+            // reserving an empty row that shrinks the whole square icon.
+            float top=inset;
             DrawIcon(new Rect(r.x+inset,r.y+top,r.width-inset*2,r.height-top-inset),UIIconAtlas.Utility(icon),Color.white);
             Badge(r,icon=="inventory"?NewEquipmentAttention||Attention.LootPending:icon=="skills"?Attention.Skills:icon=="camp"?Attention.Rewards:icon=="achievement"?CachedAchievementAttention:false);
             if (!MobileControls.Active) DrawFunctionKey(r,key);
@@ -1961,7 +1968,10 @@ namespace Emberfall
                 Text(keycap,tooltipKey,12,jade,true,false,TextAnchor.MiddleCenter);
                 return;
             }
-            float boxHeight = Style(13, false, true).CalcHeight(new GUIContent(tooltip), 288) + 22;
+            int headingEnd=tooltip.IndexOf("\n\n",System.StringComparison.Ordinal);
+            bool skillCard=tooltipSkillRank>=0&&tooltipAnchorText==tooltip&&headingEnd>=0;
+            float boxHeight = skillCard?Style(13,false,true).CalcHeight(new GUIContent(tooltip.Substring(headingEnd+2)),288)+58:
+                Style(13, false, true).CalcHeight(new GUIContent(tooltip), 288) + 22;
             Vector2 mouse = Mouse;
             Rect r = new Rect(Mathf.Clamp(mouse.x - 154, 12, width - 324), Mathf.Clamp(mouse.y - boxHeight - 14, 12, height - boxHeight - 12), 312, boxHeight);
             if(tooltipAnchorText==tooltip)
@@ -1977,7 +1987,13 @@ namespace Emberfall
                 }
             }
             Box(r, jade);
-            Text(new Rect(r.x + 12, r.y + 10, 288, boxHeight - 20), tooltip, 13, pale, false, true);
+            if(skillCard)
+            {
+                Text(new Rect(r.x+12,r.y+10,r.width-100,24),tooltip.Substring(0,headingEnd),13,pale,true);
+                SkillStateTag(new Rect(r.xMax-72,r.y+9,60,23),GameBalance.SkillRankName(tooltipSkillRank),gold,11);
+                Text(new Rect(r.x+12,r.y+46,288,boxHeight-56),tooltip.Substring(headingEnd+2),13,pale,false,true);
+            }
+            else Text(new Rect(r.x + 12, r.y + 10, 288, boxHeight - 20), tooltip, 13, pale, false, true);
         }
 
         private void TogglePanel(Panel value)

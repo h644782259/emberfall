@@ -11,7 +11,8 @@ namespace Emberfall
         public static float Coverage(float remaining, float fade = SolidFade)
         {
             if (float.IsNaN(remaining) || float.IsInfinity(remaining) || remaining <= 0) return 0;
-            return Math.Min(1, remaining / Math.Max(.05f, fade));
+            float t=Math.Min(1, remaining / Math.Max(.05f, fade));
+            return t*t*(3-2*t);
         }
     }
 }

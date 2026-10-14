@@ -10,6 +10,20 @@ namespace Emberfall
         private static Font sharedFont;
         private static int fontRevision;
         private static bool watchingFont;
+        private static readonly Stack<FloatingNumber> idle=new Stack<FloatingNumber>(40);
+        internal static void PrewarmDigits()
+        {SyncSharedFont();if(sharedFont!=null){sharedFont.RequestCharactersInTexture("0123456789+-",64,FontStyle.Bold);sharedFont.RequestCharactersInTexture("0123456789+-",64,FontStyle.BoldAndItalic);}}
+        internal static System.Collections.IEnumerator Prewarm()
+        {
+            PrewarmDigits();
+            for(int i=idle.Count;i<16;i++)
+            {
+                var root=new GameObject("Prewarmed combat text");root.SetActive(false);
+                var number=root.AddComponent<FloatingNumber>();
+                number.criticalNumberStyle=new GUIStyle{alignment=TextAnchor.MiddleCenter,wordWrap=false,padding=new RectOffset(),font=sharedFont,fontSize=64};
+                idle.Push(number);yield return null;
+            }
+        }
         private CombatTextMetrics metrics;
         private static void WatchFont()
         {if(watchingFont)return;Font.textureRebuilt+=OnFontTextureRebuilt;watchingFont=true;}
@@ -22,21 +36,12 @@ namespace Emberfall
             Font resolved=GameFont.Shared;
             if(object.ReferenceEquals(sharedFont,resolved))return;
             sharedFont=resolved;unchecked{fontRevision++;}
-            foreach(var number in visible)if(number!=null)number.RefreshFont();
-        }
-        private void RefreshFont()
-        {
-            if(sharedFont==null)return;
-            if(textMesh!=null){textMesh.font=sharedFont;textRenderer.sharedMaterial=sharedFont.material;}
-            foreach(var edge in outline)if(edge!=null){edge.font=sharedFont;edge.GetComponent<MeshRenderer>().sharedMaterial=sharedFont.material;}
+
         }
         private static readonly List<FloatingNumber> visible=new List<FloatingNumber>(40);
         private static int reflowFrame=-1;
         private Vector3 originAtSpawn;
         private int lane;
-        private TextMesh textMesh;
-        private MeshRenderer textRenderer;
-        private readonly TextMesh[] outline=new TextMesh[4];
         private float life;
         private Color color;
         private bool critical,mechanism,counted;
@@ -56,8 +61,11 @@ namespace Emberfall
             string shown=Display(value,isCritical);
             FloatingNumber replacement;int selectedLane;Camera camera;CombatTextLayout.Box box;CombatTextMetrics measured;
             if(!TrySelectAdmission(origin,shown,isCritical,isMechanism,out replacement,out selectedLane,out camera,out box,out measured,damageIcon))return null;
-            GameObject root=new GameObject(objectName);root.transform.position=origin;
-            FloatingNumber number=root.AddComponent<FloatingNumber>();
+            FloatingNumber number=null;while(idle.Count>0&&number==null)number=idle.Pop();
+            if(number==null)number=new GameObject(objectName).AddComponent<FloatingNumber>();
+            number.gameObject.name=objectName;number.transform.position=origin;
+            number.life=0;number.numberCaption=null;number.captionRevision=-1;
+            number.gameObject.SetActive(true);
             number.damageIcon=damageIcon;
             number.InitializeAdmitted(shown,tint,isCritical,isMechanism,replacement,selectedLane,camera,box,measured);
             return number;
@@ -164,20 +172,13 @@ namespace Emberfall
             critical=isCritical;mechanism=isMechanism;originAtSpawn=transform.position;lane=selectedLane;display=value;bounds=box;metrics=measured;
             ActiveCount++;if(mechanism)MechanismCount++;counted=true;visible.Add(this);WatchFont();
             color=critical?new Color(.96f,.76f,.43f):tint;
-            // The invisible primary mesh supplies font metrics only; the single
-            // screen-space draw owns the face and shadow.
-            textMesh=Configure(gameObject,value,color);textRenderer=GetComponent<MeshRenderer>();textRenderer.sortingOrder=101;textRenderer.enabled=false;
-            ApplyBox(camera);
-        }
-        private TextMesh Configure(GameObject obj,string value,Color tint)
-        {
-            TextMesh mesh=obj.AddComponent<TextMesh>();mesh.text=value;mesh.fontSize=64;mesh.characterSize=.085f;
-            mesh.anchor=TextAnchor.MiddleCenter;mesh.alignment=TextAlignment.Center;mesh.fontStyle=critical||display=="连击兑现"?FontStyle.BoldAndItalic:FontStyle.Bold;mesh.color=tint;
-            if(sharedFont!=null){mesh.font=sharedFont;obj.GetComponent<MeshRenderer>().sharedMaterial=sharedFont.material;}
-            return mesh;
+            // Metrics already come from the shared font. Do not create an
+            // invisible TextMesh and renderer for a screen-space label.
         }
         private GUIStyle criticalNumberStyle;
         private GUIContent numberCaption;
+        private int captionRevision=-1;
+        private Vector2 captionSize;
         private void OnGUI()
         {
             if(!counted||Event.current.type!=EventType.Repaint||GameSession.Instance!=null&&GameSession.Instance.InputBlocked)return;
@@ -186,44 +187,31 @@ namespace Emberfall
             float alpha=Mathf.Clamp01((Duration-life)/(display!=null&&display.StartsWith("等级提升")?1f:mechanism?.35f:.45f));
             GUI.color=new Color(1,1,1,alpha);
             Rect burst=new Rect(bounds.X,Screen.height-bounds.Y-bounds.Height,bounds.Width,bounds.Height);
-            if(!critical)
+            if(damageIcon!=null)
             {
-                if(damageIcon!=null)
-                {
-                    float iconSize=Mathf.Min(burst.height*.75f,burst.width*.3f);
-                    GUI.DrawTexture(new Rect(burst.x,burst.center.y-iconSize*.5f,iconSize,iconSize),UIIconAtlas.Utility(damageIcon),ScaleMode.ScaleToFit);
-                    burst.x+=iconSize+2*Density;burst.width-=iconSize+2*Density;
-                }
-                if(criticalNumberStyle==null)criticalNumberStyle=new GUIStyle{alignment=TextAnchor.MiddleCenter,fontStyle=FontStyle.Bold,wordWrap=false,padding=new RectOffset()};
-                criticalNumberStyle.font=sharedFont;
-                criticalNumberStyle.fontSize=Mathf.Max(1,Mathf.RoundToInt(CombatTextLayout.PixelHeight(EffectPreferences.CombatTextScale,Density,false)*(mechanism?1:DamageFloatScale)));
-                GUIContent normalCaption=numberCaption??(numberCaption=new GUIContent(display));
-                while(criticalNumberStyle.fontSize>1&&(criticalNumberStyle.CalcSize(normalCaption).x>burst.width||criticalNumberStyle.CalcSize(normalCaption).y>burst.height))criticalNumberStyle.fontSize--;
-                criticalNumberStyle.normal.textColor=new Color(.015f,.02f,.03f);
-                float stroke=Mathf.Max(1,Density*.7f);
-                GUI.Label(new Rect(burst.x+stroke,burst.y+stroke,burst.width,burst.height),normalCaption,criticalNumberStyle);
-                criticalNumberStyle.normal.textColor=color;GUI.Label(burst,normalCaption,criticalNumberStyle);
-                GUI.matrix=priorMatrix;GUI.color=priorColor;GUI.depth=priorDepth;return;
+                float iconSize=Mathf.Min(burst.height*.75f,burst.width*.3f);
+                GUI.DrawTexture(new Rect(burst.x,burst.center.y-iconSize*.5f,iconSize,iconSize),UIIconAtlas.Utility(damageIcon),ScaleMode.ScaleToFit);
+                burst.x+=iconSize+2*Density;burst.width-=iconSize+2*Density;
             }
-            if(criticalNumberStyle==null)criticalNumberStyle=new GUIStyle{alignment=TextAnchor.MiddleCenter,fontStyle=FontStyle.BoldAndItalic,wordWrap=false,padding=new RectOffset()};
-            criticalNumberStyle.font=sharedFont;
-            criticalNumberStyle.fontSize=Mathf.Max(1,Mathf.RoundToInt(CombatTextLayout.PixelHeight(EffectPreferences.CombatTextScale,Density,true)*DamageFloatScale));
-            Rect label=burst;
+            if(criticalNumberStyle==null)criticalNumberStyle=new GUIStyle{alignment=TextAnchor.MiddleCenter,wordWrap=false,padding=new RectOffset()};
+            criticalNumberStyle.font=sharedFont;criticalNumberStyle.fontSize=64;
+            criticalNumberStyle.fontStyle=critical?FontStyle.BoldAndItalic:FontStyle.Bold;
             GUIContent caption=numberCaption??(numberCaption=new GUIContent(display));
-            while(criticalNumberStyle.fontSize>1&&(criticalNumberStyle.CalcSize(caption).x>label.width||criticalNumberStyle.CalcSize(caption).y>label.height))criticalNumberStyle.fontSize--;
-            float shadow=Mathf.Max(1,Density*.55f);
-            criticalNumberStyle.normal.textColor=new Color(.055f,.045f,.025f,.72f);
+            if(captionRevision!=fontRevision)
+            {captionSize=criticalNumberStyle.CalcSize(caption);captionRevision=fontRevision;}
+            float scale=Mathf.Max(.001f,Mathf.Min(burst.width/Mathf.Max(1,captionSize.x),burst.height/Mathf.Max(1,captionSize.y)));
+            GUI.matrix=Matrix4x4.TRS(new Vector3(burst.center.x,burst.center.y,0),Quaternion.identity,new Vector3(scale,scale,1));
+            Rect label=new Rect(-captionSize.x*.5f,-captionSize.y*.5f,captionSize.x,captionSize.y);
+            float shadow=Mathf.Max(1,Density*.55f)/scale;
+            criticalNumberStyle.normal.textColor=new Color(.015f,.02f,.03f,.85f);
             GUI.Label(new Rect(label.x+shadow,label.y+shadow,label.width,label.height),caption,criticalNumberStyle);
-            criticalNumberStyle.normal.textColor=new Color(1f,.76f,.3f);
+            criticalNumberStyle.normal.textColor=critical?new Color(1f,.76f,.3f):color;
             GUI.Label(label,caption,criticalNumberStyle);
             GUI.matrix=priorMatrix;GUI.color=priorColor;GUI.depth=priorDepth;
         }
         private void Update()
         {
-            life+=Time.deltaTime;float alpha=Mathf.Clamp01((Duration-life)/(display!=null&&display.StartsWith("等级提升")?1f:mechanism?.35f:.45f));
-            Color face=color;
-            if(textMesh!=null)textMesh.color=new Color(face.r,face.g,face.b,alpha);
-            foreach(TextMesh edge in outline)if(edge!=null)edge.color=critical?new Color(.24f,.055f,.008f,alpha*.98f):new Color(.045f,.025f,.035f,alpha*.98f);
+            life+=Time.deltaTime;
             if(life>Duration)Retire();
         }
         private void LateUpdate()
@@ -238,32 +226,13 @@ namespace Emberfall
                 float aspect;
                 if(!number.metrics.TryGet(fontRevision,out aspect))
                 {aspect=MeasureAspect(number.display,number.critical)+(number.damageIcon==null?0:.9f);number.metrics=new CombatTextMetrics(aspect,fontRevision);}
-                if(number.textRenderer!=null)
-                {
-                    Vector3 actual=number.textRenderer.localBounds.size;
-                    if(actual.y>.001f)aspect=Mathf.Max(aspect,actual.x/actual.y+(number.critical?.16f:0));
-                }
                 Vector2 size=ScaledSize(aspect,number.critical)*(number.mechanism?1f:number.DamageFloatScale);
                 int slot;CombatTextLayout.Box box;
                 if(point.z<=0||!Place(point,size,null,number,camera,out slot,out box)){number.Retire();continue;}
-                number.lane=slot;number.bounds=box;number.ApplyBox(camera);
+                number.lane=slot;number.bounds=box;
             }
         }
         private float DamageFloatScale {get{return Mathf.Lerp(1.22f,.55f,Mathf.Clamp01(life/Duration));}}
-        private void ApplyBox(Camera camera)
-        {
-            if(camera==null||textRenderer==null)return;
-            float depth=Mathf.Max(1,Vector3.Dot(originAtSpawn-camera.transform.position,camera.transform.forward));
-            transform.position=camera.ScreenToWorldPoint(new Vector3(bounds.X+bounds.Width*.5f,bounds.Y+bounds.Height*.5f,depth));
-            transform.rotation=camera.transform.rotation*(critical?Quaternion.Euler(0,0,8f):Quaternion.identity);
-            float glyphHeight=textRenderer.localBounds.size.y;if(glyphHeight<=.001f||camera.pixelHeight<=0)return;
-            float visibleHeight=camera.orthographic?camera.orthographicSize*2:depth*2*Mathf.Tan(camera.fieldOfView*Mathf.Deg2Rad*.5f);
-            float pixels=21*EffectPreferences.CombatTextScale*Density*(critical?1.28f:1);
-            float edgeOffset=glyphHeight/Mathf.Max(1,pixels)*(critical?1.25f:1f);
-            for(int i=0;i<outline.Length;i++)if(outline[i]!=null)outline[i].transform.localPosition=new Vector3(i%2==0?-edgeOffset:edgeOffset,i<2?-edgeOffset:edgeOffset,.001f);
-            float pop=mechanism?(critical?1+Mathf.Max(0,1-life/.16f)*.14f*EffectPreferences.EffectsScale:1):DamageFloatScale;
-            transform.localScale=Vector3.one*(pixels*visibleHeight/(camera.pixelHeight*glyphHeight)*pop);
-        }
         private void ReleaseCount(){if(!counted)return;counted=false;ActiveCount=Mathf.Max(0,ActiveCount-1);if(mechanism)MechanismCount=Mathf.Max(0,MechanismCount-1);visible.Remove(this);if(ActiveCount==0)UnwatchFont();}
         public static void ClearForWorldTransition()
         {
@@ -275,7 +244,7 @@ namespace Emberfall
             }
             reflowFrame=-1;
         }
-        private void Retire(){ReleaseCount();gameObject.SetActive(false);Destroy(gameObject);}
+        private void Retire(){if(!counted)return;ReleaseCount();gameObject.SetActive(false);if(idle.Count<40)idle.Push(this);else Destroy(gameObject);}
         private void OnDisable(){ReleaseCount();}
         private void OnDestroy(){ReleaseCount();}
     }

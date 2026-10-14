@@ -51,8 +51,6 @@ namespace Emberfall
         {
             float u=MobileControls.Active?TouchRatio:1;
             Rect r=new Rect(width*.5f-160*u,height*.23f,320*u,62*u);
-            Text(new Rect(r.x,r.y,r.width,38*u),"挑战完成",Mathf.RoundToInt(24*u),gold,true,false,TextAnchor.MiddleCenter);
-            Text(new Rect(r.x,r.y+36*u,r.width,22*u),"通关奖励即将揭晓",Mathf.RoundToInt(12*u),pale,false,false,TextAnchor.MiddleCenter);
             float pulse=.5f+.5f*Mathf.Sin(Time.unscaledTime*4);
             Fill(new Rect(r.center.x-(60+24*pulse)*u,r.yMax,(120+48*pulse)*u,2*u),new Color(gold.r,gold.g,gold.b,.4f+.4f*pulse));
         }
@@ -213,9 +211,12 @@ namespace Emberfall
                     Color before=GUI.color;
                     float reveal=Mathf.Clamp01((progress-.42f)/.18f);
                     float opacity=before.a*reveal;
-                    DrawChestItemGrounding(icon,item.QualityColor,opacity,selected);
-                    // Keep the reward opaque; selection belongs to the surrounding glow.
-                    Color artTint=item.QualityColor;artTint.a=opacity;
+                    // Settlement pauses gameplay, so selection uses the UI clock.
+                    // Only the granted chest pulses; hit bounds and quantity stay stable.
+                    float pulse=selected?.5f+.5f*Mathf.Cos(Time.unscaledTime*Mathf.PI*2/1.2f):0;
+                    DrawChestItemGrounding(icon,item.QualityColor,opacity,selected,pulse);
+                    Color artTint=item.QualityColor;
+                    artTint.a=opacity*(selected?Mathf.Lerp(EffectPreferences.ReducedEffects?.8f:.5f,1f,pulse):1f);
                     DrawIcon(new Rect(icon.x+4*u,icon.y+4*u,icon.width-8*u,icon.height-8*u),item.Icon,artTint);
                     GUI.color=new Color(before.r,before.g,before.b,opacity);
                     if(item.Quantity>1)DrawOutlinedIconText(new Rect(icon.x,icon.yMax-16*u,icon.width-2*u,16*u),item.Quantity.ToString(),Mathf.RoundToInt(11*u),pale,TextAnchor.MiddleRight);
@@ -227,7 +228,7 @@ namespace Emberfall
                 if(side>=80*u)Text(new Rect(square.x,square.yMax-18*u,square.width,18*u),selected?"已获得":"未选中",Mathf.RoundToInt(11*u),selected?gold:muted,true,false,TextAnchor.MiddleCenter);
             }
         }
-        private void DrawChestItemGrounding(Rect icon,Color rarity,float opacity,bool selected)
+        private void DrawChestItemGrounding(Rect icon,Color rarity,float opacity,bool selected,float pulse)
         {
             if(Event.current.type!=EventType.Repaint)return;
             Color previous=GUI.color;
@@ -239,7 +240,8 @@ namespace Emberfall
                 float w=icon.width*1.06f*scale,h=icon.height*.22f*scale;
                 GUI.color=new Color(.045f,.025f,.008f,.065f*opacity);
                 GUI.DrawTexture(new Rect(icon.center.x-w*.5f,icon.yMax-icon.height*.11f-h*.5f,w,h),disc,ScaleMode.StretchToFill,true);
-                Color light=Color.Lerp(gold,rarity,.22f);light.a=(selected?.035f:.018f)*opacity;
+                Color light=Color.Lerp(gold,rarity,.22f);
+                light.a=(selected?Mathf.Lerp(.025f,EffectPreferences.ReducedEffects?.055f:.10f,pulse):.018f)*opacity;
                 GUI.color=light;
                 float glowW=icon.width*1.22f*scale,glowH=icon.height*.70f*scale;
                 GUI.DrawTexture(new Rect(icon.center.x-glowW*.5f,icon.center.y+icon.height*.14f-glowH*.5f,glowW,glowH),disc,ScaleMode.StretchToFill,true);

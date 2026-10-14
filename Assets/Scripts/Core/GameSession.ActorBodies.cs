@@ -57,6 +57,8 @@ namespace Emberfall
         internal Vector3 ClipPlayerAirMotion(Vector3 from,Vector3 desired)
         {return ClipPlayerBodyMotion(from,desired);}
         internal Vector3 MovePlayerWithBodies(Vector3 from,Vector3 delta,float dt,ref float fallSpeed,float radius=.45f)
+        {using(PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.ActorSlide))return MovePlayerWithBodiesMeasured(from,delta,dt,ref fallSpeed,radius);}
+        private Vector3 MovePlayerWithBodiesMeasured(Vector3 from,Vector3 delta,float dt,ref float fallSpeed,float radius)
         {
             float initialFall=fallSpeed;
             Vector3 intended=WorldTraversal.MovePlayer(from,delta,dt,ref fallSpeed,radius);
@@ -70,6 +72,22 @@ namespace Emberfall
             Vector3 z=ClipPlayerBodyMotion(from,WorldTraversal.MovePlayer(from,new Vector3(0,0,delta.z),dt,ref zFall,radius));
             if((x-from).sqrMagnitude>(result-from).sqrMagnitude){result=x;fallSpeed=xFall;}
             if((z-from).sqrMagnitude>(result-from).sqrMagnitude){result=z;fallSpeed=zFall;}
+            // Axis-only retries cannot slide past an actor directly ahead.
+            if(CombatFx.Flat(result-from).sqrMagnitude<CombatFx.Flat(delta).sqrMagnitude*.25f)
+            {
+                for(int angle=30;angle<=75;angle+=15)
+                {
+                    for(int side=-1;side<=1;side+=2)
+                    {
+                        float slideFall=initialFall;
+                        Vector3 slide=Quaternion.Euler(0,angle*side,0)*delta;
+                        Vector3 candidate=ClipPlayerBodyMotion(from,WorldTraversal.MovePlayer(from,slide,dt,ref slideFall,radius));
+                        if(Vector3.Dot(CombatFx.Flat(candidate-from),CombatFx.Flat(delta))>
+                           Vector3.Dot(CombatFx.Flat(result-from),CombatFx.Flat(delta))+.000001f)
+                        {result=candidate;fallSpeed=slideFall;}
+                    }
+                }
+            }
             if(fallSpeed>0&&result.y>intended.y+.001f)fallSpeed=0;
             return result;
         }

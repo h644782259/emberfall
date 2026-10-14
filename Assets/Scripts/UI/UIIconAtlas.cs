@@ -104,7 +104,7 @@ namespace Emberfall
                     ink.Line(32, 9, 32, 53, 2);
                     break;
                 case 4:
-                    if (hero == HeroClass.Vanguard) ink.Shield();
+                    if (hero == HeroClass.Vanguard) { ink.Arc(29,32,24,-70,70,5);ink.Arrow(7,32,53,32); }
                     else if (hero == HeroClass.Arcanist) ink.Polygon(new[] { V(35, 5), V(15, 35), V(29, 33), V(24, 60), V(50, 25), V(36, 27) });
                     else { ink.Disc(30,12,5); ink.Line(30,19,34,31,6); ink.Line(34,31,46,37,5); ink.Arrow(16,15,16,39); ink.color=new Color(1f,.63f,.22f); ink.Polygon(new[]{V(8,53),V(20,39),V(30,49),V(42,39),V(57,53)}); }
                     break;
@@ -143,6 +143,23 @@ namespace Emberfall
             int key=glow?2000002:2000001;Texture2D texture;if(cache.TryGetValue(key,out texture))return texture;
             var ink=new Icon(Color.white,64);ink.Ring(32,32,30,glow?4f:1.1f);
             texture=ink.Finish(glow?"Soft control halo":"Continuous control rim");cache[key]=texture;return texture;
+        }
+        public static Texture2D ObjectiveDirection()
+        {
+            const int key=2000020;
+            Texture2D texture;if(cache.TryGetValue(key,out texture))return texture;
+            var ink=new Icon(Color.white,128);
+            ink.color=Color.white;ink.Arrow(32,47,32,17);
+            texture=ink.Finish("Small objective arrow",true,true);
+            cache[key]=texture;return texture;
+        }
+        public static Texture2D ObjectiveDirectionRing()
+        {
+            const int key=2000031;
+            Texture2D texture;if(cache.TryGetValue(key,out texture))return texture;
+            var ink=new Icon(new Color(1,1,1,.65f),128);ink.Ring(32,32,26,2.5f);
+            texture=ink.Finish("Fixed objective direction rim",true,true);
+            cache[key]=texture;return texture;
         }
         public static Texture2D CompanionCommand(bool recall,bool recalled=false)
         {
@@ -525,7 +542,7 @@ namespace Emberfall
                     }
                 }
             }
-            public Texture2D Finish(string name,bool monochrome=false)
+            public Texture2D Finish(string name,bool monochrome=false,bool mipmaps=false)
             {
                 Color[] output = pixels;
                 if (outputSize != Size)
@@ -542,8 +559,8 @@ namespace Emberfall
                     }
                 }
                 if(monochrome)for(int i=0;i<output.Length;i++)output[i]=new Color(1,1,1,output[i].a);
-                var texture = new Texture2D(outputSize, outputSize, TextureFormat.RGBA32, false) { name = name, filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.HideAndDontSave };
-                texture.SetPixels(output); texture.Apply(false, true); return texture;
+                var texture = new Texture2D(outputSize, outputSize, TextureFormat.RGBA32, mipmaps) { name = name, filterMode = mipmaps?FilterMode.Trilinear:FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.HideAndDontSave };
+                texture.SetPixels(output); texture.Apply(mipmaps, true); return texture;
             }
         }
     }

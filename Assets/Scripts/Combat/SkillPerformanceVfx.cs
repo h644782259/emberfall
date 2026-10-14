@@ -17,6 +17,7 @@ namespace Emberfall
         private Transform[] parts;private Renderer[] surfaces;private MaterialPropertyBlock block;
         private readonly System.Collections.Generic.List<Mesh> ownedBodies=new System.Collections.Generic.List<Mesh>();
         private Light glow;private ParticleSystem particles;
+        private SkillFlowVolume flowVolume;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Reset(){ResetDischarges();if(windWall!=null)Destroy(windWall);if(orb!=null)Destroy(orb);if(energy!=null)Destroy(energy);if(body!=null)Destroy(body);body=null;windWall=orb=null;energy=null;if(lens!=null)Destroy(lens);lens=null;if(lensQuad!=null)Destroy(lensQuad);lensQuad=null;lights=0;}
         private static void Assets()
@@ -74,12 +75,17 @@ namespace Emberfall
             awaitingContact=kind==SkillPerformanceBody.Fire||kind==SkillPerformanceBody.Poison;
             windLayers=EffectPreferences.ReducedEffects?1:2;
             int count=kind==SkillPerformanceBody.Tornado?(EffectPreferences.ReducedEffects?5:10):kind==SkillPerformanceBody.Gravity||kind==SkillPerformanceBody.Pressure?1:kind==SkillPerformanceBody.Frost?9:kind==SkillPerformanceBody.ArrowVolley?(EffectPreferences.ReducedEffects?5:12):kind==SkillPerformanceBody.Meteor?3:kind==SkillPerformanceBody.Poison?(EffectPreferences.ReducedEffects?2:3):EffectPreferences.ReducedEffects?3:5;
+            if(kind==SkillPerformanceBody.Fire)count=0;
+            if(kind==SkillPerformanceBody.Meteor)count=1;
+            if(kind==SkillPerformanceBody.Frost)count=5;
             // Wind dust is secondary decoration. The field body, flying arrows,
             // meteors and real release/contact beats keep their full identity.
             if(kind==SkillPerformanceBody.Tornado&&!EffectPreferences.ReducedEffects)
                 count=windLayers+Mathf.Max(3,Mathf.RoundToInt((count-windLayers)*GraphicsQualityRuntime.Current.DecorativeEffectsScale));
             parts=new Transform[count];surfaces=new Renderer[count];windVelocity=new Vector3[count];spiritVelocity=new Vector3[count];
             Color tint=kind==SkillPerformanceBody.Gravity?new Color(1f,.32f,.025f):kind==SkillPerformanceBody.Meteor||kind==SkillPerformanceBody.Fire?new Color(1,.32f,.045f):kind==SkillPerformanceBody.Poison?new Color(.32f,.43f,.16f):kind==SkillPerformanceBody.Frost||kind==SkillPerformanceBody.Lightning?new Color(.3f,.75f,1f):GameBalance.ClassColor(owner.HeroClass);
+            if(kind==SkillPerformanceBody.Fire||kind==SkillPerformanceBody.Poison||kind==SkillPerformanceBody.Frost||kind==SkillPerformanceBody.Spirit)
+                flowVolume=new SkillFlowVolume(transform,kind==SkillPerformanceBody.Fire?SkillFlowVolume.Kind.Fire:kind==SkillPerformanceBody.Poison?SkillFlowVolume.Kind.Poison:kind==SkillPerformanceBody.Frost?SkillFlowVolume.Kind.Frost:SkillFlowVolume.Kind.Spirit,size,kind==SkillPerformanceBody.Fire?1.25f:1.2f,tint,airy:kind==SkillPerformanceBody.Fire);
             for(int i=0;i<count;i++)
             {
                 if(kind==SkillPerformanceBody.ArrowVolley)Add(i,HeroSkillBodyAssets.Spell("Arrow"),new Vector3(1.15f,.6f,2.5f),Vector3.zero,Quaternion.identity,new Color(1,.58f,.055f));
@@ -96,12 +102,12 @@ namespace Emberfall
                 }
                 else if(kind==SkillPerformanceBody.Tornado)
                 {
-                    if(i<windLayers)Add(i,windWall,new Vector3(size*(i==0?.50f:.34f),i==0?.65f:.45f,size*(i==0?.46f:.36f)),Vector3.up*(i==0?.95f:1.6f),Quaternion.Euler(0,i*120,0),new Color(.48f,.43f,.32f));
+                    if(i<windLayers)Add(i,windWall,new Vector3(size*(i==0?.50f:.34f),i==0?.65f:.45f,size*(i==0?.46f:.36f)),Vector3.up*(i==0?.95f:1.6f),Quaternion.Euler(0,i*120,0),CombatFx.VanguardColor(2));
                     else
                     {
                         float angle=i*2.399963f;Vector3 radial=new Vector3(Mathf.Cos(angle),0,Mathf.Sin(angle));
                         bool blade=i%2==0;
-                        Add(i,blade?HeroSkillBodyAssets.Spell("Sword"):HeroSkillBodyAssets.Rock,blade?new Vector3(1f,1.45f,.85f):Vector3.one*(.16f+(i%3)*.1f),radial*size*.34f+Vector3.up*(.45f+(i%4)*.36f),Quaternion.Euler(i*29,i*67,20),blade?new Color(.52f,.62f,.72f):new Color(.4f,.34f,.25f));
+                        Add(i,blade?HeroSkillBodyAssets.Spell("Sword"):HeroSkillBodyAssets.Rock,blade?new Vector3(1f,1.45f,.85f):Vector3.one*(.16f+(i%3)*.1f),radial*size*.34f+Vector3.up*(.45f+(i%4)*.36f),Quaternion.Euler(i*29,i*67,20),blade?CombatFx.VanguardColor(2):new Color(.4f,.34f,.25f));
                         windVelocity[i]=Vector3.Cross(Vector3.up,radial)*3f+Vector3.up*1.8f;
                     }
                 }
@@ -122,15 +128,16 @@ namespace Emberfall
                     Vector3 dimensions=new Vector3(.6f,1.7f+i*.35f,.6f);Quaternion rotation=Quaternion.Euler(0,i*120,0);
                     if(kind==SkillPerformanceBody.Frost)
                     {
-                        float angle=(i-1)*Mathf.PI*2/(count-1);
-                        at=i==0?Vector3.zero:new Vector3(Mathf.Cos(angle),0,Mathf.Sin(angle))*size*.78f;
-                        dimensions=new Vector3(size*.24f,EnemyImpactMotion.FrostContactHeight,size*.24f);
+                        float angle=i*2.399963f;
+                        at=i==0?Vector3.zero:new Vector3(Mathf.Cos(angle),0,Mathf.Sin(angle))*size*Mathf.Sqrt(i/(float)count)*.72f;
+                        dimensions=new Vector3(size*.22f,EnemyImpactMotion.FrostContactHeight*(1-i*.08f),size*.22f);
                     }
                     bool dry=kind!=SkillPerformanceBody.Fire||GroundSkillSurface.TryPlaceAttached(transform,shape,ref at,ref dimensions,rotation,size);
                     Mesh grounded=dry?AnchoredImpactMesh.Create(shape,transform,at,dimensions,rotation):new Mesh{name="Fire contact / no dry fuel support"};ownedBodies.Add(grounded);
                     Add(i,grounded,Vector3.one,Vector3.zero,Quaternion.identity,tint);
                 }
             }
+            if(kind==SkillPerformanceBody.Meteor)flowVolume=new SkillFlowVolume(parts[0],SkillFlowVolume.Kind.Fire,.75f,2.2f,tint,false);
             if(awaitingContact||kind==SkillPerformanceBody.ArrowVolley||kind==SkillPerformanceBody.Meteor)foreach(var surface in surfaces)surface.enabled=false;
             var element=kind==SkillPerformanceBody.Lightning?ElementalCombatVfx.Element.Lightning:kind==SkillPerformanceBody.Meteor||kind==SkillPerformanceBody.Fire?ElementalCombatVfx.Element.Fire:kind==SkillPerformanceBody.Poison?ElementalCombatVfx.Element.Poison:ElementalCombatVfx.Element.Ice;
             float decoration=GraphicsQualityRuntime.Current.DecorativeEffectsScale;
@@ -261,8 +268,9 @@ namespace Emberfall
             age+=Time.deltaTime;if(beatPreparedFrame!=Time.frameCount)beatAge+=Time.deltaTime;if(age>=life){Retire();return;}
             if(kind==SkillPerformanceBody.GravityCollapse){AnimateGravityCollapse();return;}
             if(bound)transform.position=authority.position;
-            float envelope=Mathf.Min(Mathf.Clamp01(age/.22f),Mathf.Clamp01((life-age)/.55f));
+            float envelope=Mathf.Min(Mathf.SmoothStep(0,1,age/.22f),Mathf.SmoothStep(0,1,(life-age)/.55f));
             if(kind==SkillPerformanceBody.ArrowVolley||kind==SkillPerformanceBody.Meteor)envelope=1;
+            flowVolume?.Draw(age,awaitingContact||kind==SkillPerformanceBody.Meteor&&!flightArmed?0:envelope);
             for(int i=0;i<parts.Length;i++)
             {
                 if(kind==SkillPerformanceBody.Tornado)AnimateWind(i);
@@ -273,15 +281,19 @@ namespace Emberfall
                 surfaces[i].GetPropertyBlock(block);float opacity=(kind==SkillPerformanceBody.Lightning?DischargeOpacity(i):envelope)*(kind==SkillPerformanceBody.Tornado?(i<windLayers?(i==0?.20f:.09f):1):kind==SkillPerformanceBody.Gravity&&i>0?.68f:1);
                 if(kind==SkillPerformanceBody.Pressure)
                 {parts[i].localPosition=Vector3.up*(3.6f-.25f*Mathf.SmoothStep(0,1,age/.5f)+(settling?.6f*Mathf.Clamp01(beatAge):0));opacity*=.55f;}
-                if(surfaces[i].sharedMaterial==body)opacity=SkillVisualAftermathTiming.Coverage(life-age);
+                if(surfaces[i].sharedMaterial==body)
+                {
+                    opacity=SkillVisualAftermathTiming.Coverage(life-age);
+                    if(kind==SkillPerformanceBody.Spirit)opacity*=Mathf.SmoothStep(0,1,age/.22f);
+                }
                 if(settling)opacity*=SkillVisualAftermathTiming.Coverage(life-age,.6f);
-                block.SetFloat("_Opacity",opacity);block.SetFloat("_Phase",age+i*.7f);surfaces[i].SetPropertyBlock(block);
+                block.SetFloat("_Opacity",opacity);block.SetFloat("_Phase",age);surfaces[i].SetPropertyBlock(block);
             }
             if(flightArmed)AnimateFlight();
-            if(glow!=null)glow.intensity=awaitingContact?0:kind==SkillPerformanceBody.Lightning?DischargeOpacity(0)*1.7f:envelope*(1.1f+.3f*Mathf.Sin(age*11));
+            if(glow!=null)glow.intensity=awaitingContact?0:kind==SkillPerformanceBody.Lightning?DischargeOpacity(0)*1.7f:envelope*(1.05f+.08f*Mathf.Sin(age*3.2f));
         }
         internal void Retire(){if(retired)return;retired=true;gameObject.SetActive(false);Destroy(gameObject);}
-        private void OnDisable(){if(ownsLight){ownsLight=false;lights=Mathf.Max(0,lights-1);}}
+        private void OnDisable(){flowVolume?.Dispose();flowVolume=null;if(ownsLight){ownsLight=false;lights=Mathf.Max(0,lights-1);}}
         private void OnDestroy(){foreach(var mesh in ownedBodies)if(mesh!=null)Destroy(mesh);ownedBodies.Clear();}
     }
 }

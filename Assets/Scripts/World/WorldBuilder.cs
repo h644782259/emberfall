@@ -601,6 +601,7 @@ namespace Emberfall
                 if(!SetNaturalTreeTrunkBounds(obstacle,tree))
                     SetSceneryLocalBounds(obstacle,parent,new Bounds(p+new Vector3(.05f,1.45f,.025f)*size,
                         new Vector3(.36f,2.9f,.36f)*size),r.TerrainFollowing);
+                WorldTraversal.MatchNavigationToPhysicalBounds(obstacle);
             }
         }
 

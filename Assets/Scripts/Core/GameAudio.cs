@@ -435,14 +435,14 @@ namespace Emberfall
             {
                 double t=i/(double)SampleRate,p=t/duration;state^=state<<13;state^=state>>17;state^=state<<5;double noise=state/(double)uint.MaxValue*2-1;
                 double tone=180+skill*43,value;
-                if(hero==HeroClass.Vanguard)value=noise*Math.Exp(-p*(4+skill%3))*.55+Math.Sin(Tau*(tone*t-90*t*t))*.3*Math.Exp(-p*5);
+                if(hero==HeroClass.Vanguard)value=noise*Math.Exp(-t*65)*.16+Math.Sin(Tau*(tone*t-90*t*t))*.5*Math.Exp(-t*22);
                 else if(hero==HeroClass.Arcanist)
                 {
                     bool fire=skill==1||skill==5||skill==8;
-                    value=fire?(noise*.6+Math.Sin(Tau*(65+skill*8)*t)*.3)*Math.Sin(Math.PI*p)*Math.Exp(-p*1.5):(Bell(t,900+skill*115)+Bell(t-.06,1500+skill*95)*.6+noise*.12*Math.Exp(-p*9));
+                    value=fire?noise*.12*Math.Exp(-t*75)+Math.Sin(Tau*((150+skill*12)*t-120*t*t))*.65*Math.Exp(-t*24):(Bell(t,900+skill*115)+Bell(t-.06,1500+skill*95)*.6+noise*.025*Math.Exp(-t*80));
                 }
-                else if(hero==HeroClass.Ranger)value=Math.Sin(Tau*(tone*2*t+50*t*t))*Math.Exp(-p*13)*.65+noise*Math.Sin(Math.PI*p)*Math.Exp(-p*4)*.45;
-                else value=Bell(t,660+skill*64)*.6+Bell(t-.055,990+skill*91)*.4+Bell(t-.12,1320+skill*110)*.25+noise*.035*Math.Sin(Math.PI*p)*Math.Exp(-p*5);
+                else if(hero==HeroClass.Ranger)value=Math.Sin(Tau*(tone*2*t+50*t*t))*Math.Exp(-t*40)*.65+noise*Math.Exp(-t*65)*.12;
+                else value=Bell(t,660+skill*64)*.6+Bell(t-.055,990+skill*91)*.4+Bell(t-.12,1320+skill*110)*.25;
                 double envelope=Math.Min(1,t/.004)*Math.Min(1,(duration-t)/.025);samples[i]=(float)(value*Math.Max(0,envelope));peak=Math.Max(peak,Math.Abs(samples[i]));
             }
             for(int i=0;i<samples.Length;i++)samples[i]*=.7f/peak;

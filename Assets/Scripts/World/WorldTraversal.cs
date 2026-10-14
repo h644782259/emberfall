@@ -235,6 +235,17 @@ namespace Emberfall
             for(int i=0;i<obstacles.Count;i++)if(object.ReferenceEquals(obstacles[i].Handle,handle))
             {var o=obstacles[i];o.HasPhysicalBounds=true;o.PhysicalCenter=center;o.PhysicalHalf=size*.5f;obstacles[i]=o;solidIndexRevision=-1;return;}
         }
+        internal static void MatchNavigationToPhysicalBounds(ObstacleHandle handle)
+        {
+            for(int i=0;i<obstacles.Count;i++)
+            {
+                var o=obstacles[i];
+                if(!object.ReferenceEquals(o.Handle,handle)||!o.HasPhysicalBounds)continue;
+                o.Center=new Vector2(o.PhysicalCenter.x,o.PhysicalCenter.z);
+                o.Radius=0;o.Half=new Vector2(o.PhysicalHalf.x,o.PhysicalHalf.z);
+                obstacles[i]=o;grids.Clear();revision++;solidIndexRevision=-1;return;
+            }
+        }
         public static bool HasLineOfSightIgnoringObstacle(Vector3 from,Vector3 to,ObstacleHandle handle)
         {return ClearSegment(from,to,.04f,true,handle);}
         public static void SetRiver(Vector3[] centerline, float width, Rect crossing)

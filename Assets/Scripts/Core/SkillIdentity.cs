@@ -34,7 +34,7 @@ namespace Emberfall
         private static readonly string[] families = { "vanguard", "arcanist", "ranger", "summoner" };
         private static readonly SkillPrimaryBody[,] bodies = {
             { SkillPrimaryBody.ForgedBlade, SkillPrimaryBody.ForgedBlade, SkillPrimaryBody.DustStorm, SkillPrimaryBody.WeaponMastery,
-              SkillPrimaryBody.GuardArmor, SkillPrimaryBody.ChargeWarrior, SkillPrimaryBody.LifeBanner, SkillPrimaryBody.GroundFault,
+              SkillPrimaryBody.ForgedBlade, SkillPrimaryBody.ChargeWarrior, SkillPrimaryBody.LifeBanner, SkillPrimaryBody.GroundFault,
               SkillPrimaryBody.GuardArmor, SkillPrimaryBody.JudgmentSword },
             { SkillPrimaryBody.IceCrystal, SkillPrimaryBody.Meteor, SkillPrimaryBody.Lightning, SkillPrimaryBody.WeaponMastery,
               SkillPrimaryBody.LightningChain, SkillPrimaryBody.FrostStride, SkillPrimaryBody.IceLightning, SkillPrimaryBody.GravityCore,
@@ -67,7 +67,7 @@ namespace Emberfall
         public static SkillIdentityRecipe Describe(HeroClass hero, int slot)
         {
             Validate(hero, slot);
-            bool caster = slot == 3 || hero == HeroClass.Vanguard && (slot == 4 || slot == 5 || slot == 8)
+            bool caster = slot == 3 || hero == HeroClass.Vanguard && (slot == 5 || slot == 8)
                 || hero == HeroClass.Arcanist && slot == 5 || hero == HeroClass.Ranger && (slot == 4 || slot == 8);
             return new SkillIdentityRecipe(hero, slot, bodies[(int)hero, slot], photograph[(int)hero, slot], caster);
         }

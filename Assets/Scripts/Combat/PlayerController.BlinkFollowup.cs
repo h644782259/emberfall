@@ -61,7 +61,6 @@ namespace Emberfall
                 HitArea(at,radius,Damage(BlinkFollowupDamageMultiplier),frost?.45f:0,frost?.2f:.55f,cast);
             }
             GameAudio.PlaySkill(HeroClass,0);session.RecordCombatAction("闪现衔接");
-            session.SpawnMechanismText(transform.position+Vector3.up*2.5f,BlinkFollowupName,tint);
         }
     }
 }

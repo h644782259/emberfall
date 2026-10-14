@@ -26,22 +26,26 @@ Shader "Emberfall/Layered Spell Energy"
     float3 n=normalize(i.normal);float3 light=normalize(UnityWorldSpaceLightDir(i.world));UNITY_LIGHT_ATTENUATION(attenuation,i,i.world);
     float3 illumination=max(float3(.10,.10,.10),ShadeSH9(float4(n,1)))+_LightColor0.rgb*saturate(dot(n,light))*attenuation;
     float rim=pow(1-saturate(abs(dot(n,normalize(i.view)))),3);
-    float grain=noise(i.local*6+float3(_Phase*.8,-_Phase*2,0));float fine=noise(i.local*28+_Phase);
-    float streams=pow(.5+.5*sin(i.uv.x*97-grain*7-_Phase*13),5);
+    float3 flow=i.world*3+float3(_Phase*.35,-_Phase*.9,0);
+    float grain=noise(flow);float fine=noise(flow*2.13+grain);
+    float streams=smoothstep(.52,.86,grain*.65+fine*.35);
     float shade=saturate(dot(illumination,float3(.21,.72,.07)));
     float3 dark=_Tint.rgb*.15,hot=lerp(_Tint.rgb,float3(1,.96,.82),.10);
     float3 color=lerp(dark,_Tint.rgb,grain)*illumination+hot*(streams*.22+pow(rim,4)*.18+pow(fine,10)*.25)*_Heat;
-    float alpha=_Opacity*_Tint.a*(.5+.5*smoothstep(.15,.75,grain));
+    float alpha=_Opacity*_Tint.a*smoothstep(.12,.72,grain)*(.25+.75*smoothstep(.02,.55,abs(dot(n,normalize(i.view)))));
     if(_Tint.r>_Tint.b*1.8&&_Tint.r>_Tint.g*1.25&&_Wispy<.5&&_DarkCore<.5)
     {
-     float2 flameUV=float2(frac(i.uv.x+.045*sin(_Phase*2+i.local.y*3)),saturate(i.uv.y*.92+.035*sin(_Phase*3)));
-     float4 combustion=tex2D(_FlameTex,flameUV);
-     float3 hotMatter=combustion.rgb*float3(.94,.64,.22);
-     color=hotMatter*(.74+.16*shade);
-     // Combustion keeps its own modest emission; no white shell or rigid rim.
-     alpha=_Opacity*_Tint.a*smoothstep(.055,.55,combustion.a)*smoothstep(.16,.51,grain)*(.72+.28*abs(dot(n,normalize(i.view))));
+     // Match the field's continuous current across moving jets and residual fuel.
+     float3 current=i.world*2.1-float3(_Time.y*.16,_Time.y*1.8,_Time.y*.11);
+     float broad=noise(current);
+     float density=broad*.68+noise(current*2.07+float3(broad*1.4,0,broad))*.32;
+     float height=saturate(i.uv.y);
+     float temperature=saturate(density*.75+(1-height)*.32);
+     color=lerp(float3(.65,.065,.008),float3(1,.58,.09),smoothstep(.25,.85,temperature));
+     alpha=_Opacity*_Tint.a*smoothstep(.22,.72,density-height*.12)
+      *smoothstep(.02,.5,abs(dot(n,normalize(i.view))))*(1-smoothstep(.55,1,height));
     }
-    if(_Wispy>.5){float flow=noise(i.local*float3(5,9,5)+float3(_Phase*2,-_Phase*3,_Phase));float filaments=noise(i.local*float3(12,22,12)+float3(-_Phase*3,_Phase*2,0));float edge=smoothstep(0,.12,i.uv.y)*(1-smoothstep(.78,1,i.uv.y));alpha*=smoothstep(.25,.65,flow)*(.3+.7*filaments)*edge;color=lerp(_Tint.rgb*.35,_Tint.rgb*.9,flow)*illumination+hot*pow(rim,3)*.04;}
+    if(_Wispy>.5){float flow=noise(i.world*float3(2,3,2)+float3(_Phase*.7,-_Phase*1.8,_Phase*.3));float filaments=noise(i.world*float3(4,7,4)+float3(-_Phase,_Phase*1.4,0));float edge=smoothstep(0,.12,i.uv.y)*(1-smoothstep(.78,1,i.uv.y));alpha*=smoothstep(.25,.65,flow)*(.3+.7*filaments)*edge;color=lerp(_Tint.rgb*.35,_Tint.rgb*.9,flow)*illumination+hot*pow(rim,3)*.04;}
     if(_DarkCore>.5){color=float3(.008,.005,.023)+_Tint.rgb*pow(rim,2)*1.2;alpha=_Opacity;}
     if(_DarkCore<.5)
     {

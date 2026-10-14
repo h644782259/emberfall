@@ -10,7 +10,9 @@ namespace Emberfall
         private GameObject[] ice = new GameObject[3];
         private GameObject frost;
         private GameObject[] vulnerability = new GameObject[2];
-        private Material iceMaterial, markMaterial;
+        private static Material iceMaterial, markMaterial;
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetMaterials(){if(iceMaterial!=null)Destroy(iceMaterial);if(markMaterial!=null)Destroy(markMaterial);iceMaterial=markMaterial=null;}
         internal static void Attach(EnemyController owner)
         {
             var visual=owner.GetComponent<EnemyStatusVisual>()??owner.gameObject.AddComponent<EnemyStatusVisual>();
@@ -55,8 +57,6 @@ namespace Emberfall
             }
             float emphasis=EnemyStatusVisualRules.Emphasis(selected,alive&&enemy.IsBoss,alive&&enemy.Tier==EnemyController.ThreatTier.Elite,EffectPreferences.ReducedEffects);
             if(frost!=null)AttachBody(frost,bodyAnchor,frostPoint,new Vector3(.14f,.14f,.06f)*emphasis);
-            if(iceMaterial!=null)iceMaterial.color=new Color(.38f,.83f,1f);
-            if(markMaterial!=null)markMaterial.color=new Color(1f,.63f,.22f);
         }
         private static void AttachBody(GameObject piece,Transform anchor,Vector3 point,Vector3 worldSize)
         {
@@ -72,7 +72,7 @@ namespace Emberfall
         {
             if(iceMaterial!=null)return;
             // Opaque lit material respects the scene depth buffer and never draws through walls.
-            iceMaterial=new Material(Shader.Find("Standard"));markMaterial=new Material(Shader.Find("Standard"));
+            iceMaterial=new Material(Shader.Find("Standard")){color=new Color(.38f,.83f,1f)};markMaterial=new Material(Shader.Find("Standard")){color=new Color(1f,.63f,.22f)};
         }
         private GameObject Piece(string name,Material material,Vector3 at,Vector3 scale,Vector3 rotation)
         {
@@ -84,6 +84,6 @@ namespace Emberfall
         }
         private static void Set(GameObject obj,bool enabled){if(obj!=null&&obj.activeSelf!=enabled)obj.SetActive(enabled);}
         private void OnDisable(){foreach(var obj in ice)Set(obj,false);Set(frost,false);foreach(var obj in vulnerability)Set(obj,false);}
-        private void OnDestroy(){if(status!=null)status.VisualStateChanged-=Sync;if(iceMaterial!=null)Destroy(iceMaterial);if(markMaterial!=null)Destroy(markMaterial);}
+        private void OnDestroy(){if(status!=null)status.VisualStateChanged-=Sync;}
     }
 }

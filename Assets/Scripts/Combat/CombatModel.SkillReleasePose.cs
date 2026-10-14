@@ -15,7 +15,7 @@ namespace Emberfall
             if(hero==HeroClass.Vanguard)
             {
                 switch(slot){case 0:return ReleaseGesture.Sweep;case 1:return ReleaseGesture.Stamp;case 2:return ReleaseGesture.StormBlade;
-                    case 4:return ReleaseGesture.Brace;case 5:return ReleaseGesture.Thrust;case 6:return ReleaseGesture.Rally;
+                    case 4:return ReleaseGesture.Sweep;case 5:return ReleaseGesture.Thrust;case 6:return ReleaseGesture.Rally;
                     case 7:return ReleaseGesture.Quake;case 8:return ReleaseGesture.Brace;default:return ReleaseGesture.Execution;}
             }
             if(hero==HeroClass.Arcanist)

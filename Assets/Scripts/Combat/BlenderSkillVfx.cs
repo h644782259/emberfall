@@ -91,7 +91,9 @@ namespace Emberfall
                 part.Transform.localPosition=at;part.Transform.localScale=part.Scale;part.Transform.localRotation=rotation;
                 float deadline=part.Motion==0?.62f:part.Motion==3?.72f:part.Motion==1?.85f:Life;
                 opacity=Mathf.Clamp01((deadline-age)/.075f);
-                block.SetColor("_Tint",part.Surface==1?new Color(.57f,.54f,.48f):new Color(.42f,.34f,.25f));
+                block.SetColor("_Tint",part.Surface==1?CombatFx.VanguardColor(shock?1:0):new Color(.42f,.34f,.25f));
+                block.SetFloat("_Engraving",part.Surface==1?1:0);
+                block.SetFloat("_CoreLight",part.Surface==1?.42f:0);
                 block.SetFloat("_Surface",part.Surface);block.SetFloat("_Opacity",opacity);block.SetFloat("_Phase",age);
                 block.SetFloat("_Heat",Mathf.Clamp01(1-age/.15f)*.4f);part.Renderer.SetPropertyBlock(block);
             }

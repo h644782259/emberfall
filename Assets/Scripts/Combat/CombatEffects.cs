@@ -5,6 +5,22 @@ namespace Emberfall
 {
     internal static class CombatFx
     {
+        internal static Color VanguardColor(int skill)
+        {
+            switch(skill)
+            {
+                case 0:return new Color(.12f,.72f,1f);
+                case 1:return new Color(1f,.38f,.08f);
+                case 2:return new Color(.20f,.88f,.72f);
+                case 3:return new Color(.95f,.22f,.16f);
+                case 4:return new Color(1f,.72f,.15f);
+                case 5:return new Color(.35f,.55f,1f);
+                case 6:return new Color(.22f,.90f,.45f);
+                case 7:return new Color(.62f,.30f,1f);
+                case 9:return new Color(1f,.48f,.12f);
+                default:return new Color(.24f,.78f,1f);
+            }
+        }
         public static GameObject Ring(Vector3 center, float radius, Color color, float lifetime, float width = .1f, bool expand = true, bool respectCover = false)
         {
             // Compatibility entry point for old contacts. A hit leaves material debris,
@@ -21,7 +37,8 @@ namespace Emberfall
         public static void WeaponSlash(PlayerController owner,CombatModel model,Vector3 center,Vector3 forward,float radius,Color color)
         {
             if(owner==null||model==null||!model.SwordActionActive)return;
-            FilledSkillVfx.Crescent(owner,center,forward,radius,color,model.WeaponSwingSide,CombatVisualPriority.ActionBody,essentialBody:true);
+            WeaponSlashRibbon.Spawn(owner,model,color);
+            if(radius>3f)FilledSkillVfx.Crescent(owner,center,forward,radius,color,model.WeaponSwingSide,CombatVisualPriority.ActionBody,essentialBody:true);
         }
 
         internal static void BurnContact(PlayerController owner,Vector3 point,bool finale=false)
@@ -325,8 +342,10 @@ namespace Emberfall
             trail.numCapVertices = 4; trail.numCornerVertices = 4;
             trail.startWidth = arrow ? .14f : .16f;
             trail.endWidth = 0;
+            trail.widthCurve = new AnimationCurve(new Keyframe(0,1),new Keyframe(.3f,.82f),new Keyframe(.75f,.25f),new Keyframe(1,0));
+            trail.widthMultiplier = arrow ? .14f : .16f;
             var gradient=new Gradient();
-            gradient.SetKeys(new[]{new GradientColorKey(Color.Lerp(tint,Color.white,.9f),0),new GradientColorKey(tint,.35f),new GradientColorKey(tint*.55f,1)},new[]{new GradientAlphaKey(.95f,0),new GradientAlphaKey(.55f,.4f),new GradientAlphaKey(0,1)});
+            gradient.SetKeys(new[]{new GradientColorKey(Color.Lerp(tint,Color.white,.25f),0),new GradientColorKey(tint,.35f),new GradientColorKey(tint*.55f,1)},new[]{new GradientAlphaKey(.72f,0),new GradientAlphaKey(.48f,.25f),new GradientAlphaKey(.16f,.7f),new GradientAlphaKey(0,1)});
             trail.colorGradient=gradient;
             trail.minVertexDistance = .035f;
             return projectile;
@@ -658,7 +677,8 @@ namespace Emberfall
                         solidImpactSpawned = true;
                         if (fireVisual || poisonVisual || lightningVisual)
                             ElementalCombatVfx.Area(transform, radius, fireVisual ? ElementalCombatVfx.Element.Fire :
-                                poisonVisual ? ElementalCombatVfx.Element.Poison : ElementalCombatVfx.Element.Lightning);
+                                poisonVisual ? ElementalCombatVfx.Element.Poison : ElementalCombatVfx.Element.Lightning,
+                                fieldBody:!fireVisual||performance==null&&duration>0);
                         if(visualRecipe==SkillVisualRecipe.Ice)ElementalCombatVfx.Area(transform,radius,ElementalCombatVfx.Element.Ice);
                         if(poisonVisual){ElementalCombatVfx.Burst(owner,transform.position,radius,ElementalCombatVfx.Element.Poison);FilledSkillVfx.PoisonVines(owner,transform.position,radius,color);}
                         if(visualRecipe==SkillVisualRecipe.Neutral&&statusSkill==1)FilledSkillVfx.TrapRelease(owner,transform.position,radius,color);

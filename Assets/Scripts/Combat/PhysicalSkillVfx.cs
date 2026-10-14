@@ -69,8 +69,8 @@ namespace Emberfall
             {
                 Vector3 point=pieces[i].position;bool contact=PhysicalSkillMotion.AdvanceSupported(ref point,ref velocity[i],ref supportRevision[i],extent[i],Time.deltaTime,slime?.05f:.28f,slime?.35f:.68f);pieces[i].position=point;
                 if(velocity[i].sqrMagnitude>.025f)pieces[i].Rotate(spin[i]*Time.deltaTime,Space.World);
-                if(slime&&contact)pieces[i].localScale=new Vector3(scales[i].x*1.65f,scales[i].y*.38f,scales[i].z*1.65f);
-                surfaces[i].GetPropertyBlock(block);block.SetFloat("_Opacity",Mathf.Clamp01((life-age)/.35f));surfaces[i].SetPropertyBlock(block);
+                if(slime&&contact)pieces[i].localScale=Vector3.Lerp(pieces[i].localScale,new Vector3(scales[i].x*1.65f,scales[i].y*.38f,scales[i].z*1.65f),1-Mathf.Exp(-18*Time.deltaTime));
+                surfaces[i].GetPropertyBlock(block);block.SetFloat("_Opacity",Mathf.SmoothStep(0,1,(life-age)/.35f));surfaces[i].SetPropertyBlock(block);
             }
         }
     }

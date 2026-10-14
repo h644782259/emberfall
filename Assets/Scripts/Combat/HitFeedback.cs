@@ -7,6 +7,20 @@ namespace Emberfall
     {
         private static float cameraStarted = -10f, cameraStrength, nextCameraTime;
         private static int activeCount;
+        private static readonly System.Collections.Generic.Stack<HitFeedback> idle=new System.Collections.Generic.Stack<HitFeedback>(24);
+        internal static System.Collections.IEnumerator Prewarm()
+        {
+            for(int i=idle.Count;i<12;i++)
+            {
+                var root=new GameObject("Prewarmed hit feedback");root.SetActive(false);
+                var impact=root.AddComponent<HitFeedback>();impact.retireCallback=impact.Retire;
+                impact.effectsScale=EffectPreferences.EffectsScale;impact.strength=1.6f;impact.critical=i<3;
+                impact.Build(Vector3.forward);impact.Retire();yield return null;
+            }
+        }
+        private CombatVisualLease lease;
+        private System.Action retireCallback;
+        private int[] indices;
         private Mesh mesh;
         private Vector3[] vertices;
         private Color[] colors;
@@ -19,7 +33,7 @@ namespace Emberfall
         private Color coreColor;
         private float Duration { get { return critical ? .27f : .21f; } }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetState() { activeCount = 0; ClearCamera(); }
+        private static void ResetState() { activeCount = 0; idle.Clear(); ClearCamera(); }
 
         public static Vector3 CameraOffset
         {
@@ -38,10 +52,13 @@ namespace Emberfall
         public static void Spawn(Vector3 point, Vector3 direction, float intensity, bool isCritical = false,CombatVisualPriority priority=CombatVisualPriority.RealContact)
         {
             if (activeCount >= 24) return;
-            var obj = new GameObject(isCritical ? "Critical hit impact" : "Hit impact");
-            if(CombatVisualLease.Attach(obj,priority)==null)return;
+            HitFeedback impact=null;while(idle.Count>0&&impact==null)impact=idle.Pop();
+            if(impact==null){impact=new GameObject("Hit impact").AddComponent<HitFeedback>();impact.retireCallback=impact.Retire;}
+            var obj=impact.gameObject;obj.name=isCritical?"Critical hit impact":"Hit impact";
+            impact.age=0;impact.lease=CombatVisualLease.Attach(obj,priority,impact.retireCallback);
+            if(impact.lease==null)return;
+            obj.SetActive(true);
             obj.transform.position = point;
-            var impact = obj.AddComponent<HitFeedback>();
             impact.critical = isCritical;
             impact.effectsScale = EffectPreferences.EffectsScale;
             impact.strength = Mathf.Clamp(intensity, isCritical ? 1.6f : .55f, isCritical ? 2.5f : 2f);
@@ -57,14 +74,14 @@ namespace Emberfall
         private void Build(Vector3 incoming)
         {
             registered=true;activeCount++;
-            material = CombatFx.NewGlow();
+            if(material==null)material = CombatFx.NewGlow();
             view = Camera.main;
             rayCount = Mathf.Max(3, Mathf.RoundToInt((critical ? 10 : strength >= 1.5f ? 7 : 5) * effectsScale));
             ringSegments = critical && !EffectPreferences.ReducedEffects ? 24 : 0;
-            directions = new Vector3[rayCount];
-            vertices = new Vector3[(rayCount + ringSegments) * 4];
-            colors = new Color[vertices.Length];
-            int[] triangles = new int[(rayCount + ringSegments) * 6];
+            if(directions==null||directions.Length!=rayCount)directions = new Vector3[rayCount];
+            if(vertices==null||vertices.Length!=(rayCount+ringSegments)*4)
+            {vertices = new Vector3[(rayCount + ringSegments) * 4];colors = new Color[vertices.Length];indices=new int[(rayCount+ringSegments)*6];}
+            int[] triangles=indices;
             coreColor = critical ? new Color(1f, .88f, .3f) : new Color(1f, .93f, .72f);
             Vector3 forward = incoming.sqrMagnitude > .01f ? incoming.normalized : Vector3.forward;
             for (int i = 0; i < rayCount; i++)
@@ -79,12 +96,12 @@ namespace Emberfall
                 triangles[t+3] = v+2; triangles[t+4] = v+1; triangles[t+5] = v+3;
             }
             // One renderer replaces up to twelve individual spark renderers per hit.
-            mesh = new Mesh { name = critical ? "Critical impact fan" : "Impact fan" };
+            if(mesh==null)mesh = new Mesh { name = "Reusable hit impact fan" };else mesh.Clear();
             mesh.MarkDynamic();
             UpdateGeometry(0);
             mesh.triangles = triangles;
-            gameObject.AddComponent<MeshFilter>().sharedMesh = mesh;
-            MeshRenderer renderer = gameObject.AddComponent<MeshRenderer>();
+            var filter=GetComponent<MeshFilter>()??gameObject.AddComponent<MeshFilter>();filter.sharedMesh = mesh;
+            MeshRenderer renderer = GetComponent<MeshRenderer>()??gameObject.AddComponent<MeshRenderer>();
             renderer.sharedMaterial = material;
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
@@ -129,14 +146,15 @@ namespace Emberfall
 
         private void Update()
         {
-            if (GameSession.Instance == null || !GameSession.Instance.HasStarted) { Destroy(gameObject); return; }
+            if (GameSession.Instance == null || !GameSession.Instance.HasStarted) { Retire(); return; }
             age += Time.deltaTime;
-            if (age >= Duration) { Destroy(gameObject); return; }
+            if (age >= Duration) { Retire(); return; }
             float t = age / Duration;
             UpdateGeometry(t);
         }
 
         private void Release(){if(!registered)return;registered=false;activeCount=Mathf.Max(0,activeCount-1);}
+        private void Retire(){Release();if(lease!=null)lease.Suspend();gameObject.SetActive(false);if(idle.Count<24)idle.Push(this);else Destroy(gameObject);}
         private void OnDisable(){Release();}
         private void OnDestroy() { Release(); if (material != null) Destroy(material); if(mesh!=null)Destroy(mesh); }
     }

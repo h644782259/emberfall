@@ -32,6 +32,7 @@ namespace Emberfall
                 }
                 else if (partner != null)
                 {
+                    FilledSkillVfx.ContractArrival(player,partner.transform.position,form==SummonedCompanion.Kind.Wisp,color);
                     // The actual turret, ember body or treant is the contract's
                     // identity. A generic wolf apparition misidentified all three.
                     PhysicalSkillVfx.Impact(partner.transform.position,Vector3.down,

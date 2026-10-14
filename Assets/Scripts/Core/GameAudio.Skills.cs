@@ -28,7 +28,7 @@ namespace Emberfall
         {
             EnsureInstance();
             for(int i=0;i<BedNames.Length;i++)
-            {if(instance.skillBeds[i]!=null)continue;instance.skillBeds[i]=Resources.Load<AudioClip>("Audio/Skills/"+BedNames[i]);yield return null;}
+            {if(instance.skillBeds[i]!=null)continue;instance.skillBeds[i]=SynthesizeSkillAccent(i);yield return null;}
             var game=GameSession.Instance;
             if(game==null||game.Player==null)yield break;
             for(int hero=0;hero<4;hero++)
@@ -41,6 +41,21 @@ namespace Emberfall
                 if(instance.skillClips[index]==null)instance.skillClips[index]=SynthesizeSkill((HeroClass)hero,skill);
                 yield return null;
             }
+        }
+        private static AudioClip SynthesizeSkillAccent(int family)
+        {
+            // A brief material accent followed by silence, never a looping noise bed.
+            var samples=new float[(int)(SampleRate*1.6)];
+            double frequency=family==2?170:family==6?1450:family==8?620:280+family*83;
+            for(int i=0;i<SampleRate*.24;i++)
+            {
+                double t=i/(double)SampleRate;
+                double envelope=System.Math.Min(1,t/.008)*System.Math.Exp(-t*28)*System.Math.Max(0,1-t/.24);
+                double phase=Tau*frequency*(t-.65*t*t);
+                samples[i]=(float)((System.Math.Sin(phase)+.22*System.Math.Sin(phase*2.37))*envelope*.35);
+            }
+            var clip=AudioClip.Create("Short skill accent / "+BedNames[family],samples.Length,1,SampleRate,false);
+            clip.hideFlags=HideFlags.DontSave;clip.SetData(samples,0);return clip;
         }
         internal static void SustainSkill(PlayerController owner,Transform anchor,SkillPerformanceBody kind,float duration,System.Func<bool> active=null)
         {
@@ -100,15 +115,8 @@ namespace Emberfall
                 if(bed.Anchor==null||!bed.Anchor.gameObject.activeInHierarchy||bed.Active!=null&&!bed.Active())bed.Duration=Mathf.Min(bed.Duration,bed.Age+.35f);
                 bed.Age+=Time.deltaTime;
                 if(bed.Age>=bed.Duration){StopBed(bed);continue;}
-                float envelope=Mathf.Min(Mathf.Clamp01(bed.Age/.18f),Mathf.Clamp01((bed.Duration-bed.Age)/.65f));
-                // Shared ice phase keeps overlapping fields from filling the silent gaps.
-                float pulse=1;
-                if(bed.Family==6)
-                {
-                    float phase=bed.Age%1.25f;
-                    pulse=phase<.38f?Mathf.Sin(Mathf.PI*phase/.38f):0;
-                }
-                bed.Gain=(bed.Family==6?.19f:.34f)*pulse*envelope/Mathf.Sqrt(Mathf.Max(1,layers));
+                float envelope=Mathf.Min(Mathf.Clamp01(bed.Age/.015f),Mathf.Clamp01((bed.Duration-bed.Age)/.2f));
+                bed.Gain=.2f*envelope/Mathf.Sqrt(Mathf.Max(1,layers));
                 bed.Source.volume=bed.Gain*masterVolume*(chantSource!=null&&chantSource.isPlaying?.65f:1);
             }
             if(chantSource==null)return;

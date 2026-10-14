@@ -14,23 +14,32 @@ namespace Emberfall
             var random=new System.Random(4117+variant*173);var vertices=new List<Vector3>();var uv=new List<Vector2>();var triangles=new List<int>();
             var path=new Vector3[11];
             for(int i=0;i<path.Length;i++){float t=i/(float)(path.Length-1),spread=i==0||i==path.Length-1?0:.22f;path[i]=new Vector3(((float)random.NextDouble()-.5f)*spread,t,((float)random.NextDouble()-.5f)*spread);}
+            Tube(vertices,uv,triangles,path,.028f,.012f);
             for(int i=0;i<path.Length-1;i++)
             {
-                Segment(vertices,uv,triangles,path[i],path[i+1],.028f,.02f);
                 if(i==2||i==5||i==7)
                 {
                     float sign=(i%2==0?1:-1);Vector3 elbow=path[i]+new Vector3(sign*.18f,.14f,.09f),tip=elbow+new Vector3(sign*.12f,.13f,-.06f);
-                    Segment(vertices,uv,triangles,path[i],elbow,.016f,.009f);Segment(vertices,uv,triangles,elbow,tip,.009f,.001f);
+                    Tube(vertices,uv,triangles,new[]{path[i],elbow,tip},.014f,.001f);
                 }
             }
             var mesh=new Mesh{name="Organic branching plasma / "+variant};mesh.SetVertices(vertices);mesh.SetUVs(0,uv);mesh.SetTriangles(triangles,0);mesh.RecalculateNormals();mesh.RecalculateBounds();variants[variant]=mesh;return mesh;
         }
-        private static void Segment(List<Vector3> v,List<Vector2> uv,List<int> triangles,Vector3 from,Vector3 to,float r0,float r1)
+        internal static void Tube(List<Vector3> v,List<Vector2> uv,List<int> triangles,Vector3[] path,float r0,float r1)
         {
-            Vector3 axis=(to-from).normalized,side=Vector3.Cross(axis,Vector3.forward).normalized;if(side.sqrMagnitude<.01f)side=Vector3.right;
-            Vector3 second=Vector3.Cross(axis,side);int first=v.Count;
-            for(int ring=0;ring<2;ring++)for(int j=0;j<6;j++){float a=j*Mathf.PI/3;v.Add((ring==0?from:to)+(side*Mathf.Cos(a)+second*Mathf.Sin(a))*(ring==0?r0:r1));uv.Add(new Vector2(j/6f,ring));}
-            for(int j=0;j<6;j++){int next=(j+1)%6;triangles.Add(first+j);triangles.Add(first+6+j);triangles.Add(first+next);triangles.Add(first+next);triangles.Add(first+6+j);triangles.Add(first+6+next);}
+            // Shared rings bridge bends; independent cylinders left visible seams
+            // and reset thickness at every joint in the trunk and its branches.
+            int first=v.Count;
+            for(int ring=0;ring<path.Length;ring++)
+            {
+                Vector3 axis=(path[Mathf.Min(ring+1,path.Length-1)]-path[Mathf.Max(0,ring-1)]).normalized;
+                Vector3 side=Vector3.Cross(axis,Vector3.forward).normalized;if(side.sqrMagnitude<.01f)side=Vector3.right;
+                Vector3 second=Vector3.Cross(axis,side);float t=ring/(float)(path.Length-1),radius=Mathf.Lerp(r0,r1,t);
+                for(int j=0;j<6;j++){float a=j*Mathf.PI/3;v.Add(path[ring]+(side*Mathf.Cos(a)+second*Mathf.Sin(a))*radius);uv.Add(new Vector2(j/6f,t));}
+                if(ring==0)continue;
+                int start=first+(ring-1)*6;
+                for(int j=0;j<6;j++){int next=(j+1)%6;triangles.Add(start+j);triangles.Add(start+6+j);triangles.Add(start+next);triangles.Add(start+next);triangles.Add(start+6+j);triangles.Add(start+6+next);}
+            }
         }
         internal static void Strike(Vector3 from,Vector3 to)
         {

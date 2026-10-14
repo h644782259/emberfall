@@ -19,7 +19,6 @@ namespace Emberfall
         }
         private static Texture2D DetailTexture(Element element)
         {
-            if(element==Element.Fire&&SkillBodyMaterialLibrary.Flame!=null)return SkillBodyMaterialLibrary.Flame;
             int index=(int)element;if(detailTextures[index]!=null)return detailTextures[index];
             const int size=256;var pixels=new Color[size*size];
             for(int y=0;y<size;y++)for(int x=0;x<size;x++)
@@ -39,14 +38,21 @@ namespace Emberfall
         }
 
 
-        public static void Area(Transform parent, float radius, Element element)
+        public static void Area(Transform parent, float radius, Element element, bool fieldBody = true)
         {
             // The readable field owns its own lease; optional particles must not gate it.
-            if(element!=Element.Ice&&element!=Element.Lightning)ElementalFieldVisual.Spawn(parent, element, radius, false,CombatVisualPriority.SustainedBackground);
+            if(fieldBody&&element!=Element.Ice&&element!=Element.Lightning)ElementalFieldVisual.Spawn(parent, element, radius, false,CombatVisualPriority.SustainedBackground);
             ParticleSystem particles = Create(parent, element == Element.Fire ? "Rising Flames" :
                 element == Element.Poison ? "Poison Bubbles" : element==Element.Ice?"Frost Mist":"Storm Sparks", element,
-                Mathf.Clamp(radius * radius * 3f, 12f, 52f), radius);
+                element==Element.Fire?Mathf.Clamp(radius*radius*.65f,4f,16f):Mathf.Clamp(radius * radius * 3f, 12f, 52f), radius);
             if(particles==null)return;
+            if(element==Element.Fire)
+            {
+                var main=particles.main;
+                main.startSize=new ParticleSystem.MinMaxCurve(.12f,.3f);
+                main.startLifetime=new ParticleSystem.MinMaxCurve(.3f,.65f);
+                main.startColor=new Color(1,1,1,.55f);
+            }
             var shape = particles.shape;
             shape.shapeType = ParticleSystemShapeType.Circle;
             shape.radius = radius * .82f;
@@ -56,13 +62,13 @@ namespace Emberfall
             particles.Play();
         }
 
-        public static void OnEnemy(EnemyController enemy, Element element, float duration)
+        public static void OnEnemy(EnemyController enemy, Element element, float duration, bool transient = false)
         {
             if (enemy == null || enemy.IsDead) return;
             ElementalEnemyAura aura = enemy.GetComponent<ElementalEnemyAura>();
             if (aura == null) aura = enemy.gameObject.AddComponent<ElementalEnemyAura>();
             aura.BindStatus(enemy);
-            aura.Refresh(element, duration, enemy.IsBoss ? 1.7f : enemy.Kind == EnemyKind.Slime ? .65f : 1.2f);
+            aura.Refresh(element, duration, enemy.IsBoss ? 1.7f : enemy.Kind == EnemyKind.Slime ? .65f : 1.2f,transient);
         }
 
         internal static void ClearFire(EnemyController enemy)
@@ -82,7 +88,7 @@ namespace Emberfall
             main.loop = true;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.startLifetime = element == Element.Lightning ? new ParticleSystem.MinMaxCurve(.16f) : new ParticleSystem.MinMaxCurve(.7f,element==Element.Poison?1.5f:1.1f);
-            main.startSpeed = element == Element.Lightning ? 2.4f : element == Element.Poison ? .8f : 1.7f;
+            main.startSpeed = element == Element.Lightning ? 2.4f : element == Element.Poison ? .8f : element == Element.Fire ? .15f : 1.7f;
             main.startSize = element == Element.Lightning ? new ParticleSystem.MinMaxCurve(.11f) : new ParticleSystem.MinMaxCurve(element==Element.Poison?.25f:.45f,element==Element.Ice?1.25f:.85f);
             main.maxParticles = DecorationBudget.Particles(EffectPreferences.EffectsScale);
             main.gravityModifier = element==Element.Ice?.04f:-.08f;
@@ -111,7 +117,7 @@ namespace Emberfall
                 var noise=particles.noise;noise.enabled=true;noise.strength=element==Element.Fire?.55f:.25f;noise.frequency=.65f;noise.scrollSpeed=.6f;noise.octaveCount=1;noise.quality=ParticleSystemNoiseQuality.Low;
                 var velocity=particles.velocityOverLifetime;velocity.enabled=true;velocity.space=ParticleSystemSimulationSpace.World;
                 velocity.x=new ParticleSystem.MinMaxCurve(-.35f,.35f);velocity.z=new ParticleSystem.MinMaxCurve(-.35f,.35f);velocity.y=new ParticleSystem.MinMaxCurve(element==Element.Fire?1.1f:.35f,element==Element.Fire?2.4f:.9f);
-                var spin=particles.rotationOverLifetime;spin.enabled=true;spin.z=new ParticleSystem.MinMaxCurve(-1.2f,1.2f);
+                var spin=particles.rotationOverLifetime;spin.enabled=true;spin.z=new ParticleSystem.MinMaxCurve(element==Element.Fire?-.18f:-1.2f,element==Element.Fire?.18f:1.2f);
                 size.size=new ParticleSystem.MinMaxCurve(1,new AnimationCurve(new Keyframe(0,.25f),new Keyframe(.3f,.8f),new Keyframe(.8f,element==Element.Poison?1.3f:1.1f),new Keyframe(1,0)));
             }
             return particles;
@@ -169,14 +175,16 @@ namespace Emberfall
         private ParticleSystem fire, poison;
         private ElementalFieldVisual fireShape, poisonShape;
         private float fireUntil, poisonUntil;
+        private float fireContactUntil;
         private EnemyController statusOwner;
         private bool statusBound;
         internal void BindStatus(EnemyController enemy){statusOwner=enemy;statusBound=true;}
 
-        public void Refresh(ElementalCombatVfx.Element element, float duration, float height)
+        public void Refresh(ElementalCombatVfx.Element element, float duration, float height, bool transient=false)
         {
             if (element == ElementalCombatVfx.Element.Lightning) return;
             bool burning = element == ElementalCombatVfx.Element.Fire;
+            if(burning&&transient)fireContactUntil=Mathf.Max(fireContactUntil,Time.time+duration);
             // Siblings under the enemy: retiring a decoration can never retire its main shape.
             ElementalFieldVisual activeShape = burning ? fireShape : poisonShape;
             if (activeShape == null)
@@ -216,7 +224,7 @@ namespace Emberfall
             if(statusBound)
             {
                 if(statusOwner==null||statusOwner.StatusEffects==null){ClearFire();ClearPoison();return;}
-                if(statusOwner.IsDead||!statusOwner.StatusEffects.IsBurning)ClearFire();
+                if(statusOwner.IsDead||!statusOwner.StatusEffects.IsBurning&&Time.time>=fireContactUntil)ClearFire();
                 if(statusOwner.IsDead||statusOwner.StatusEffects.PoisonStacks<=0)ClearPoison();
                 return;
             }

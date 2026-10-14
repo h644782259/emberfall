@@ -29,16 +29,15 @@ namespace Emberfall
                         float spread=point==0||point==path.Length-1?0:.75f;
                         path[point]=new Vector3(((float)random.NextDouble()-.5f)*spread,4.8f*(1-t),((float)random.NextDouble()-.5f)*spread);
                     }
+                    VolumetricDischarge.Tube(vertices,uv,triangles,path,.075f,.045f);
                     for(int point=0;point<path.Length-1;point++)
                     {
-                        DischargeSegment(vertices,uv,triangles,path[point],path[point+1],.075f,.045f);
                         if(point==2||point==4||point==6)
                         {
                             float angle=(float)random.NextDouble()*Mathf.PI*2;
                             var fork=path[point]+new Vector3(Mathf.Cos(angle)*.65f,-.55f,Mathf.Sin(angle)*.65f);
                             var tip=fork+new Vector3(Mathf.Cos(angle)*.35f,-.65f,Mathf.Sin(angle)*.35f);
-                            DischargeSegment(vertices,uv,triangles,path[point],fork,.032f,.018f);
-                            DischargeSegment(vertices,uv,triangles,fork,tip,.018f,.002f);
+                            VolumetricDischarge.Tube(vertices,uv,triangles,new[]{path[point],fork,tip},.032f,.002f);
                         }
                     }
                     for(int branch=0;branch<4;branch++)
@@ -94,10 +93,9 @@ namespace Emberfall
             if(!dischargeArmed)return 0;
             float t=beatAge-strand*.008f;
             if(t<0)return 0;
-            if(t<.07f)return 1-t/.07f*.45f;
-            if(t<.13f)return .1f;
-            if(t<.165f)return .8f;
-            return .22f*Mathf.Clamp01(1-(t-.165f)/.16f);
+            float first=Mathf.Exp(-t*28f);
+            float returnStroke=.65f*Mathf.Exp(-Mathf.Pow((t-.125f)/.022f,2));
+            return Mathf.Clamp01(first+returnStroke)*Mathf.SmoothStep(0,1,(.34f-t)/.1f);
         }
     }
 }
