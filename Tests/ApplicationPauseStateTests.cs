@@ -19,14 +19,14 @@ public static class ApplicationPauseStateTests
         }
         var frames=new ApplicationPauseState();
         check(frames.TargetFrameRate(true,true)==60,"mobile combat retains 60 fps");
-        check(frames.TargetFrameRate(true,false)==30,"mobile title/menu uses 30 fps");
+        check(frames.TargetFrameRate(true,false)==60,"mobile title/menu retains 60 fps");
         frames.SetFocus(false);
         check(frames.TargetFrameRate(true,true)==15,"focus loss throttles even before OS suspension");
         frames.SetSuspended(true);frames.SetFocus(true);
         check(frames.TargetFrameRate(true,true)==15,"focus cannot override suspension frame cap");
         check(frames.TargetFrameRate(false,false)==60,"desktop policy unchanged while inactive");
         frames.SetSuspended(false);
-        check(frames.TargetFrameRate(true,false)==30,"resume retains menu cap");
+        check(frames.TargetFrameRate(true,false)==60,"resume restores foreground menu cadence");
         check(frames.TargetFrameRate(true,true)==60,"resume combat restores frame cap");
         check(frames.TargetFrameRate(false,false)==60,"desktop menus not mobile throttled");
         return "PASS: "+assertions+" pause-state assertions";

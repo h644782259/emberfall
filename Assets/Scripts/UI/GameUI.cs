@@ -285,9 +285,11 @@ namespace Emberfall
         private Color fpsColor = Color.white;
         private GUIStyle fpsStyle;
 
+        private bool FrameRateDisplayVisible => session != null && session.HasStarted && !session.SceneLoading && !session.BackgroundPaused;
+
         private void UpdateFrameRateDisplay()
         {
-            if (session == null || session.BackgroundPaused)
+            if (!FrameRateDisplayVisible)
             {
                 fpsPreviousTime = fpsElapsed = 0; fpsFrames = 0; fpsLabel = "FPS --";
                 return;
@@ -305,7 +307,7 @@ namespace Emberfall
 
         private void DrawFrameRateDisplay()
         {
-            if (Event.current.type != EventType.Repaint || session == null || session.BackgroundPaused) return;
+            if (Event.current.type != EventType.Repaint || !FrameRateDisplayVisible) return;
             if (fpsStyle == null) fpsStyle = new GUIStyle { font = GameFont.Shared, alignment = TextAnchor.MiddleCenter };
             // Read-only overlay occupies the unused right end of the bottom XP rail.
             Rect safe = Screen.safeArea;
@@ -562,7 +564,9 @@ namespace Emberfall
         {
             Color previous = GUI.color;
             bool previousEnabled = GUI.enabled;
-            if (!MobileControls.Active) GUI.enabled = true;
+            // Drawing a background must not inherit Unity's disabled alpha.
+            // Restore interaction state before any controls are evaluated.
+            GUI.enabled = true;
             color.a*=controlOpacity;GUI.color = color;
             GUI.DrawTexture(rect, Texture2D.whiteTexture);
             GUI.color = previous;
@@ -608,7 +612,7 @@ namespace Emberfall
             return recent;
         }
 
-        private void ContinueRecentAdventure()
+        internal void ContinueRecentAdventure()
         {
             if(saveSlotsDirty)RefreshSaveSlots();
             var recent=RecentAdventureSlot();
@@ -1360,7 +1364,7 @@ namespace Emberfall
             GameProfile p = session.Progression.Profile;
             float x = width - 330;
             float y = 18;
-            bool hudEnabled=GUI.enabled;GUI.enabled=CanSwitchFunction&&!UITransitionBlocked;
+            bool hudEnabled=GUI.enabled;GUI.enabled=hudEnabled&&CanSwitchFunction&&!UITransitionBlocked;
             if(HubServicesAvailable)
             {
                 if(IconButton(new Rect(x + 46,y,38,38),"shop","P","商店",jade))OpenHubService(HubNpcKind.Merchant);

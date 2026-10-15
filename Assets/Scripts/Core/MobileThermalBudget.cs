@@ -3,13 +3,9 @@ namespace Emberfall
     // This only limits rendering cadence; it never pauses simulation or input.
     public sealed class MobileIdleFrameBudget
     {
-        private double lastActivity;
         public int FrameRate(int requested, bool idleEligible, bool activity, double now)
         {
-            if (!idleEligible || activity) lastActivity = now;
-            if (!idleEligible || activity) return requested;
-            double idle = now - lastActivity;
-            return System.Math.Min(requested, idle >= 60 ? 15 : idle >= 10 ? 30 : requested);
+            return requested; // Foreground idling must not reduce camera/input cadence.
         }
     }
     // OS thermal levels: nominal=0, fair=1, serious=2, critical=3.

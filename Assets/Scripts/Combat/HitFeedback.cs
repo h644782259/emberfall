@@ -100,8 +100,11 @@ namespace Emberfall
             mesh.MarkDynamic();
             UpdateGeometry(0);
             mesh.triangles = triangles;
-            var filter=GetComponent<MeshFilter>()??gameObject.AddComponent<MeshFilter>();filter.sharedMesh = mesh;
-            MeshRenderer renderer = GetComponent<MeshRenderer>()??gameObject.AddComponent<MeshRenderer>();
+            var filter=GetComponent<MeshFilter>();
+            if(filter==null)filter=gameObject.AddComponent<MeshFilter>();
+            filter.sharedMesh = mesh;
+            MeshRenderer renderer = GetComponent<MeshRenderer>();
+            if(renderer==null)renderer=gameObject.AddComponent<MeshRenderer>();
             renderer.sharedMaterial = material;
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;

@@ -432,14 +432,14 @@ namespace Emberfall
             Vector3 walkingDisplacement = Vector3.zero;
             bool mobile = MobileControls.Active;
             if(!mobile&&Input.GetKeyDown(KeyCode.Tab))SelectNearestTabTarget();
-            // Hardware keyboard uses the same axes and camera-relative movement on every platform.
-            // Touch movement has already been projected by MobileControls.
+            // Start each mobile steering gesture in screen space, then retain
+            // its heading while the following camera catches up.
             Vector2 keyboardMove = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
 #if EMBERFALL_VISUAL_VALIDATION
             if(VisualValidationPlayer.PerformanceRun)keyboardMove=VisualValidationPlayer.PerformanceMove;
 #endif
             Vector3 movement = AdventureCamera.CameraRelativeMovement(keyboardMove, Camera.main == null ? null : Camera.main.transform);
-            if(mobile)movement+=new Vector3(MobileControls.Move.x,0,MobileControls.Move.y);
+            if(mobile)movement=AdventureCamera.MobileMovement(Vector2.ClampMagnitude(keyboardMove+MobileControls.Move,1));
             movement = Vector3.ClampMagnitude(movement,1);
             bool wantsJump = (mobile && MobileControls.ConsumeJump()) || Input.GetKeyDown(KeyCode.Space);
             if (wantsJump) TryJump(movement);
@@ -479,16 +479,18 @@ namespace Emberfall
             bounded.y = airborneHeight;
             transform.position = bounded;
             if (walkingDisplacement.sqrMagnitude > 0) walkingDisplacement += CombatFx.Flat(bounded-beforeBoundary);
+            bool attackHeld = (mobile ? MobileControls.AttackHeld : Input.GetMouseButton(0)) || Input.GetKey(KeyCode.J);
+            if (!attackHeld) suppressBasicUntilReleased = false;
+            bool wantsBasic = !suppressBasicUntilReleased && attackHeld && (mobile || !session.PointerOverUI);
+            if (mobile && !FrostStrideActive && movement.sqrMagnitude > .01f && !wantsBasic && !HasPendingSkillRelease && (charge == null || !charge.IsCharging))
+                transform.rotation = Quaternion.RotateTowards(transform.rotation,Quaternion.LookRotation(movement),360f*dt);
             // Commit actual walking before any attack samples its final weapon pose.
             model.SetLocomotion(transform.InverseTransformDirection(walkingDisplacement),dt,stats.MoveSpeed,!TraversalStartedThisFrame,jumping,jumpAge/.55f);
             // Mouse selection uses this frame's final position. Walking only turns
             // the model; it never overwrites the independent mouse aim point.
             if ((charge == null || !charge.IsCharging) && (mobile || !session.PointerOverUI))
                 aimPoint = mobile ? ResolveMobileAim(movement) : ResolveAim(Camera.main,Input.mousePosition);
-            bool attackHeld = (mobile ? MobileControls.AttackHeld : Input.GetMouseButton(0)) || Input.GetKey(KeyCode.J);
-            if (!attackHeld) suppressBasicUntilReleased = false;
-            bool wantsBasic = !suppressBasicUntilReleased && attackHeld && (mobile || !session.PointerOverUI);
-            if (!FrostStrideActive && movement.sqrMagnitude > .01f && !wantsBasic && !HasPendingSkillRelease && (charge == null || !charge.IsCharging))
+            if (!mobile && !FrostStrideActive && movement.sqrMagnitude > .01f && !wantsBasic && !HasPendingSkillRelease && (charge == null || !charge.IsCharging))
                 transform.rotation = Quaternion.RotateTowards(transform.rotation,Quaternion.LookRotation(movement),720f*dt);
             if (!TraversalStartedThisFrame && (mobile || !session.PointerOverUI))
             {
@@ -523,7 +525,7 @@ namespace Emberfall
                 FaceAim();
                 if (attackCooldown <= 0) BasicAttack();
             }
-            if(!FrostStrideActive&&Time.time<basicFacingUntil&&!jumping&&!TraversalStartedThisFrame&&!SkillReleaseInputBlocked&&!HasPendingSkillRelease&&!suppressBasic&&(charge==null||!charge.IsCharging)&&basicFacingDirection.sqrMagnitude>.0001f)
+            if(!mobile&&!FrostStrideActive&&Time.time<basicFacingUntil&&!jumping&&!TraversalStartedThisFrame&&!SkillReleaseInputBlocked&&!HasPendingSkillRelease&&!suppressBasic&&(charge==null||!charge.IsCharging)&&basicFacingDirection.sqrMagnitude>.0001f)
                 transform.rotation=Quaternion.LookRotation(basicFacingDirection);
             model.Animate(movement.magnitude,attackAnimation,hurtTimer > 0);
             if(blinkFollowupPending)AnimateSkillPreparation(0,Mathf.Clamp01(blinkFollowupAge/.14f));
@@ -574,26 +576,12 @@ namespace Emberfall
 
         private Vector3 ResolveMobileAim(Vector3 movement)
         {
-            var pinned=MobilePinnedTarget;
-            if(pinned!=null){AimTarget=pinned;return CombatFx.Flat(pinned.transform.position);}
             AimTarget = null;
-            Vector3 direction = movement.sqrMagnitude > .01f ? movement.normalized : transform.forward;
-            float nearest = 14f;
-            for (int i = 0; i < session.Enemies.Count; i++)
-            {
-                EnemyController enemy = session.Enemies[i];
-                if (!ValidAimTarget(enemy)) continue;
-                Vector3 delta = CombatFx.Flat(enemy.transform.position - transform.position);
-                float distance = delta.magnitude;
-                if (distance < nearest && Vector3.Angle(direction, delta) <= 75f && CombatSight.Direct(transform.position,enemy.transform.position))
-                { nearest = distance; AimTarget = enemy; }
-            }
-            return AimTarget != null ? CombatFx.Flat(AimTarget.transform.position) : transform.position + direction * 8f;
+            return transform.position + transform.forward * 8f;
         }
 
         // Called once for a mobile skill tap before the existing cast/charge path.
         // Selection only changes aim; it never spends energy or starts a cooldown.
-        private readonly List<MobileSkillPolicy.Candidate> mobileAimCandidates=new List<MobileSkillPolicy.Candidate>();
         internal bool IsMobileSelfCenteredSkill(int skill)
         {return MobileControls.Active&&HeroClass==HeroClass.Arcanist&&skill==9;}
         internal void PrepareMobileSkillAim(int skill)
@@ -603,22 +591,11 @@ namespace Emberfall
             if(IsMobileSelfCenteredSkill(skill)){enemy=null;point=transform.position;return;}
             var preview=SkillTargetingController.Describe(HeroClass,skill,session.Progression.Profile.skillRanks[skill]);
             if(preview.shape==SkillTargetingController.Shape.Self){enemy=null;point=transform.position;return;}
-            if(HeroClass==HeroClass.Summoner&&(skill==2||skill==4||skill==9))
-            {var team=SummonedCompanion.ExplicitFocus(this);if(team!=null){enemy=team;point=CombatFx.Flat(team.transform.position);return;}}
-            var pinned=observeOnly?ReadMobilePinnedTarget():MobilePinnedTarget;
-            if(pinned!=null&&MobilePinAppliesToSkill(skill)){enemy=pinned;point=CombatFx.Flat(pinned.transform.position);return;}
-            float range=preview.distance>0?preview.distance:14f;
-            mobileAimCandidates.Clear();
-            foreach(var candidate in session.Enemies)
-            {
-                bool valid=ValidAimTarget(candidate);
-                float distance=valid?CombatFx.Flat(candidate.transform.position-transform.position).sqrMagnitude:float.PositiveInfinity;
-                bool visible=valid&&CombatSight.Direct(transform.position,candidate.transform.position);
-                mobileAimCandidates.Add(new MobileSkillPolicy.Candidate(distance,visible,candidate==AimTarget||candidate==FocusTarget));
-            }
-            int chosen=MobileSkillPolicy.SelectTarget(mobileAimCandidates,range);
-            enemy=chosen<0?null:session.Enemies[chosen];
-            point=enemy!=null?CombatFx.Flat(enemy.transform.position):CombatFx.Flat(transform.position+transform.forward*Mathf.Min(8f,range));
+            float range=preview.distance>0?preview.distance:8f;
+            enemy=null;
+            // Meteor is a ranged ground skill; other mobile skills keep their existing landing distance.
+            float distance=HeroClass==HeroClass.Arcanist&&skill==1?range*.9f:Mathf.Min(5f,range);
+            point=CombatFx.Flat(transform.position+transform.forward*distance);
             point=CombatSight.GroundPoint(transform.position,Vector3.ClampMagnitude(point,Mathf.Max(1,session.ArenaRadius-.65f)));
         }
 
@@ -682,7 +659,7 @@ namespace Emberfall
 
         private void FaceAim()
         {
-            if(FrostStrideActive)return;
+            if(FrostStrideActive||MobileControls.Active)return;
             if(!ValidAimTarget(AimTarget)) AimTarget=null;
             if(AimTarget!=null) aimPoint=CombatFx.Flat(AimTarget.transform.position);
             Vector3 forward=CombatFx.Flat(aimPoint-transform.position);

@@ -424,7 +424,7 @@ namespace Emberfall
     bool chosen=chapter?adventureChapterSelected&&session.SelectedChapterNode==node:!adventureChapterSelected&&session.SelectedArenaMode==i-1;
     string caption=chapter?ChapterDefinition.Get(node).Name:names[i];
     if(!unlocked)caption+=" · "+ChapterProgression.UnlockLevel(node)+"级";
-    if(TabButton(AdventureRect(l.Entry(i),u),caption,chosen,unlocked))
+    if(TabButton(AdventureRect(l.Entry(i),u),caption,chosen,unlocked,pointerFeedback:false))
     {
      adventureChapterSelected=chapter;
      if(chapter){PrepareInlineChapterSelection();SelectChapterNode(node);}

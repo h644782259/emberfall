@@ -68,7 +68,16 @@ namespace Emberfall
         {
             if(castFrame==Time.frameCount||owner==null||index<0||index>=GameBalance.SkillCount||GameBalance.IsPassive(index))return false;
             bool ground = RequiresConfirmation(owner.HeroClass,index);
-            if(MobileControls.Active && !ground){if(!owner.MobilePinnedActionAllowed(index,true))return false;owner.PrepareMobileSkillAim(index);}
+            if(MobileControls.Active)
+            {
+                owner.ClearMobilePinnedTarget();
+                owner.PrepareMobileSkillAim(index);
+                if(!owner.CanBeginSkillTargeting(index))return false;
+                bool committed=ground?owner.ConfirmTargetedSkill(index,owner.AimPoint):owner.CastImmediateSkill(index);
+                Cancel();
+                if(committed)castFrame=Time.frameCount;
+                return committed;
+            }
             if(!owner.CanBeginSkillTargeting(index))return false;
             if (!RequiresConfirmation(owner.HeroClass, index))
             {

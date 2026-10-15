@@ -1122,6 +1122,11 @@ namespace Emberfall
             return Vector3.ClampMagnitude(right * input.x + forward * input.y, 1f);
         }
 
+        public static Vector3 MobileMovement(Vector2 input)
+        {
+            return CameraRelativeMovement(input,Camera.main==null?null:Camera.main.transform);
+        }
+
         private Vector3 DesiredTarget()
         {
             GameSession game = GameSession.Instance;
@@ -1135,7 +1140,14 @@ namespace Emberfall
             ProcessOrbitInput(Input.mousePosition, Input.GetMouseButtonDown(1), Input.GetMouseButton(1), Input.GetMouseButtonUp(1), canStart, canContinue, Input.mouseScrollDelta.y);
         }
 
-        public void ApplyMobilePitch(float delta) { if(MobileControls.Active&&GameSession.Instance!=null&&!GameSession.Instance.InputBlocked){pitch=MobileCameraGesture.Apply(pitch,delta);if(Mathf.Abs(delta)>.001f)manualCameraUntil=Time.unscaledTime+4f;} }
+        public void ApplyMobileOrbit(float horizontal, float vertical)
+        {
+            if(!MobileControls.Active||GameSession.Instance==null||GameSession.Instance.InputBlocked)return;
+            yaw=Mathf.Repeat(yaw+horizontal,360f);
+            ApplyMobilePitch(vertical);
+        }
+
+        public void ApplyMobilePitch(float delta) { if(MobileControls.Active&&GameSession.Instance!=null&&!GameSession.Instance.InputBlocked){pitch=MobileCameraGesture.Apply(pitch,delta);} }
 
         private void ProcessOrbitInput(Vector2 position, bool pressed, bool held, bool released, bool canStart, bool canContinue, float scroll)
         {
@@ -1162,6 +1174,7 @@ namespace Emberfall
         private void AssistCombatView()
         {
             var game=GameSession.Instance;
+            if(MobileControls.Active){StopCombatAssist(false);return;}
             bool focused=Application.isFocused;
 #if EMBERFALL_VISUAL_VALIDATION
             focused |= VisualValidationPlayer.PerformanceRun;
@@ -1192,12 +1205,12 @@ namespace Emberfall
         private void LateUpdate() { using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.Camera)) MoveCamera(false); }
         private void MoveCamera(bool snap)
         {
-            if(!snap)AssistCombatView();
+            if(!snap&&!MobileControls.Active)AssistCombatView();
             Vector3 desired = DesiredTarget();
             float follow = 1f - Mathf.Exp(-8f * Time.unscaledDeltaTime);
             float orbit = 1f - Mathf.Exp(-12f * Time.unscaledDeltaTime);
             lookTarget = snap ? desired : Vector3.Lerp(lookTarget, desired, follow);
-            smoothYaw = snap ? yaw : Mathf.LerpAngle(smoothYaw, yaw, orbit);
+            smoothYaw = snap || MobileControls.Active ? yaw : Mathf.LerpAngle(smoothYaw, yaw, orbit);
             smoothPitch = snap ? pitch : Mathf.Lerp(smoothPitch, pitch, orbit);
             GameSession game=GameSession.Instance;
             float encounterDistance=ArenaSizeRules.CameraDistance(distance,game!=null&&game.InDungeon,game==null?-1:game.DungeonLayout);

@@ -175,7 +175,7 @@ namespace Emberfall
                     foreach(var source in slots)if(!hierarchyFades.ContainsKey(source))
                     {
                         Material owned=new Material(source){name=hierarchy==null?"Camera fade (owned)":"Camera hierarchy fade (owned)"};
-                        if(owned.HasProperty("_OcclusionFade"))owned.renderQueue=2450;
+                        if(owned.HasProperty("_OcclusionFade")){owned.EnableKeyword("EMBER_WORLD_FADE");owned.renderQueue=2450;}
                         else
                         {
                             owned.SetInt("_SrcBlend",(int)BlendMode.SrcAlpha);owned.SetInt("_DstBlend",(int)BlendMode.OneMinusSrcAlpha);

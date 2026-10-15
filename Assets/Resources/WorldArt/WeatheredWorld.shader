@@ -33,6 +33,9 @@ Shader "Emberfall/Weathered World"
         CGPROGRAM
         #pragma surface surf Standard fullforwardshadows vertex:vert addshadow
         #pragma target 3.0
+        #pragma multi_compile __ EMBER_TERRAIN_LEGACY
+        #pragma multi_compile __ EMBER_WORLD_LEGACY_CLIP
+        #pragma multi_compile_local __ EMBER_WORLD_FADE
         #include "UnityCG.cginc"
         #include "TerrainField.cginc"
         sampler2D _MainTex,_GroundTex;
@@ -50,19 +53,40 @@ Shader "Emberfall/Weathered World"
             float2 at=_AtlasRegion.zw+_AtlasRegion.xy*.04+folded*scale;
             return tex2Dgrad(_MainTex,at,ddx(uv)*scale,ddy(uv)*scale).rgb;
         }
-        fixed3 Grain(float3 p,float3 w){return Tile(p.yz)*w.x+Tile(p.xz)*w.y+Tile(p.xy)*w.z;}
+        fixed3 Grain(float3 p,float3 w)
+        {
+            // Flat ground and axis-aligned props have zero-weight projections.
+            // Do not fetch those textures only to multiply the samples by zero.
+            fixed3 value=0;
+            UNITY_BRANCH if(w.x>0)value+=Tile(p.yz)*w.x;
+            UNITY_BRANCH if(w.y>0)value+=Tile(p.xz)*w.y;
+            UNITY_BRANCH if(w.z>0)value+=Tile(p.xy)*w.z;
+            return value;
+        }
         void vert(inout appdata_full v)
         {
             float3 p=mul(unity_ObjectToWorld,v.vertex).xyz;
-            float h=EmberHeight(p.xz)*_TerrainFollow;
-            float dx=(EmberHeight(p.xz+float2(.02,0))-EmberHeight(p.xz-float2(.02,0)))/.04*_TerrainFollow;
-            float dz=(EmberHeight(p.xz+float2(0,.02))-EmberHeight(p.xz-float2(0,.02)))/.04*_TerrainFollow;
+            float h=0,dx=0,dz=0;
+            UNITY_BRANCH if(_TerrainFollow!=0)
+            {
+#if defined(EMBER_TERRAIN_LEGACY)
+                h=EmberHeight(p.xz)*_TerrainFollow;
+                dx=(EmberHeight(p.xz+float2(.02,0))-EmberHeight(p.xz-float2(.02,0)))/.04*_TerrainFollow;
+                dz=(EmberHeight(p.xz+float2(0,.02))-EmberHeight(p.xz-float2(0,.02)))/.04*_TerrainFollow;
+#else
+                float3 terrain=EmberHeightGradient(p.xz)*_TerrainFollow;
+                h=terrain.x;dx=terrain.y;dz=terrain.z;
+#endif
+            }
             float3 n=UnityObjectToWorldNormal(v.normal);
             n=normalize(float3(n.x-dx*n.y,n.y,n.z-dz*n.y));
             p.y+=h;
             float sway=_Wind*lerp(1,v.color.a,_VertexTint);
-            p.x+=sway*sin(_Time.y*1.3+p.z*.8+p.x*.5)*.035;
-            p.z+=sway*cos(_Time.y*.9+p.x*.7)*.02;
+            UNITY_BRANCH if(sway!=0)
+            {
+                p.x+=sway*sin(_Time.y*1.3+p.z*.8+p.x*.5)*.035;
+                p.z+=sway*cos(_Time.y*.9+p.x*.7)*.02;
+            }
             v.vertex=mul(unity_WorldToObject,float4(p,1));
             v.normal=normalize(mul(n,(float3x3)unity_ObjectToWorld));
             // World meshes include ribbons without UV tangents; supply a stable frame.
@@ -74,11 +98,19 @@ Shader "Emberfall/Weathered World"
             float3 normal=normalize(WorldNormalVector(IN,float3(0,0,1)));
             float3 w=pow(abs(normal),4);w/=max(dot(w,float3(1,1,1)),.001);
             float3 p=IN.worldPos*_GrainScale;
-            fixed3 detail=Grain(p,w);
-            if(_LeafSurface>.5)detail=tex2D(_MainTex,IN.uv_MainTex).rgb;
-            // A secondary frequency hides large repeated texture patches at close range.
-            float grain=dot(lerp(detail,Grain(p*3.17+float3(.31,.17,.43),w),.22),float3(.299,.587,.114));
-            if(_LeafSurface>.5)grain=dot(detail,float3(.299,.587,.114));
+            fixed3 detail;
+            float grain;
+            UNITY_BRANCH if(_LeafSurface>.5)
+            {
+                detail=tex2D(_MainTex,IN.uv_MainTex).rgb;
+                grain=dot(detail,float3(.299,.587,.114));
+            }
+            else
+            {
+                detail=Grain(p,w);
+                // Preserve the secondary grain frequency without evaluating it on leaves.
+                grain=dot(lerp(detail,Grain(p*3.17+float3(.31,.17,.43),w),.22),float3(.299,.587,.114));
+            }
             o.Albedo=lerp(_Color.rgb*lerp(1, .55+grain*1.1,_GrainStrength),detail*1.15,_ColorTexture);
             if(_LeafSurface>.5)o.Albedo=_Color.rgb*(.65+detail*1.2);
             float macro=.95+.05*sin(IN.worldPos.x*.57+sin(IN.worldPos.z*.41))*sin(IN.worldPos.z*.63);
@@ -142,12 +174,14 @@ Shader "Emberfall/Weathered World"
             o.Alpha=_Color.a;
             // Opaque terrain props retain lighting and depth while letting the
             // protected actor show through a stable, fine screen-space mask.
+            #if defined(EMBER_WORLD_FADE) || defined(EMBER_WORLD_LEGACY_CLIP)
             if(_OcclusionFade<.999)
             {
                 float2 pixel=floor(IN.screenPos.xy/max(IN.screenPos.w,.0001)*_ScreenParams.xy);
                 float coverage=frac(52.9829189*frac(dot(pixel,float2(.06711056,.00583715))));
                 clip(_OcclusionFade-coverage);
             }
+            #endif
         }
         ENDCG
     }

@@ -16,9 +16,11 @@ enum EquipmentMechanic{None,Test}enum HubNpcKind{None,Merchant,Blacksmith}
 class Flow{public bool Open,Busy;public void Cancel(){Open=false;}}
 class Choices{public bool AwaitingChoice;}
 class Session{public bool HasStarted=true,IsDead,BackgroundPaused,PracticeActive,RoomBranchChoiceOpen,DungeonSelectionOpen,ModeFinished,DungeonCleared,FinishedResultDismissed,Paused,Blocked;public Choices RunChoices=new Choices();public void SetUIBlocking(bool v){Blocked=v;}public void SetPaused(bool v){Paused=v;}}
+static class MobileControls{public static bool Active;}
 class GameUI{
 enum Panel{None,Inventory,Skills,Camp,TravelMap,Controls,Chests}
 Session session=new Session();Panel panel=Panel.Inventory;Flow exitRequest=new Flow(),saveFlow=new Flow();string exitError;object pendingSaveDeletion;
+object smithAffixQuote;int merchantQuantityKind=-1;void ReleaseFashionSmithPreview(){}
 bool UITransitionBlocked,HubServicesAvailable=true;
 bool mobileBindingEditor,entryRewardPopupVisible,suppressRewardHover,suppressInventoryHover,inventoryComparisonOpen,masteryResetConfirm,presetSaleOpen,chestDetails,smithSocketPicker;
 Rect dismissedRewardAnchor,entryRewardAnchor,dismissedInventoryAnchor,inventoryPopupAnchor;

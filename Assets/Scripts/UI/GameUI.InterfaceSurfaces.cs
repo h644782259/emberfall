@@ -41,7 +41,8 @@ namespace Emberfall
             if(Event.current.type!=EventType.Repaint)return;
             Color previous=GUI.color;color.a*=controlOpacity;GUI.color=color;
             bool previousEnabled=GUI.enabled;
-            if(!MobileControls.Active)GUI.enabled=true;
+            // Modal underlays remain opaque while their controls are disabled.
+            GUI.enabled=true;
             // GUIStyle's border is a nine-slice margin, independent of the target aspect ratio.
             var style=InterfaceSurfaceStyle(texture);
             style.Draw(rect,GUIContent.none,false,false,false,false);GUI.color=previous;

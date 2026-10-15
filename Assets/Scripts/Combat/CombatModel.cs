@@ -52,6 +52,24 @@ namespace Emberfall
         private Quaternion bodyRestRotation = Quaternion.identity;
         private bool dying;
         private float deathOpacity = 1f;
+        private float appliedPaletteFlash = float.NaN, appliedPaletteOpacity = float.NaN;
+        private int appliedPaletteCount = -1;
+        private bool appliedPaletteDeath;
+
+        private void UpdatePaletteTint(float flash, float opacity, bool death)
+        {
+            if (appliedPaletteFlash == flash && appliedPaletteOpacity == opacity &&
+                appliedPaletteDeath == death && appliedPaletteCount == palette.Count) return;
+            appliedPaletteFlash = flash; appliedPaletteOpacity = opacity;
+            appliedPaletteDeath = death; appliedPaletteCount = palette.Count;
+            foreach (var pair in palette)
+                if (pair.Value != null)
+                {
+                    Color color = death ? pair.Key.Color : Color.Lerp(pair.Key.Color, new Color(1f, .92f, .73f), flash);
+                    if (death) color.a = opacity;
+                    pair.Value.color = color;
+                }
+        }
 
         public void BeginDeath()
         {
@@ -131,19 +149,12 @@ namespace Emberfall
             if (dying)
             {
                 UpdateCompanionMatterTint(0, deathOpacity);
-                foreach (var pair in palette)
-                    if (pair.Value != null)
-                    {
-                        Color color = pair.Key.Color;
-                        color.a = deathOpacity;
-                        pair.Value.color = color;
-                    }
+                UpdatePaletteTint(0, deathOpacity, true);
                 return;
             }
             float flash = Mathf.Clamp01(1f - (Time.time - recoilStarted) / .11f) * .35f * EffectPreferences.EffectsScale;
             UpdateCompanionMatterTint(flash, 1);
-            foreach (var pair in palette)
-                if (pair.Value != null) pair.Value.color = Color.Lerp(pair.Key.Color, new Color(1f, .92f, .73f), flash);
+            UpdatePaletteTint(flash, 1, false);
         }
 
         public static CombatModel Hero(Transform parent, HeroClass hero)

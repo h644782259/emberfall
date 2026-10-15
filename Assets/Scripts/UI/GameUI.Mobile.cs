@@ -109,12 +109,12 @@ namespace Emberfall
         {
             var l=MobileControls.Layout;GameProfile p=session.Progression.Profile;
             DrawMobileVitals(l);
-            bool hudEnabled=GUI.enabled;GUI.enabled=CanSwitchFunction&&!UITransitionBlocked;
+            bool hudEnabled=GUI.enabled;GUI.enabled=hudEnabled&&CanSwitchFunction&&!UITransitionBlocked;
             if(MobileIcon(l.Inventory,"inventory",jade))TogglePanel(Panel.Inventory);
             if(MobileIcon(l.SkillsMenu,"skills",p.skillPoints>0?gold:jade))TogglePanel(Panel.Skills);
             GUI.enabled=hudEnabled;
             if(MobileIcon(l.Menu,"settings",pale))session.SetPaused(true);
-            GUI.enabled=CanSwitchFunction&&!UITransitionBlocked;
+            GUI.enabled=hudEnabled&&CanSwitchFunction&&!UITransitionBlocked;
             if(MobileIcon(l.Catalog,"achievement",gold))OpenProgressionGoals();
             if(HubServicesAvailable)
             {
@@ -318,7 +318,7 @@ namespace Emberfall
             var l=MobileControls.Layout;float x=(l.Width-510)/2,y=(l.Height-300)/2;
             Box(TouchRect(x-12,y-6,534,312),jade,false);
             Text(TouchRect(x,y,510,30),"触屏操作",TouchFont(22),pale,true);
-            string[] tips={"左侧拖动移动 · 右下按住普攻，可同时操作", "主动技能分两页，每页最多4个；大招固定，被动自动生效", "轻点技能自动瞄准并施放，无须圈选或二次确认", "点敌人固定目标；点战场空白取消，恢复自动瞄准", "蓄力自动完成；点取消或闪避可中断", "灰色技能尚未学会；到技能学习后直接可用"};
+            string[] tips={"左侧拖动移动 · 右下按住普攻，可同时操作", "主动技能分两页，每页最多4个；大招固定，被动自动生效", "轻点技能自动瞄准并施放，无须圈选或二次确认", "右屏空白拖动转镜头；松手保持当前视角", "蓄力自动完成；点取消或闪避可中断", "灰色技能尚未学会；到技能学习后直接可用"};
             for(int i=0;i<tips.Length;i++)Text(TouchRect(x,y+43+i*32,510,28),tips[i],TouchFont(14),i==2?jade:pale);
             if(controlsReturnPause&&NavigationButton(TouchRect(x,y+250,510,48),"返回设置",jade))ClosePanel();
         }

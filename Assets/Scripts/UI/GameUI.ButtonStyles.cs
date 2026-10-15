@@ -33,16 +33,16 @@ namespace Emberfall
         private bool PrimaryButton(Rect rect, string caption, Color accent, bool enabled = true, string hint = null, bool primary = false)
         { return DrawButton(rect, caption, ButtonRole.Primary, enabled, hint); }
 
-        private bool TabButton(Rect rect, string caption, bool selected, bool enabled = true, string hint = null)
-        { return DrawButton(rect, caption, selected ? ButtonRole.SelectedTab : ButtonRole.Tab, enabled, hint); }
+        private bool TabButton(Rect rect, string caption, bool selected, bool enabled = true, string hint = null, bool pointerFeedback = true)
+        { return DrawButton(rect, caption, selected ? ButtonRole.SelectedTab : ButtonRole.Tab, enabled, hint, pointerFeedback: pointerFeedback); }
 
         private bool ToggleButton(Rect rect, string caption, bool active, bool enabled = true, string hint = null)
         { return DrawButton(rect, caption, active ? ButtonRole.ActiveToggle : ButtonRole.Toggle, enabled, hint); }
 
-        private bool DrawButton(Rect rect, string caption, ButtonRole role, bool enabled = true, string hint = null, int fontSize = 0, string controlName = null)
+        private bool DrawButton(Rect rect, string caption, ButtonRole role, bool enabled = true, string hint = null, int fontSize = 0, string controlName = null, bool pointerFeedback = true)
         {
             enabled = enabled && GUI.enabled;
-            bool hover = rect.Contains(Mouse) && enabled;
+            bool hover = pointerFeedback && rect.Contains(Mouse) && enabled;
             bool selected = role == ButtonRole.SelectedTab;
             bool primary = role == ButtonRole.Primary;
             bool navigation = role == ButtonRole.Navigation;

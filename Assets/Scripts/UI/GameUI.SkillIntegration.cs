@@ -9,28 +9,52 @@ namespace Emberfall
         {
             bool compact=r.height<50*u,learned=session.Player.BlinkFollowupLearned;
             Color accent=blinkFollowupSelected?gold:learned?jade:muted;
-            Surface(r,card);SurfaceFrame(r,accent);
-            DrawIcon(new Rect(r.x+4*u,r.y+4*u,24*u,24*u),UIIconAtlas.Utility("blink"),accent);
-            Text(new Rect(r.x+32*u,r.y+2*u,r.width-36*u,24*u),session.Player.BlinkFollowupName,Mathf.RoundToInt((compact?9:12)*u),learned?pale:muted,true);
-            Text(new Rect(r.x+4*u,r.yMax-19*u,r.width-8*u,18*u),learned?"Lv.5 · 已习得":"Lv.5 · 自动习得",Mathf.RoundToInt((compact?8:10)*u),accent,false,false,TextAnchor.MiddleCenter);
+            if(compact)
+            {
+                Surface(r,new Color(accent.r*.025f,accent.g*.035f,accent.b*.045f,.98f));
+                SurfaceFrame(r,new Color(accent.r,accent.g,accent.b,blinkFollowupSelected?.8f:.22f));
+                DrawIcon(new Rect(r.x+3*u,r.y+2*u,24*u,24*u),UIIconAtlas.Utility("blink"),accent);
+                Text(new Rect(r.x+31*u,r.y+2*u,r.width-34*u,20*u),session.Player.BlinkFollowupName,Mathf.RoundToInt(9*u),learned?pale:muted,true,false,TextAnchor.MiddleLeft);
+                Text(new Rect(r.x+4*u,r.y+22*u,r.width-8*u,16*u),"Lv.5 · "+(learned?"已习得":"锁定"),Mathf.RoundToInt(8*u),accent,false,false,TextAnchor.MiddleCenter);
+            }
+            else if(MobileControls.Active)
+            {
+                DrawIcon(new Rect(r.center.x-18*u,r.y+5*u,36*u,36*u),UIIconAtlas.Utility("blink"),accent);
+                if(blinkFollowupSelected)DrawIcon(new Rect(r.center.x+20*u,r.y+2*u,12*u,12*u),UIIconAtlas.Utility("confirm"),gold);
+                Text(new Rect(r.x+4*u,r.y+44*u,r.width-8*u,22*u),session.Player.BlinkFollowupName,Mathf.RoundToInt(10*u),learned?pale:muted,true,false,TextAnchor.MiddleCenter);
+                SkillStateTag(new Rect(r.x+3*u,r.y+64*u,(r.width-10*u)*.45f,18*u),"Lv.5",muted,Mathf.RoundToInt(9*u));
+                SkillStateTag(new Rect(r.x+r.width*.46f,r.y+64*u,r.width*.54f-3*u,18*u),learned?"已习得":"未解锁",accent,Mathf.RoundToInt(9*u));
+            }
+            else
+            {
+                Surface(r,blinkFollowupSelected?new Color(.12f,.20f,.23f):learned?new Color(.06f,.145f,.15f):card);
+                SurfaceFrame(r,blinkFollowupSelected?gold:new Color(accent.r,accent.g,accent.b,learned?.7f:.25f));
+                DrawIcon(new Rect(r.x+5,r.y+7,24,24),UIIconAtlas.Utility("blink"),accent);
+                Text(new Rect(r.x+32,r.y+7,107,24),session.Player.BlinkFollowupName,14,learned?pale:muted,true,false,TextAnchor.MiddleCenter);
+                Text(new Rect(r.x+5,r.y+35,134,18),"Lv.5 · "+(learned?"已习得":"未解锁"),11,muted,false,false,TextAnchor.MiddleCenter);
+            }
             if(MobileControls.Active?MobileSkillRowClicked(r):GUI.Button(r,GUIContent.none,invisibleButton))
             {blinkFollowupSelected=true;CancelMobileScroll();}
         }
         private void DrawBlinkFollowupDetail(Rect r,float u)
         {
-            Surface(r,card);Fill(new Rect(r.x,r.y,r.width,3*u),jade);
+            Surface(r,new Color(.012f,.024f,.038f,.99f));SurfaceFrame(r,new Color(jade.r,jade.g,jade.b,.28f));
+            Text(new Rect(r.x+10*u,r.y+4*u,r.width-168*u,36*u),session.Player.BlinkFollowupName,Mathf.RoundToInt(16*u),pale,true,false,TextAnchor.MiddleLeft);
+            SkillStateTag(new Rect(r.xMax-142*u,r.y+10*u,56*u,24*u),"主动",jade,Mathf.RoundToInt(12*u));
+            SkillStateTag(new Rect(r.xMax-82*u,r.y+10*u,72*u,24*u),"衔接技",gold,Mathf.RoundToInt(12*u));
+            r=new Rect(r.x+6*u,r.y+44*u,r.width-12*u,Mathf.Max(32*u,r.height-52*u));
             blinkFollowupDetailScroll=BeginTouchScroll("blink-followup-detail",r,blinkFollowupDetailScroll,new Rect(0,0,r.width-16*u,290*u));
             r=new Rect(0,0,r.width-16*u,290*u);
             float x=r.x+16*u,w=r.width-32*u;
-            Text(new Rect(x,r.y+14*u,w,32*u),session.Player.BlinkFollowupName,Mathf.RoundToInt(22*u),pale,true);
-            Text(new Rect(x,r.y+52*u,w,24*u),session.Player.BlinkFollowupLearned?"Lv.5 · 已习得":"Lv.5 · 自动习得",Mathf.RoundToInt(12*u),jade,true);
+
+            Text(new Rect(x,r.y+8*u,w,24*u),session.Player.BlinkFollowupLearned?"Lv.5 · 已习得":"Lv.5 · 自动习得",Mathf.RoundToInt(12*u),jade,true);
             string damage=(session.Player.BlinkFollowupDamageMultiplier*100).ToString("0")+"%攻击 + "+SkillDamageBudgets.BaseDamage(session.Progression.Profile.level,session.Player.BlinkFollowupDamageMultiplier).ToString("0.#");
             string effect=session.Player.HeroClass==HeroClass.Vanguard?"对前方3米、130°扇形内敌人造成"+damage+"伤害，击退并震慑0.2秒。":session.Player.HeroClass==HeroClass.Arcanist?"对周围3米内敌人造成"+damage+"伤害，小幅击退并震慑0.2秒。":session.Player.HeroClass==HeroClass.Ranger?"贯穿前方7米内敌人，造成"+damage+"伤害，小幅击退并震慑0.1秒。":"在6米内目标位置引爆，造成"+damage+"的2.6米范围伤害，震慑0.55秒。";
             int effectFont=Mathf.RoundToInt(14*u);float effectHeight=Mathf.Max(66*u,Style(effectFont,false,true).CalcHeight(new GUIContent(effect),w));
-            Text(new Rect(x,r.y+90*u,w,effectHeight),effect,effectFont,pale,false,true);
+            Text(new Rect(x,r.y+42*u,w,effectHeight),effect,effectFont,pale,false,true);
             string trigger=MobileControls.Active?"闪现后 1.2 秒内，点击原闪现按钮释放。":"闪现后 1.2 秒内，点击鼠标左键释放。";
-            Text(new Rect(x,r.y+96*u+effectHeight,w,66*u),trigger,Mathf.RoundToInt(13*u),jade,false,true);
-            Text(new Rect(x,r.y+164*u+effectHeight,w,50*u),"5级自动习得。每次闪现可衔接一次，无额外资源消耗。",Mathf.RoundToInt(12*u),muted,false,true);
+            Text(new Rect(x,r.y+48*u+effectHeight,w,66*u),trigger,Mathf.RoundToInt(13*u),jade,false,true);
+            Text(new Rect(x,r.y+116*u+effectHeight,w,50*u),"5级自动习得。每次闪现可衔接一次，无额外资源消耗。",Mathf.RoundToInt(12*u),muted,false,true);
             EndTouchScroll();
         }
         private int skillSection;
@@ -45,7 +69,7 @@ namespace Emberfall
                 bool selected=skillSection==i;
                 Text(hit,i==0?"战技":i==1?"职业精通":"切换职业",Mathf.RoundToInt(14*u),selected?gold:muted,selected,false,TextAnchor.MiddleCenter);
                 if(selected)Fill(new Rect(hit.x+8*u,hit.yMax-5*u,hit.width-16*u,2*u),gold);
-                if(GUI.Button(hit,GUIContent.none,invisibleButton)&&!selected){skillSection=i;CancelMobileScroll();}
+                if(GUI.Button(hit,GUIContent.none,invisibleButton)&&!selected){skillSection=i;CancelMobileScroll();BlockUITransition();}
             }
         }
         private float DrawSpecializationChoices(float width,float u,float y,bool draw)

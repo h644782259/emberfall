@@ -5,6 +5,7 @@ namespace Emberfall
     {
         private readonly MobileThermalBudget mobileThermalBudget = new MobileThermalBudget();
         private float nextThermalSample;
+        internal int PerformanceThermalState {get;private set;}=-1;
         private readonly MobileIdleFrameBudget mobileIdleBudget = new MobileIdleFrameBudget();
         private Vector3 lastMobilePlayerPosition;
         private const string GraphicsQualityPreferenceKey = "Emberfall.GraphicsQuality";
@@ -104,7 +105,8 @@ namespace Emberfall
             {
                 nextThermalSample = Time.realtimeSinceStartup + 2;
 #if UNITY_IOS && !UNITY_EDITOR
-                mobileThermalBudget.Observe(EmberfallThermalState(), Time.realtimeSinceStartupAsDouble);
+                PerformanceThermalState=EmberfallThermalState();
+                mobileThermalBudget.Observe(PerformanceThermalState, Time.realtimeSinceStartupAsDouble);
 #endif
             }
             return mobileThermalBudget.FrameRate(IdleFrameRate(requested));

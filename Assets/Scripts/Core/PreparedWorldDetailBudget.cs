@@ -34,6 +34,7 @@ namespace Emberfall
         private readonly List<Chunk> chunks = new List<Chunk>();
         private readonly List<int> changing = new List<int>();
         private readonly List<Mesh> ownedMeshes = new List<Mesh>();
+        private readonly Dictionary<Material, Material> fadeMaterials = new Dictionary<Material, Material>();
         private CullingGroup culling;
         private Camera view;
         private float detailDistance;
@@ -152,7 +153,19 @@ namespace Emberfall
                 child.transform.SetParent(source.transform, false);
                 child.AddComponent<MeshFilter>().sharedMesh = result;
                 var renderer = child.AddComponent<MeshRenderer>();
-                renderer.sharedMaterials = source.sharedMaterials;
+                var materials=source.sharedMaterials;
+                for(int slot=0;slot<materials.Length;slot++)
+                {
+                    var original=materials[slot];
+                    if(original==null||original.shader.name!="Emberfall/Weathered World")continue;
+                    if(!fadeMaterials.TryGetValue(original,out var fading))
+                    {
+                        fading=new Material(original){name=original.name+" (distance fade)"};
+                        fading.EnableKeyword("EMBER_WORLD_FADE");fadeMaterials.Add(original,fading);
+                    }
+                    materials[slot]=fading;
+                }
+                renderer.sharedMaterials = materials;
                 renderer.shadowCastingMode = source.shadowCastingMode; renderer.receiveShadows = source.receiveShadows;
                 renderer.lightProbeUsage = source.lightProbeUsage; renderer.reflectionProbeUsage = source.reflectionProbeUsage;
                 // Match the original allowance for shader terrain height and wind.
@@ -223,6 +236,6 @@ namespace Emberfall
         private void OnEnable() { worlds.Add(this); if (culling != null) culling.enabled = true; }
         private void OnDisable() { worlds.Remove(this); if (culling != null) culling.enabled = false; }
         private void OnDestroy()
-        { worlds.Remove(this); if (culling != null) culling.Dispose(); foreach (var mesh in ownedMeshes) if (mesh != null) Destroy(mesh); }
+        { worlds.Remove(this); if (culling != null) culling.Dispose(); foreach (var mesh in ownedMeshes) if (mesh != null) Destroy(mesh); foreach(var material in fadeMaterials.Values)if(material!=null)Destroy(material); }
     }
 }

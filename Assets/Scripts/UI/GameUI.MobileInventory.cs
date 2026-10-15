@@ -107,27 +107,7 @@ namespace Emberfall
                 DrawBagSupplies(content);
                 return;
             }
-            var grid=new InventoryGridGeometry(content.Width-InventoryGridGeometry.FilterRailWidth-18,InventoryGridGeometry.MobileCellSize);
-            float filledRows=((bagItems.Count+grid.Columns-1)/grid.Columns)*grid.Stride+4;
-            float gridHeight=Mathf.Max(176,filledRows);
-            bool overview=picked!=null&&bagItems.Count>0&&content.Height-gridHeight>=174;
-            var gridArea=overview?new MobilePanelLayout.Area(content.X,content.Y,content.Width,gridHeight):content;
-            if(DrawMobileEquipmentGrid(gridArea,false))return;
-            if(overview&&!inventoryComparisonOpen)
-                DrawInventoryOverview(new MobilePanelLayout.Area(content.X,content.Y+gridHeight+8,content.Width-InventoryGridGeometry.FilterRailWidth,166),picked);
-
-        }
-
-        private void DrawInventoryOverview(MobilePanelLayout.Area area,ItemData item)
-        {
-            float u=TouchRatio;Rect r=MobilePanelRect(area);
-            Surface(r,new Color(.012f,.022f,.034f,1));SurfaceFrame(r,new Color(jade.r,jade.g,jade.b,.18f));
-            ItemData preview=MobileEquipmentPreview(item),current=session.Progression.Equipped(item.slot);
-            Text(TouchRect(area.X+12,area.Y+8,area.Width-164,28),ItemTitle(preview),TouchFont(16),GameBalance.RarityColor(item.rarity),true,false,TextAnchor.MiddleLeft);
-            if(NavigationButton(TouchRect(area.XMax-148,area.Y+4,136,44),"详情",jade))
-                OpenInventoryPopup(item.id,r);
-            DrawMobileEquipmentScores(area.X+12,area.Y+48,area.Width-24,current,preview);
-            Text(TouchRect(area.X+12,area.Y+138,area.Width-24,24),"攻击 "+preview.attack.ToString("0")+"   防御 "+preview.defense.ToString("0")+"   生命 "+preview.health.ToString("0"),TouchFont(13),pale,false,false,TextAnchor.MiddleLeft);
+            DrawMobileEquipmentGrid(content,false);
         }
 
         private string MobileInventoryFilterLabel { get { return inventoryFilter < 0 ? "全部" : GameBalance.SlotName((ItemSlot)inventoryFilter); } }

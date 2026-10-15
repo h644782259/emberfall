@@ -24,8 +24,8 @@ public static class MobileThermalBudgetTests
         var idle=new MobileIdleFrameBudget();
         c(idle.FrameRate(60,true,true,100)==60,"touch immediately restores activity");
         c(idle.FrameRate(60,true,false,109)==60,"brief stops retain smoothness");
-        c(idle.FrameRate(60,true,false,110)==30,"ten idle seconds throttle camp");
-        c(idle.FrameRate(60,true,false,160)==15,"long camp idle uses minimum foreground cadence");
+        c(idle.FrameRate(60,true,false,110)==60,"stationary foreground retains full cadence");
+        c(idle.FrameRate(60,true,false,160)==60,"long foreground idle stays smooth");
         c(idle.FrameRate(60,true,true,161)==60,"touch, movement or combat restores full cadence");
         c(idle.FrameRate(60,false,false,300)==60,"dungeon and practice never use camp idle budget");
         c(idle.FrameRate(15,false,false,400)==15,"never raises a background cap");
