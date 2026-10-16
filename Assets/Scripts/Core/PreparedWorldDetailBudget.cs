@@ -187,9 +187,27 @@ namespace Emberfall
             if (owner != null && owner.ReleaseOwnedMesh(mesh)) filter.sharedMesh = null;
         }
 
+        internal static void RefreshDetailDistances()
+        {
+            foreach(var world in worlds)
+                if(world != null && world.prepared) world.SetDistance(GraphicsQualityRuntime.DetailDistance(GraphicsQualityRuntime.Current));
+        }
+        private void SetDistance(float distance)
+        {
+            if(Mathf.Approximately(detailDistance,distance)) return;
+            detailDistance=distance;
+            if(culling==null || view==null) return;
+            culling.SetBoundingDistances(new[] { detailDistance - 10, detailDistance });
+            for(int i=0;i<chunks.Count;i++)
+            {
+                var chunk=chunks[i];float range=Distance(chunk);
+                chunk.Band=range<detailDistance-10?0:range<detailDistance?1:2;
+                if(!chunk.Updating) { chunk.Updating=true;changing.Add(i); }
+            }
+        }
         private void SetProfile(GraphicsQualityProfile profile)
         {
-            detailDistance = profile.DetailDistance;
+            detailDistance = GraphicsQualityRuntime.DetailDistance(profile);
             if (culling != null) culling.Dispose();
             view = Camera.main;
             if (view == null || chunks.Count == 0) { culling = null; return; }

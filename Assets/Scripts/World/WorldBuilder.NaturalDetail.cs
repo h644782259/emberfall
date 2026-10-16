@@ -50,7 +50,7 @@ namespace Emberfall
         static void BuildNaturalGroundDetail(Transform parent,WorldResources r,bool dungeon,int hub)
         {
             if(!NaturalWorldMaterial.Enabled)return;
-            var fern=new DetailBatch();var litter=new DetailBatch();var gravel=new DetailBatch();
+            var fern=new DetailBatch(Application.isMobilePlatform);var litter=new DetailBatch(Application.isMobilePlatform);var gravel=new DetailBatch(Application.isMobilePlatform);
             var random=new System.Random(59117+(dungeon?97:hub*31));
             int count=dungeon?300:hub==0?850:360;float extent=WorldTraversal.SceneLocalArenaRadius-1;
             for(int i=0;i<count;i++)
@@ -91,6 +91,10 @@ namespace Emberfall
         static float Next(System.Random random,float min,float max){return min+(float)random.NextDouble()*(max-min);}
         sealed class DetailBatch
         {
+            // Only small ground ornaments opt in. Tree wood/canopies and all
+            // gameplay geometry retain their original tessellation on every platform.
+            readonly bool compact;
+            internal DetailBatch(bool compact=false) { this.compact=compact; }
             readonly List<Vector3> vertices=new List<Vector3>();readonly List<int> triangles=new List<int>();readonly List<Color> colors=new List<Color>();readonly List<Vector2> uv=new List<Vector2>();
             void Vertex(Vector3 point,Color color,Vector2 tex=default(Vector2)){vertices.Add(point);colors.Add(color);uv.Add(tex);}
             void Face(int a,int b,int c){triangles.Add(a);triangles.Add(b);triangles.Add(c);}
@@ -129,7 +133,7 @@ namespace Emberfall
             {
                 // Closed curved blade: narrow stem, rounded shoulders, pointed
                 // tip, a raised midrib and thin solid edge. Each leaf owns UVs.
-                int n=vertices.Count;const int rows=5,cols=3,layer=rows*cols;
+                int n=vertices.Count;int rows=compact?3:5;const int cols=3;int layer=rows*cols;
                 float tilt=Mathf.Sin(angle*3+p.x*7+p.z*11)*.48f;
                 Vector3 forward=new Vector3(Mathf.Cos(angle),tilt,Mathf.Sin(angle)).normalized*length;
                 Vector3 side=Vector3.Cross(Vector3.up,forward).normalized;
@@ -151,7 +155,7 @@ namespace Emberfall
             }
             internal void Pebble(Vector3 p,Vector3 scale,float angle)
             {
-                int n=vertices.Count;const int rings=5,sides=12;
+                int n=vertices.Count;int rings=compact?3:5,sides=compact?8:12;
                 for(int ring=0;ring<rings;ring++)for(int i=0;i<sides;i++)
                 {
                     float t=(ring+1)/(float)(rings+1)*Mathf.PI,a=angle+i*Mathf.PI*2/sides;
@@ -165,7 +169,7 @@ namespace Emberfall
             }
             internal void Grass(Vector3 p,float angle,float height,Color color)
             {
-                const int rings=7,sides=6;int n=vertices.Count;
+                int rings=compact?5:7,sides=compact?4:6;int n=vertices.Count;
                 Vector3 across=new Vector3(Mathf.Cos(angle),0,Mathf.Sin(angle)),bend=new Vector3(-across.z,0,across.x);
                 for(int ring=0;ring<rings;ring++)for(int side=0;side<sides;side++)
                 {

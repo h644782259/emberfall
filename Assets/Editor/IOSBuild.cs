@@ -67,11 +67,14 @@ namespace Emberfall.Editor
             PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.iOS, false);
             PlayerSettings.SetGraphicsAPIs(BuildTarget.iOS, new[] { GraphicsDeviceType.Metal });
 
+            bool previousTimingStats = PlayerSettings.enableFrameTimingStats;
+            bool development = Argument("-emberfallIosDevelopment") == "true";
             string previousTeam = PlayerSettings.iOS.appleDeveloperTeamID;
             try
             {
                 // No developer identity or signing credential is embedded in source.
                 PlayerSettings.iOS.appleDeveloperTeamID = teamId;
+                PlayerSettings.enableFrameTimingStats = Argument("-emberfallIosFrameTiming") == "true";
                 Directory.CreateDirectory(output);
                 BuildReport report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
                 {
@@ -79,7 +82,7 @@ namespace Emberfall.Editor
                     target = BuildTarget.iOS,
                     targetGroup = BuildTargetGroup.iOS,
                     locationPathName = output,
-                    options = BuildOptions.None
+                    options = development ? BuildOptions.Development : BuildOptions.None
                 });
                 string xcodeProject = Path.Combine(output, "Unity-iPhone.xcodeproj", "project.pbxproj");
                 if (report == null || report.summary.result != BuildResult.Succeeded || !File.Exists(xcodeProject))
@@ -91,6 +94,7 @@ namespace Emberfall.Editor
             {
                 // Keep a CLI-provided personal team out of saved project settings.
                 PlayerSettings.iOS.appleDeveloperTeamID = previousTeam;
+                PlayerSettings.enableFrameTimingStats = previousTimingStats;
             }
         }
 

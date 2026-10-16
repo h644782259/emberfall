@@ -6,7 +6,7 @@ namespace Emberfall
     {
         static void BuildMeadowDetail(Transform parent,WorldResources resources)
         {
-            var blades=new DetailBatch();var random=new System.Random(83723);
+            var blades=new DetailBatch(Application.isMobilePlatform);var random=new System.Random(83723);
             for(int i=0;i<520;i++)
             {
                 Vector3 p=new Vector3((float)random.NextDouble()*62-31,.035f,(float)random.NextDouble()*62-31);

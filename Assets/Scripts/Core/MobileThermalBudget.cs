@@ -15,6 +15,11 @@ namespace Emberfall
         public int ProtectionLevel { get; private set; }
         public bool ReducedRendering => ProtectionLevel > 0;
         public bool Limited => ProtectionLevel >= 2;
+        // Fair heat must remove real work even when Balanced already uses
+        // one light and hard shadows. These affect ornaments only, not gameplay.
+        public float ShadowDistance(float requested) => ReducedRendering ? System.Math.Min(requested, 18f) : requested;
+        public float DetailDistance(float requested) => ReducedRendering ? System.Math.Min(requested, 48f) : requested;
+        public int DecorationLimit => ReducedRendering ? 6 : int.MaxValue;
         private double coolSince = -1;
         public void Observe(int thermalState, double now)
         {

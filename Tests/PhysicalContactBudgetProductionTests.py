@@ -48,6 +48,19 @@ class Program {
    for(int i=0;i<cap;i++)pool.Acquire(CombatVisualPriority.ActionBody,cap,()=>retired++);
    Check(pool.Acquire(CombatVisualPriority.Decoration,cap,()=>{})==null&&retired==0&&pool.Active==cap,"lower-quality ornament cannot evict a skill body");
   }
+  {
+   var pool=new CombatVisualBudget();int retired=0;int protectedRetired=0;
+   for(int i=0;i<10;i++)pool.Acquire(CombatVisualPriority.Decoration,24,()=>retired++);
+   foreach(var priority in new[]{CombatVisualPriority.SustainedBackground,CombatVisualPriority.ActionBody,CombatVisualPriority.RealContact,CombatVisualPriority.Finale})pool.Acquire(priority,24,()=>protectedRetired++);
+   pool.SetDecorationLimit(6);
+   Check(pool.ActiveDecorations==6&&pool.Active==10&&retired==4&&protectedRetired==0,"warm budget trims only ornaments, preserving persistent fields, action bodies, hits and finales");
+   Check(pool.Acquire(CombatVisualPriority.Decoration,24,()=>{})==null,"new ornaments cannot refill the warm budget");
+   Check(pool.Acquire(CombatVisualPriority.RealContact,24,()=>{})!=null,"warm budget leaves important feedback capacity intact");
+   pool.SetDecorationLimit(int.MaxValue);
+   Check(pool.Acquire(CombatVisualPriority.Decoration,24,()=>{})!=null,"cooldown restores ornament admission");
+   pool.SetDecorationLimit(0);
+   Check(pool.ActiveDecorations==0&&protectedRetired==0,"zero decorative budget never retires protected feedback");
+  }
   CombatVisualBudget.ConfiguredLimit=1;
   var older=new GameObject();var latest=new GameObject();
   Check(CombatVisualLease.Attach(older,CombatVisualPriority.RealContact)!=null,"initial native lease owns its profile slot");
@@ -59,6 +72,9 @@ class Program {
   CombatVisualBudget.ConfiguredLimit=2;
   var profileRoots=new[]{new GameObject(),new GameObject(),new GameObject()};
   Check(CombatVisualLease.Attach(profileRoots[0],CombatVisualPriority.Decoration)!=null&&CombatVisualLease.Attach(profileRoots[1],CombatVisualPriority.Decoration)!=null&&CombatVisualLease.Attach(profileRoots[2],CombatVisualPriority.Decoration)==null&&CombatVisualLease.Active==2,"lease honors the newly configured graphics capacity");
+  CombatVisualLease.SetDecorationLimit(1);
+  Check(!profileRoots[0].activeInHierarchy&&profileRoots[1].activeInHierarchy&&CombatVisualLease.Active==1,"thermal trim safely reenters native lease release without retiring the surviving ornament");
+  CombatVisualLease.SetDecorationLimit(int.MaxValue);
   profileRoots[0].SetActive(false);profileRoots[1].SetActive(false);Check(CombatVisualLease.Active==0,"profile-cap tests leave no orphaned leases");
   Console.WriteLine("PASS "+checks+" actual contact/decorative/finale overload and full lease lifecycle checks across five graphics caps");
  }

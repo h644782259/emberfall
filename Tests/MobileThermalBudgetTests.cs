@@ -8,6 +8,8 @@ public static class MobileThermalBudgetTests
         var p=new MobileThermalBudget();
         c(p.FrameRate(60)==60,"normal combat stays smooth");
         p.Observe(1,0);c(!p.Limited && p.ReducedRendering && p.FrameRate(60)==60,"fair reduces rendering before sacrificing input cadence");
+        c(p.ShadowDistance(24)==18 && p.DetailDistance(72)==48 && p.DecorationLimit==6,"fair heat removes actual Balanced rendering work");
+        c(p.ShadowDistance(12)==12 && p.DetailDistance(32)==32,"thermal adaptation never increases a smaller budget");
         p.Observe(2,2);c(p.FrameRate(60)==30,"serious heat limits combat");
         c(p.FrameRate(15)==15&&p.FrameRate(30)==30,"thermal limit never raises background/menu budget");
         p.Observe(0,4);p.Observe(0,63);c(p.Limited,"no early recovery");
@@ -20,6 +22,7 @@ public static class MobileThermalBudgetTests
         p.Observe(1,328);p.Observe(-1,330);c(p.ReducedRendering,"unknown reading preserves early protection");
         p.Observe(0,400);p.Observe(0,459);c(p.ReducedRendering,"early protection also requires full cooldown");
         p.Observe(0,460);c(!p.ReducedRendering,"early protection recovers after continuous nominal readings");
+        c(p.ShadowDistance(34)==34 && p.DetailDistance(96)==96 && p.DecorationLimit==int.MaxValue,"cooldown restores original render budgets");
         foreach(var size in new[]{new[]{2622,1206},new[]{1206,2622},new[]{2732,2048},new[]{1280,720},new[]{1920,1080}})
         {
             int w,h;MobileThermalBudget.RenderSize(size[0],size[1],out w,out h);

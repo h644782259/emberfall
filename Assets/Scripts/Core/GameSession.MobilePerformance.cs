@@ -18,7 +18,7 @@ namespace Emberfall
         public string GraphicsQualitySummary => "当前：" + GraphicsQualityPolicy.Name(GraphicsQualityRuntime.Current.Mode) +
             (graphicsPending ? " · 下次进入场景生效" : graphicsSelection == GraphicsQualityMode.Automatic ? " · 按设备配置" : "") +
             (mobileThermalBudget.Limited ? " · 设备温度较高，已保护帧率" :
-             mobileThermalBudget.ReducedRendering ? " · 设备升温，已降低阴影负载" : "");
+             mobileThermalBudget.ReducedRendering ? " · 设备升温，已减少装饰与阴影负载" : "");
 
         public void SetGraphicsQuality(GraphicsQualityMode selection)
         {
@@ -96,16 +96,19 @@ namespace Emberfall
             if (graphicsPending) ApplyGraphicsQuality();
             return PreparedWorldDetailBudget.PrepareAsync(world, GraphicsQualityRuntime.Current, progress);
         }
-        // Only cheap runtime lighting settings change as heat rises. Resolution,
+        // Runtime lighting and existing decorative culling change as heat rises. Resolution,
         // world preparation and the saved quality selection remain stable.
         private void ApplyThermalRendering(GraphicsQualityProfile profile)
         {
             bool warm = profile.Mobile && mobileThermalBudget.ReducedRendering;
             QualitySettings.shadows = profile.SoftShadows && !warm ? ShadowQuality.All : ShadowQuality.HardOnly;
-            QualitySettings.shadowDistance = warm ? Mathf.Min(profile.ShadowDistance, 24f) : profile.ShadowDistance;
+            QualitySettings.shadowDistance = warm ? mobileThermalBudget.ShadowDistance(profile.ShadowDistance) : profile.ShadowDistance;
             QualitySettings.shadowResolution = !profile.Mobile && profile.Mode == GraphicsQualityMode.High
                 ? ShadowResolution.High : ShadowResolution.Medium;
             QualitySettings.pixelLightCount = warm ? 1 : profile.PixelLights;
+            GraphicsQualityRuntime.SetThermalDetailLimit(warm ? mobileThermalBudget.DetailDistance(profile.DetailDistance) : float.MaxValue);
+            PreparedWorldDetailBudget.RefreshDetailDistances();
+            CombatVisualLease.SetDecorationLimit(warm ? mobileThermalBudget.DecorationLimit : int.MaxValue);
             appliedThermalLevel = mobileThermalBudget.ProtectionLevel;
         }
 

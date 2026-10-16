@@ -19,6 +19,10 @@ namespace Emberfall
             public Rect safeArea;
             public double elapsedSeconds, fps, meanMs, p50Ms, p95Ms, p99Ms, maxMs;
             public bool renderCountersAvailable, allocationCounterAvailable, runtimeInstancingDisabled, bakedActorReliefDisabled;
+            public bool frameTimingEnabled;
+            public int gpuTimingSamples, cpuTimingSamples, enabledDecorationTriangles;
+            public double meanGpuMs, p95GpuMs, meanMainThreadMs, meanRenderThreadMs, meanMainThreadPresentWaitMs;
+            public float decorationDistance;
             public double meanBatches, meanDrawCalls, meanSetPass, meanTriangles, meanGcBytes;
             public int activeRenderers, visibleRenderers, visibleMaterials, visibleMeshMaterialGroups, staticBatchedRenderers;
             public Vector3 cameraPosition, playerPosition;
@@ -27,6 +31,11 @@ namespace Emberfall
             public string graphicsPreset;
             public int thermalState,minThermalState,maxThermalState;
         }
+        private readonly FrameTiming[] timingBuffer = new FrameTiming[1];
+        private readonly List<double> gpuTimes = new List<double>(8192);
+        private ulong lastTimingTimestamp;
+        private int cpuTimingSamples;
+        private double mainThreadMs, renderThreadMs, presentWaitMs;
         private double reviewSeconds = 20;
         private readonly List<double> intervals = new List<double>(4096);
         private ProfilerRecorder batches, draws, passes, triangles, allocations;
@@ -103,6 +112,7 @@ namespace Emberfall
             }
             if (previous == 0) { previous = now; return; }
             EnforceRenderIsolation();
+            CaptureWorkTimings();
             intervals.Add((now - previous) * 1000); previous = now;
             minThermal=Math.Min(minThermal,session.PerformanceThermalState);maxThermal=Math.Max(maxThermal,session.PerformanceThermalState);
             minTarget = Math.Min(minTarget, Application.targetFrameRate);
@@ -112,10 +122,26 @@ namespace Emberfall
             if (allocations.Valid && allocations.Count > 0) { sumAllocations += allocations.LastValue; allocationSamples++; }
             if (intervals.Count >= 8192 || now - began >= reviewSeconds) Save(session, now);
         }
+        private void CaptureWorkTimings()
+        {
+            if(!FrameTimingManager.IsFeatureEnabled()) return;
+            FrameTimingManager.CaptureFrameTimings();
+            if(FrameTimingManager.GetLatestTimings(1,timingBuffer)==0) return;
+            var timing=timingBuffer[0];
+            if(timing.frameStartTimestamp==0 || timing.frameStartTimestamp==lastTimingTimestamp) return;
+            lastTimingTimestamp=timing.frameStartTimestamp;
+            if(timing.gpuFrameTime>0 && !double.IsNaN(timing.gpuFrameTime) && !double.IsInfinity(timing.gpuFrameTime)) gpuTimes.Add(timing.gpuFrameTime);
+            if(timing.cpuMainThreadFrameTime>0)
+            {
+                cpuTimingSamples++; mainThreadMs+=timing.cpuMainThreadFrameTime;
+                renderThreadMs+=timing.cpuRenderThreadFrameTime;presentWaitMs+=timing.cpuMainThreadPresentWaitTime;
+            }
+        }
         private void Save(GameSession session, double now)
         {
             double sum = 0; foreach (double value in intervals) sum += value;
             intervals.Sort();
+            gpuTimes.Sort();double gpuSum=0;foreach(double time in gpuTimes)gpuSum+=time;
             var layout = MobileControls.Layout;
             var report = new Report
             {
@@ -137,11 +163,16 @@ namespace Emberfall
                 elapsedSeconds = now - began, fps = sum > 0 ? intervals.Count * 1000 / sum : 0,
                 meanMs = sum / Math.Max(1, intervals.Count), p50Ms = Percentile(.5), p95Ms = Percentile(.95), p99Ms = Percentile(.99), maxMs = Percentile(1),
                 renderCountersAvailable = renderSamples > 0, allocationCounterAvailable = allocationSamples > 0,
+                frameTimingEnabled=FrameTimingManager.IsFeatureEnabled(),gpuTimingSamples=gpuTimes.Count,cpuTimingSamples=cpuTimingSamples,
+                meanGpuMs=gpuSum/Math.Max(1,gpuTimes.Count),p95GpuMs=gpuTimes.Count==0?0:gpuTimes[Math.Min(gpuTimes.Count-1,(int)Math.Ceiling(gpuTimes.Count*.95)-1)],
+                meanMainThreadMs=mainThreadMs/Math.Max(1,cpuTimingSamples),meanRenderThreadMs=renderThreadMs/Math.Max(1,cpuTimingSamples),meanMainThreadPresentWaitMs=presentWaitMs/Math.Max(1,cpuTimingSamples),
+                decorationDistance=GraphicsQualityRuntime.DetailDistance(GraphicsQualityRuntime.Current),
                 meanBatches = sumBatches / Math.Max(1, renderSamples), meanDrawCalls = sumDraws / Math.Max(1, renderSamples),
                 meanSetPass = sumPasses / Math.Max(1, renderSamples), meanTriangles = sumTriangles / Math.Max(1, renderSamples),
                 meanGcBytes = sumAllocations / Math.Max(1, allocationSamples)
             };
             report.renderIsolation = renderComparison ? RenderIsolationMode : terrainComparison ? (comparisonWindow%2==0?"legacy-terrain":"analytic-terrain") : opaqueComparison ? (comparisonWindow%2==0?"legacy-clip":"opaque-fast") : "none";
+            foreach(var world in FindObjectsByType<PreparedWorldDetailBudget>()) report.enabledDecorationTriangles+=world.VisibleTriangleCount;
             var materials = new HashSet<Material>();
             var meshGroups = new HashSet<(Mesh, Material)>();
             foreach (var renderer in FindObjectsByType<Renderer>())
@@ -170,6 +201,7 @@ namespace Emberfall
                 RestoreRenderIsolation();
                 if(terrainComparison){if(comparisonWindow%2==0)Shader.EnableKeyword("EMBER_TERRAIN_LEGACY");else Shader.DisableKeyword("EMBER_TERRAIN_LEGACY");}
                 if(opaqueComparison){if(comparisonWindow%2==0)Shader.EnableKeyword("EMBER_WORLD_LEGACY_CLIP");else Shader.DisableKeyword("EMBER_WORLD_LEGACY_CLIP");}
+                gpuTimes.Clear();cpuTimingSamples=0;mainThreadMs=renderThreadMs=presentWaitMs=0;lastTimingTimestamp=0;
                 minThermal=99;maxThermal=-1;
                 intervals.Clear(); recording = false; eligibleSince = previous = 0;
                 sumBatches = sumDraws = sumPasses = sumTriangles = sumAllocations = 0;

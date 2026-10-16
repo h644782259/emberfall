@@ -5,6 +5,11 @@ namespace Emberfall
     public static class GraphicsQualityRuntime
     {
         private static GraphicsQualityProfile current;
+        private static float thermalDetailLimit = float.MaxValue;
+        internal static float DetailDistance(GraphicsQualityProfile profile)
+        { return profile.Mobile ? Mathf.Min(profile.DetailDistance, thermalDetailLimit) : profile.DetailDistance; }
+        internal static void SetThermalDetailLimit(float distance) { thermalDetailLimit = distance; }
+
         public static GraphicsQualityProfile Current
         {
             get
@@ -20,6 +25,6 @@ namespace Emberfall
         internal static void Configure(GraphicsQualityMode selection)
         { current = GraphicsQualityPolicy.Resolve(selection, CaptureDevice()); CombatVisualBudget.ConfiguredLimit = current.CombatVisualLimit; }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void Reset() { current = null; CombatVisualBudget.ConfiguredLimit = 0; }
+        private static void Reset() { thermalDetailLimit = float.MaxValue; current = null; CombatVisualBudget.ConfiguredLimit = 0; }
     }
 }

@@ -9,6 +9,7 @@ namespace Emberfall
         private bool initialized,retired;
         private System.Action retireAction;
         internal static int Active {get{return pool.Active;}}
+        internal static void SetDecorationLimit(int maximum) { pool.SetDecorationLimit(maximum); }
         private static int Limit {get{return EffectPreferences.ReducedEffects?12:CombatVisualBudget.ConfiguredLimit>0?CombatVisualBudget.ConfiguredLimit:Application.isMobilePlatform?20:32;}}
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Reset(){pool=new CombatVisualBudget();}

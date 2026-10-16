@@ -14,9 +14,27 @@ namespace Emberfall
         public sealed class Ticket {internal Action Retire;internal CombatVisualBudget Owner;internal bool Active;public CombatVisualPriority Priority {get;internal set;}}
         private readonly List<Ticket> tickets=new List<Ticket>();
         public int Active {get{return tickets.Count;}}
+        private int decorationLimit = int.MaxValue;
+        public int ActiveDecorations
+        {
+            get { int count=0; foreach(var ticket in tickets) if(ticket.Priority==CombatVisualPriority.Decoration) count++; return count; }
+        }
+        // Thermal adaptation retires only optional ornaments. Skill bodies,
+        // persistent fields, contacts and finales retain their existing leases.
+        public void SetDecorationLimit(int maximum)
+        {
+            decorationLimit = Math.Max(0, maximum);
+            while(ActiveDecorations > decorationLimit)
+            {
+                Ticket victim=null;
+                foreach(var ticket in tickets) if(ticket.Priority==CombatVisualPriority.Decoration) { victim=ticket; break; }
+                if(victim==null) break;
+                Release(victim); victim.Retire?.Invoke();
+            }
+        }
         public Ticket Acquire(CombatVisualPriority priority,int maximum,Action retire)
         {
-            if(maximum<=0)return null;
+            if(maximum<=0 || priority==CombatVisualPriority.Decoration && ActiveDecorations>=decorationLimit)return null;
             while(tickets.Count>=maximum)
             {
                 Ticket victim=null;
