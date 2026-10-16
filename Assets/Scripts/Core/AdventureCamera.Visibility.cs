@@ -15,13 +15,21 @@ namespace Emberfall
                 viewCamera.ResetProjectionMatrix();
                 if(MobileControls.Active&&game!=null&&game.HasStarted)
                 {
-                    var layout=MobileControls.Layout;var clear=layout.CombatView;var safe=MobileControls.SafeArea;
-                    // The camera continues looking at the hero; a finite off-axis
-                    // projection places that hero in a geometry-verified HUD gap.
-                    float x=(safe.x+(clear.X+clear.Width*.5f)*layout.Scale)/Screen.width;
-                    float y=(safe.y+safe.height-(clear.Y+clear.Height*.5f)*layout.Scale)/Screen.height;
-                    Matrix4x4 projection=viewCamera.projectionMatrix;
-                    projection.m02=CameraVisibilityRules.Projection(x);projection.m12=CameraVisibilityRules.Projection(y);viewCamera.projectionMatrix=projection;
+                    var layout=MobileControls.Layout;var health=layout.PlayerHealth;var safe=MobileControls.SafeArea;
+                    // Anchor the feet just above the health bar, independent of zoom and pitch.
+                    if(game.Player!=null)
+                    {
+                        float x=(safe.x+(health.X+health.Width*.5f)*layout.Scale)/Screen.width;
+                        float y=(safe.y+safe.height-(health.Y-14f)*layout.Scale)/Screen.height;
+                        Vector3 feet=viewCamera.WorldToViewportPoint(game.Player.transform.position);
+                        if(feet.z>viewCamera.nearClipPlane)
+                        {
+                            Matrix4x4 projection=viewCamera.projectionMatrix;
+                            projection.m02+=2f*(feet.x-x);
+                            projection.m12+=2f*(feet.y-y);
+                            viewCamera.projectionMatrix=projection;
+                        }
+                    }
                 }
             }
             if(game==null||game.Player==null||!game.HasStarted||game.IsDead){CameraOcclusionSurface.RestoreAll();return;}

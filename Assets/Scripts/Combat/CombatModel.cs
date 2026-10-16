@@ -285,7 +285,7 @@ namespace Emberfall
                 foreach (string name in new[] { "Staff", "Staff Gold", "Arcane Crystal", "Staff Crystal Crown" })
                     SetVisible(staffRig, name, visible);
             if (bowRig != null)
-                foreach (string name in new[] { "Bow Limb", "Bow Grip" })
+                foreach (string name in new[] { "Bow Limb", "Curved bow limb", "Bow Grip" })
                     SetVisible(bowRig, name, visible);
         }
 
@@ -371,14 +371,8 @@ namespace Emberfall
                     new Vector3(.12f, .22f, .12f), dark, equipmentWeapon);
                 for (int side = -1; side <= 1; side += 2)
                 {
-                    for (int i = 0; i < 4; i++)
-                    {
-                        float t = (i + .5f) / 4f;
-                        Part("Layered bow limb", PrimitiveType.Capsule,
-                            new Vector3(0, side * t * weaponStructure.BowReach, .25f - t * .19f),
-                            new Vector3(.095f + look.Tier * .012f, .17f * growth, .085f), look.Metal, equipmentWeapon)
-                            .localRotation = Quaternion.Euler(side * -18f, 0, 0);
-                    }
+                    CurvedBowLimb(equipmentWeapon, side, weaponStructure.BowReach,
+                        .095f + look.Tier * .012f, look.Metal);
                     Part("Bow tip", PrimitiveType.Sphere, new Vector3(0, side * weaponStructure.BowReach, .05f),
                         Vector3.one * (.12f + look.Tier * .015f), look.Accent, equipmentWeapon);
                     if (look.Tier >= 3)
@@ -664,12 +658,8 @@ namespace Emberfall
                 Part("Quiver", PrimitiveType.Cylinder, new Vector3(.34f,1.4f,-.36f), new Vector3(.25f,.4f,.25f), new Color(.39f,.23f,.13f));
                 for (int i=0; i<3; i++) Part("Spare Arrow", PrimitiveType.Cylinder, new Vector3(.27f+i*.07f,1.91f,-.36f), new Vector3(.035f,.3f,.035f), steel);
                 Transform bow = Joint("Bow", new Vector3(-.52f,1.1f,.23f));
-                for (int i=0; i<9; i++)
-                {
-                    float a = (-80f+i*20f)*Mathf.Deg2Rad;
-                    Transform wood = Part("Bow Limb", PrimitiveType.Capsule, new Vector3(0,Mathf.Sin(a)*.59f,Mathf.Cos(a)*.28f), new Vector3(.075f,.115f,.07f), new Color(.73f,.47f,.22f), bow, VisualSurface.Wood);
-                    wood.localRotation=Quaternion.Euler(i*20-80,0,0);
-                }
+                for (int side=-1; side<=1; side+=2)
+                    CurvedBowLimb(bow, side, weaponStructure.BowReach, .085f, new Color(.73f,.47f,.22f));
                 Part("Bowstring",PrimitiveType.Cylinder,new Vector3(0,0,.05f),new Vector3(.014f,.6f,.014f),steel,bow);
                 Part("Nocked Arrow",PrimitiveType.Cube,new Vector3(0,0,.45f),new Vector3(.035f,.035f,.85f),steel,bow);
             }
@@ -1061,7 +1051,7 @@ namespace Emberfall
                     t < .48f ? 1f - Mathf.SmoothStep(0, 1, (t - .32f) / .16f) : 0) : 0;
                 float ready = acting ? Mathf.Min(1f, Mathf.Min(t / .16f, (1 - t) / .28f)) : .3f;
                 spine.localRotation *= Quaternion.Euler(0, -13f * ready, -3f * ready);
-                Vector3 bowHand = Vector3.Lerp(new Vector3(-.32f, .1f, .28f), new Vector3(-.035f, .45f, .415f), ready);
+                Vector3 bowHand = Vector3.Lerp(new Vector3(-.40f, .25f, .42f), new Vector3(-.05f, .45f, .42f), ready);
                 AimArm(leftArm, leftElbow, bowHand, new Vector3(-1, -.5f, 0));
                 bowRig.rotation = spine.rotation * Quaternion.Euler(0, 10f, -7f);
                 bowRig.localPosition = new Vector3(0, -.23f, .04f) -
@@ -1069,7 +1059,7 @@ namespace Emberfall
                 Vector3 nock = new Vector3(0, 0, .05f - draw * .30f);
                 bowstring.SetPosition(1, nock);
                 arrowRig.localPosition = nock;
-                Vector3 stringHand = Vector3.Lerp(new Vector3(.30f, .04f, .22f),
+                Vector3 stringHand = Vector3.Lerp(new Vector3(.30f, .18f, .30f),
                     spine.InverseTransformPoint(bowRig.TransformPoint(nock)), ready);
                 AimArm(rightArm, rightElbow, stringHand, new Vector3(1, -.2f, -.2f));
                 arrowRig.gameObject.SetActive(sampleBasic ? BasicActionTimeline.ArrowVisible(t, acting) : !acting || t < .44f || t > .83f);
@@ -1119,7 +1109,7 @@ namespace Emberfall
             }
             else
             {
-                Vector3 bowHand = Vector3.Lerp(new Vector3(-.32f, .1f, .28f), new Vector3(-.035f, .45f, .415f), ready);
+                Vector3 bowHand = Vector3.Lerp(new Vector3(-.40f, .25f, .42f), new Vector3(-.05f, .45f, .42f), ready);
                 AimArm(leftArm, leftElbow, bowHand, new Vector3(-1, -.5f, 0));
                 bowRig.rotation = spine.rotation * Quaternion.Euler(0, 10, -7);
                 bowRig.localPosition = new Vector3(0, -.23f, .04f) - bowRig.localRotation * WeaponAnchorLocal(WeaponVisualAnchor.BowGrip);

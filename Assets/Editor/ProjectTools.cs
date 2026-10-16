@@ -54,6 +54,14 @@ namespace Emberfall.Editor
             UnityEngine.Object[] assets = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/GraphicsSettings.asset");
             if (assets.Length == 0) return;
             using var serialized = new SerializedObject(assets[0]);
+            // Most world/actor materials are created at runtime. Scene scanning
+            // cannot prove that their instancing variants will be needed in a player.
+            var instancing = serialized.FindProperty("m_InstancingStripping");
+            if (instancing == null)
+                throw new InvalidOperationException("Unity graphics settings lack instancing stripping policy.");
+            // UnityEditor.Rendering.InstancingStrippingMode is internal: KeepAll = 2.
+            // Use the serialized value, not localized/display enum names.
+            instancing.intValue = 2;
             SerializedProperty shaders = serialized.FindProperty("m_AlwaysIncludedShaders");
             if (shaders == null) return;
             // IMGUI's text shader belongs to unity default resources, not unity_builtin_extra.

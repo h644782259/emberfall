@@ -3,7 +3,7 @@ namespace Emberfall
 {
  public sealed class MobileCameraGesture
  {
-  public const float MinimumPitch=25,MaximumPitch=65,Threshold=9;
+  public const float MinimumPitch=-18,MaximumPitch=65,Threshold=9;
   public int Finger {get;private set;}=-1000;private float startX,startY,lastX,lastY;private bool dragging;
   public float YawDelta {get;private set;}
   public bool TapCompleted {get;private set;}
@@ -22,6 +22,6 @@ namespace Emberfall
    lastY=y;if(ended){bool tap=!dragging;float yaw=YawDelta;Cancel();YawDelta=yaw;TapCompleted=tap;}return float.IsNaN(delta)||float.IsInfinity(delta)?0:Math.Max(-18,Math.Min(18,delta*.18f));
   }
   public void Cancel(){Finger=-1000;dragging=false;TapCompleted=false;YawDelta=0;}
-  public static float Apply(float pitch,float delta){if(float.IsNaN(delta)||float.IsInfinity(delta))return pitch;return Math.Max(MinimumPitch,Math.Min(MaximumPitch,pitch+delta));}
+  public static float Apply(float pitch,float delta){if(float.IsNaN(delta)||float.IsInfinity(delta))return pitch;return Math.Max(MinimumPitch,Math.Min(MaximumPitch,pitch-delta));}
  }
 }

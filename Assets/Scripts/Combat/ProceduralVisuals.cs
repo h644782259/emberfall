@@ -94,7 +94,8 @@ namespace Emberfall
                 material.SetColor("_EmissionColor", material.color * .32f);
             }
             SurfaceTextureLibrary.Apply(material, surface);
-            material.enableInstancing = true;
+            // Explicit profiling switch; ordinary launches retain GPU instancing.
+            material.enableInstancing = System.Environment.GetEnvironmentVariable("EMBERFALL_DISABLE_RUNTIME_INSTANCING") != "1";
         }
     }
 

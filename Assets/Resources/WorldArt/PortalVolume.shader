@@ -2,6 +2,7 @@ Shader "Emberfall/Deep Travel Portal"
 {
     Properties
     {
+        _FlowNoise("Shared volume noise",3D)="white"{}
         _Color("Mist tint",Color)=(.25,.63,.53,1)
         _DeepColor("Depth tint",Color)=(.045,.095,.12,1)
     }
@@ -15,10 +16,12 @@ Shader "Emberfall/Deep Travel Portal"
             #pragma vertex vert
             #pragma fragment frag
             #pragma target 3.0
+            #pragma multi_compile_local __ EMBER_PORTAL_TEXTURE_NOISE
             #include "UnityCG.cginc"
             struct appdata {float4 vertex:POSITION;};
             struct v2f {float4 vertex:SV_POSITION;float3 local:TEXCOORD0;float3 camera:TEXCOORD1;UNITY_FOG_COORDS(2)};
             float4 _Color,_DeepColor;
+            sampler3D _FlowNoise;
             v2f vert(appdata v)
             {
                 v2f o;o.vertex=UnityObjectToClipPos(v.vertex);o.local=v.vertex.xyz;o.camera=mul(unity_WorldToObject,float4(_WorldSpaceCameraPos,1)).xyz;UNITY_TRANSFER_FOG(o,o.vertex);return o;
@@ -26,8 +29,16 @@ Shader "Emberfall/Deep Travel Portal"
             float hash(float3 p){p=frac(p*.3183099+.13);p*=17;return frac(p.x*p.y*p.z*(p.x+p.y+p.z));}
             float noise(float3 p)
             {
+                #if defined(EMBER_PORTAL_TEXTURE_NOISE)
+                // Hardware trilinear filtering replaces eight arithmetic hashes.
+                // Smooth interpolation and the complete 20-step volume remain.
+                float3 cell=floor(p),fraction=frac(p);
+                fraction=fraction*fraction*(3-2*fraction);
+                return tex3Dlod(_FlowNoise,float4((cell+fraction+.5)/32,0)).r;
+                #else
                 float3 i=floor(p),f=frac(p);f=f*f*(3-2*f);
                 return lerp(lerp(lerp(hash(i),hash(i+float3(1,0,0)),f.x),lerp(hash(i+float3(0,1,0)),hash(i+float3(1,1,0)),f.x),f.y),lerp(lerp(hash(i+float3(0,0,1)),hash(i+float3(1,0,1)),f.x),lerp(hash(i+float3(0,1,1)),hash(i+1),f.x),f.y),f.z);
+                #endif
             }
             fixed4 frag(v2f i):SV_Target
             {

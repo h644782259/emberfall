@@ -20,8 +20,8 @@ public static class CameraVisibilityTests
             Check(projection>=-.5f&&projection<=.5f,"Finite camera bias bound");
             Check(Math.Abs((1-projection)/2-Math.Max(.25f,Math.Min(.75f,anchor)))<.00001f,"Projection places hero at requested safe anchor");
         }
-        foreach(float normal in new[]{13f,19f,25f})
-        {Check(CameraVisibilityRules.Zoom(normal,2)>=13&&CameraVisibilityRules.Zoom(normal,2)<=normal,"Near-building zoom has lower bound");Check(CameraVisibilityRules.Zoom(normal,5)==normal,"Distant scenery leaves normal zoom");}
+        foreach(float normal in new[]{3.5f,5.5f,13f,19f,25f})
+        {Check(CameraVisibilityRules.Zoom(normal,2)>=CameraVisibilityRules.MinimumDistance&&CameraVisibilityRules.Zoom(normal,2)<=normal,"Near-building zoom has lower bound");Check(CameraVisibilityRules.Zoom(normal,5)==normal,"Distant scenery leaves normal zoom");}
         Check(CameraVisibilityRules.MaximumFaded==32&&CameraVisibilityRules.MaximumSurfaces==256,"Resource budgets finite");
         return checks+" camera fade/zoom/projection rule assertions passed";
     }

@@ -1085,14 +1085,15 @@ namespace Emberfall
     {
         public const float MinimumPitch = -18f;
         public const float MaximumPitch = 75f;
-        private const float DefaultPitch = 38f;
+        private const float DefaultPitch = 25f;
+        private const float DefaultDistance = 5.5f / .7f;
         private const float DistanceScale = 1.2041595f;
         private static AdventureCamera active;
         private readonly CameraOrbitInput orbitInput = new CameraOrbitInput();
         private int inputFrame = -1;
-        private float distance = 19f;
+        private float distance = DefaultDistance;
         private float yaw, pitch = DefaultPitch;
-        private float smoothYaw, smoothPitch = DefaultPitch, smoothDistance = 19f;
+        private float smoothYaw, smoothPitch = DefaultPitch, smoothDistance = DefaultDistance;
         private Vector3 lookTarget;
         private float manualCameraUntil, assistTargetSince, assistYawVelocity;
         private EnemyController assistTarget;
@@ -1107,7 +1108,7 @@ namespace Emberfall
             HitFeedback.ClearCamera();
             ResetOrbitInput();
             assistTarget=null;assistYawVelocity=0;
-            yaw=smoothYaw=0;pitch=smoothPitch=DefaultPitch;distance=smoothDistance=19f;
+            yaw=smoothYaw=0;pitch=smoothPitch=DefaultPitch;distance=smoothDistance=DefaultDistance;
             manualCameraUntil=Time.unscaledTime+1f;
             lookTarget = DesiredTarget();
             MoveCamera(true);
@@ -1161,7 +1162,7 @@ namespace Emberfall
             }
             if (canStart && canContinue)
             {
-                distance = Mathf.Clamp(distance - scroll * 1.5f, 13f, 25f);
+                distance = Mathf.Clamp(distance - scroll * .8f, CameraVisibilityRules.MinimumDistance, 25f);
                 if(Mathf.Abs(scroll)>.001f)manualCameraUntil=Time.unscaledTime+4f;
             }
         }

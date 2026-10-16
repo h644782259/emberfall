@@ -18,9 +18,11 @@ namespace Emberfall
             public float dpi, layoutScale, layoutWidth, layoutHeight, shadowDistance;
             public Rect safeArea;
             public double elapsedSeconds, fps, meanMs, p50Ms, p95Ms, p99Ms, maxMs;
-            public bool renderCountersAvailable, allocationCounterAvailable;
+            public bool renderCountersAvailable, allocationCounterAvailable, runtimeInstancingDisabled, bakedActorReliefDisabled;
             public double meanBatches, meanDrawCalls, meanSetPass, meanTriangles, meanGcBytes;
-            public int activeRenderers, visibleRenderers, visibleMaterials, visibleMeshMaterialGroups;
+            public int activeRenderers, visibleRenderers, visibleMaterials, visibleMeshMaterialGroups, staticBatchedRenderers;
+            public Vector3 cameraPosition, playerPosition;
+            public Quaternion cameraRotation;
             public string renderIsolation;
             public string graphicsPreset;
             public int thermalState,minThermalState,maxThermalState;
@@ -38,6 +40,8 @@ namespace Emberfall
         private bool opaqueComparison;
         private int minThermal=99,maxThermal=-1;
         private bool autoContinue;
+        private int savedSleepTimeout;
+        private bool heldAwake;
         private int comparisonWindow;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -69,6 +73,9 @@ namespace Emberfall
         }
         private void Start()
         {
+            savedSleepTimeout = Screen.sleepTimeout;
+            Screen.sleepTimeout = SleepTimeout.NeverSleep;
+            heldAwake = true;
             batches = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Batches Count", 1);
             draws = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Draw Calls Count", 1);
             passes = ProfilerRecorder.StartNew(ProfilerCategory.Render, "SetPass Calls Count", 1);
@@ -115,6 +122,11 @@ namespace Emberfall
                 tag = renderComparison||terrainComparison||opaqueComparison ? tag + "-" + comparisonWindow : tag, unity = Application.unityVersion, device = SystemInfo.deviceModel,
                 savedUtc = DateTime.UtcNow.ToString("o"),
                 graphicsPreset=GraphicsQualityRuntime.Current.Mode.ToString(),thermalState=session.PerformanceThermalState,minThermalState=minThermal,maxThermalState=maxThermal,
+                bakedActorReliefDisabled = Environment.GetEnvironmentVariable("EMBERFALL_DISABLE_BAKED_ACTOR_RELIEF") == "1",
+                runtimeInstancingDisabled = Environment.GetEnvironmentVariable("EMBERFALL_DISABLE_RUNTIME_INSTANCING") == "1",
+                cameraPosition = Camera.main == null ? Vector3.zero : Camera.main.transform.position,
+                cameraRotation = Camera.main == null ? Quaternion.identity : Camera.main.transform.rotation,
+                playerPosition = session.Player == null ? Vector3.zero : session.Player.transform.position,
                 graphics = SystemInfo.graphicsDeviceName, quality = QualitySettings.shadows.ToString(),
                 antialiasing = QualitySettings.antiAliasing, pixelLights = QualitySettings.pixelLightCount, shadowDistance = QualitySettings.shadowDistance,
                 width = Screen.width, height = Screen.height, nativeWidth = Display.main.systemWidth, nativeHeight = Display.main.systemHeight,
@@ -136,6 +148,7 @@ namespace Emberfall
             {
                 if (!renderer.enabled || !renderer.gameObject.activeInHierarchy) continue;
                 report.activeRenderers++;
+                if(renderer.isPartOfStaticBatch)report.staticBatchedRenderers++;
                 if (!renderer.isVisible) continue;
                 report.visibleRenderers++;
                 var filter = renderer.GetComponent<MeshFilter>();
@@ -168,6 +181,6 @@ namespace Emberfall
         private double Percentile(double value)
         { return intervals.Count == 0 ? 0 : intervals[Math.Min(intervals.Count - 1, (int)Math.Ceiling(value * intervals.Count) - 1)]; }
         private void OnDestroy()
-        { batches.Dispose(); draws.Dispose(); passes.Dispose(); triangles.Dispose(); allocations.Dispose(); RestoreRenderIsolation(); if(terrainComparison)Shader.DisableKeyword("EMBER_TERRAIN_LEGACY"); if(opaqueComparison)Shader.DisableKeyword("EMBER_WORLD_LEGACY_CLIP"); }
+        { if(heldAwake)Screen.sleepTimeout=savedSleepTimeout; batches.Dispose(); draws.Dispose(); passes.Dispose(); triangles.Dispose(); allocations.Dispose(); RestoreRenderIsolation(); if(terrainComparison)Shader.DisableKeyword("EMBER_TERRAIN_LEGACY"); if(opaqueComparison)Shader.DisableKeyword("EMBER_WORLD_LEGACY_CLIP"); }
     }
 }

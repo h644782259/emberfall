@@ -57,6 +57,11 @@ namespace Emberfall
             Shader shader=Resources.Load<Shader>("WorldArt/PortalVolume");
             if(shader==null)throw new System.InvalidOperationException("PortalVolume shader missing.");
             Material fog=new Material(shader){name="Owned deep flowing travel medium"};materials.Add(fog);
+            if(Application.isMobilePlatform && SystemInfo.supports3DTextures)
+            {
+                fog.SetTexture("_FlowNoise",SkillFlowVolume.FlowNoise);
+                fog.EnableKeyword("EMBER_PORTAL_TEXTURE_NOISE");
+            }
             fog.SetColor("_Color",new Color(.25f,.63f,.53f,1));fog.SetColor("_DeepColor",new Color(.045f,.095f,.12f,1));
             medium=new GameObject("Filled volumetric portal passage").transform;medium.SetParent(presentation,false);
             Mesh volume=VolumeMesh();resources.Own(volume);medium.gameObject.AddComponent<MeshFilter>().sharedMesh=volume;

@@ -9,6 +9,8 @@ dotnet = sys.argv[1] if len(sys.argv) > 1 else os.environ.get('DOTNET', 'dotnet'
 stubs = r'''
 using System; using System.Collections.Generic;
 namespace UnityEngine {
+ public enum RuntimeInitializeLoadType {SubsystemRegistration}
+ public class RuntimeInitializeOnLoadMethodAttribute:Attribute {public RuntimeInitializeOnLoadMethodAttribute(RuntimeInitializeLoadType value){}}
  public enum PrimitiveType {Cube,Sphere,Cylinder,Capsule,Quad}
  public class Object { public string name; }
  public class GameObject:Object { public MeshFilter Filter=new MeshFilter(); public Renderer Render=new Renderer(); public T GetComponent<T>() where T:class {return typeof(T)==typeof(MeshFilter)?Filter as T:typeof(T)==typeof(Renderer)?Render as T:null;} }
@@ -55,6 +57,19 @@ class Test {
   C(NaturalSceneryMeshLibrary.Classify("Weathered courtyard wall",PrimitiveType.Cube,new Vector3(3,2,.8f))==NaturalSceneryMeshLibrary.Kind.Stone,"architectural wall covered");C(NaturalSceneryMeshLibrary.Classify("Old mine perimeter support",PrimitiveType.Cube,new Vector3(.24f,3,.27f))==NaturalSceneryMeshLibrary.Kind.Timber,"timber support covered");
   var go=new GameObject();go.Filter.sharedMesh=new Mesh{name="Emberfall shared Cube",bounds=new Bounds(new Vector3(.03f,.08f,-.02f),new Vector3(.8f,1.2f,.9f))};var resources=new WorldResources();NaturalSceneryMeshLibrary.Apply(go,"Weathered rock",PrimitiveType.Cube,Vector3.one,resources);C(resources.Owned.Count==0,"initial rock factory hook allocates nothing before its final authored assignment");
   go.Filter.sharedMesh.name="Emberfall weathered boulder";NaturalSceneryMeshLibrary.Apply(go,"Weathered rock",PrimitiveType.Cube,Vector3.one,resources);C(resources.Owned.Count==1,"final rock geometry registers exactly one owned mesh");C(Math.Abs(go.Filter.sharedMesh.bounds.center.y-.08f)<.000001&&Math.Abs(go.Filter.sharedMesh.bounds.size.y-1.2f)<.000001,"non-centred authored bounds preserved by actual Apply");NaturalSceneryMeshLibrary.Apply(go,"Weathered rock",PrimitiveType.Cube,Vector3.one,resources);C(resources.Owned.Count==1,"same rock cannot allocate a duplicate replacement");
+  var scene=new WorldResources();Mesh shared=null;
+  for(int i=0;i<200;i++){
+   var wall=new GameObject();wall.Filter.sharedMesh=new Mesh{bounds=new Bounds(Vector3.zero,Vector3.one)};
+   NaturalSceneryMeshLibrary.Apply(wall,"Weathered courtyard wall",PrimitiveType.Cube,new Vector3(3,2,.8f),scene);
+   if(shared==null)shared=wall.Filter.sharedMesh;else C(ReferenceEquals(shared,wall.Filter.sharedMesh),"identical geometry shares a native mesh for instancing");
+  }
+  C(scene.Owned.Count==1,"200 identical walls own one mesh rather than 200 copies");
+  foreach(int variant in new[]{0,1,2,3}){
+   var wall=new GameObject();wall.Filter.sharedMesh=new Mesh{bounds=new Bounds(Vector3.zero,variant==2?new Vector3(1,2,1):Vector3.one)};
+   var owner=variant==3?new WorldResources():scene;
+   NaturalSceneryMeshLibrary.Apply(wall,variant==1?"Other courtyard wall":"Weathered courtyard wall",PrimitiveType.Cube,variant==0?new Vector3(4,2,.8f):new Vector3(3,2,.8f),owner);
+   C(!ReferenceEquals(shared,wall.Filter.sharedMesh),"distinct scale, seed, envelope or scene must not reuse incorrect or foreign geometry");
+  }
   Console.WriteLine("PASS: "+meshes+" production closed solids; "+checks+" manifold, volume, flat-top, original-envelope and factory-ownership checks (managed, not a native render claim).");
  }
 }

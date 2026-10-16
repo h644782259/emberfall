@@ -4,6 +4,7 @@ namespace Emberfall
     public static class CameraVisibilityRules
     {
         public const int MaximumSurfaces=256,MaximumFaded=32;
+        public const float MinimumDistance=3.5f;
         public static bool ReserveGroup(ref int available,int needed)
         {if(needed<0||needed>available)return false;available-=needed;return true;}
         // Segment slab intersection includes feet/torso/target endpoints, never geometry behind them.
@@ -32,7 +33,7 @@ namespace Emberfall
             return Math.Max(.2f,Math.Min(1,current+(target-current)*blend));
         }
         public static float Zoom(float normal,float nearestBuilding)
-        {float proximity=1-Math.Max(0,Math.Min(1,nearestBuilding/4));return Math.Max(13,normal*(1-.16f*proximity));}
+        {float proximity=1-Math.Max(0,Math.Min(1,nearestBuilding/4));return Math.Max(MinimumDistance,normal*(1-.16f*proximity));}
         public static float Projection(float normalizedAnchor)
         {return 1-2*Math.Max(.25f,Math.Min(.75f,normalizedAnchor));}
     }

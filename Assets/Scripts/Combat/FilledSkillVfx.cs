@@ -351,6 +351,7 @@ namespace Emberfall
         }
         internal static void TrapRelease(PlayerController hero,Vector3 at,float radius,Color color)
         {
+            if(hero.HeroClass==HeroClass.Ranger)radius*=1.2f;
             var fx=Create(hero,at,Vector3.forward,FilledVfxKind.Thrust,radius,color,.55f,priority:CombatVisualPriority.RealContact);if(fx==null)return;
             fx.sculpted=true;
             fx.Add(rupture,Vector3.up*.045f,new Vector3(radius*.75f,.3f,radius*.75f),Quaternion.identity,0,5,0,radius,"Trap pressure crown",true);
@@ -378,6 +379,7 @@ namespace Emberfall
         {
             if(!gameObject.activeInHierarchy||owner==null||owner.IsDead||owner.CombatEpoch!=epoch)return;
             if(final)actionActive=null; // The final contact owns only its finite aftermath.
+            if(owner.HeroClass==HeroClass.Ranger)radius*=1.2f;
             at.y=WorldTraversal.SurfaceHeight(at,.04f);float nextSize=Mathf.Clamp(radius,.15f,16);
             bool reuse=arrowGeometryReady&&arrowGeometryFinal==final&&arrowGeometryReduced==EffectPreferences.ReducedEffects&&
                 arrowGeometryRevision==WorldTraversal.Revision&&(transform.position-at).sqrMagnitude==0&&size==nextSize;
@@ -390,9 +392,9 @@ namespace Emberfall
             ClearPieces();sculpted=true;kind=FilledVfxKind.ArrowRain;transform.position=at;age=0;life=final?1.65f:1.1f;size=nextSize;
             if(final){RegisterFinale(finaleCast);if(lease!=null)lease.Promote(CombatVisualPriority.Finale);}
             Add(rupture,Vector3.up*.08f,Vector3.one*(final?size*.65f:.3f),Quaternion.identity,0,5,0,final?size:.4f,"Arrow landing contact",true);
-            float shaft=final?1.8f:.75f;
-            Add(arrow,Vector3.up*(shaft*1.7f-.035f),new Vector3(final?1.6f:1.15f,shaft,final?3.2f:2.5f),Quaternion.Euler(180,0,0),0,12,0,.3f,"Arrow embedded on the actual hit",true);
-            Add(arcaneShard,Vector3.up*.1f,Vector3.one*.22f,Quaternion.identity,0,4,0,final?3.5f:2.3f,"Arrow impact fragments");
+            float shaft=final?2.4f:1.05f;
+            Add(arrow,Vector3.up*(shaft*1.7f-.035f),new Vector3(final?2.1f:1.55f,shaft,final?4.3f:3.4f),Quaternion.Euler(180,0,0),0,12,0,.3f,"Arrow embedded on the actual hit",true);
+            Add(arcaneShard,Vector3.up*.1f,Vector3.one*.32f,Quaternion.identity,0,4,0,final?3.5f:2.3f,"Arrow impact fragments");
             bool ultimate=finaleCast>0;
             if(ultimate&&final)
             {
@@ -401,20 +403,21 @@ namespace Emberfall
             int maximum=ultimate?(EffectPreferences.ReducedEffects?5:10):(EffectPreferences.ReducedEffects?3:4);
             for(int i=0;i<maximum;i++)
             {
-                float a=i*2.39996f,r=size*(ultimate?(.25f+(i%4)*.18f):(.15f+(i%3)*.2f));float shaftHeight=ultimate?.65f:.5f+(i%2)*.12f;
+                float a=i*2.39996f,r=size*(ultimate?(.25f+(i%4)*.18f):(.25f+(i%3)*.25f));float shaftHeight=ultimate?.9f:.7f+(i%2)*.16f;
                 var offset=new Vector3(Mathf.Cos(a)*r,shaftHeight*1.7f-.03f,Mathf.Sin(a)*r);
                 offset.y+=WorldTraversal.SurfaceHeight(transform.position+new Vector3(offset.x,0,offset.z),.04f)-transform.position.y;
-                Add(arrow,offset,new Vector3(ultimate?1.2f:1.05f,shaftHeight,ultimate?3f:2.4f),Quaternion.Euler(180,i*47,0),0,12,0,.25f,"Short embedded arrow");
+                Add(arrow,offset,new Vector3(ultimate?1.6f:1.4f,shaftHeight,ultimate?4f:3.2f),Quaternion.Euler(180,i*47,0),0,12,0,.25f,"Short embedded arrow");
             }
             arrowGeometryReady=true;arrowGeometryFinal=final;arrowGeometryReduced=EffectPreferences.ReducedEffects;arrowGeometryRevision=WorldTraversal.Revision;
         }
         internal static void PoisonVines(PlayerController hero,Vector3 at,float radius,Color color)
         {
+            if(hero.HeroClass==HeroClass.Ranger)radius*=1.2f;
             var fx=Create(hero,at,Vector3.forward,FilledVfxKind.Vine,radius,color,1.4f,priority:CombatVisualPriority.SustainedBackground);if(fx==null)return;
             fx.sculpted=true;
-            fx.flowVolume=new SkillFlowVolume(fx.transform,SkillFlowVolume.Kind.Poison,radius,1.1f,color);
+            fx.flowVolume=new SkillFlowVolume(fx.transform,SkillFlowVolume.Kind.Poison,radius,hero.HeroClass==HeroClass.Ranger?1.6f:1.1f,color);
             GroundSkillSurface.Ensure(fx.transform,hero,at,radius,GroundSkillSurface.Deposit.WetPoison,()=>fx.life-fx.age);
-            int roots=EffectPreferences.ReducedEffects?2:3;float rootScale=Mathf.Min(1,radius*.45f);
+            int roots=EffectPreferences.ReducedEffects?2:3;float rootScale=Mathf.Min(hero.HeroClass==HeroClass.Ranger?1.4f:1f,radius*.45f);
             for(int i=0;i<roots;i++)
             {
                 float angle=i*2.399963f+.35f;

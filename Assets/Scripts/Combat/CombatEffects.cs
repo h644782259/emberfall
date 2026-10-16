@@ -215,9 +215,9 @@ namespace Emberfall
             if(arrow&&!basic&&companionSource==null&&player.HeroClass==HeroClass.Ranger)
             {
                 // Enlarge both the visible arrow and swept contact width, without changing damage.
-                projectile.visualBody.localScale*=1.35f;
+                projectile.visualBody.localScale*=1.8f;
                 projectile.radius*=1.5f;
-                projectile.visualTrail.startWidth*=1.35f;
+                projectile.visualTrail.startWidth*=1.8f;
             }
             projectile.BindVisualOrigin(companionSource==null?player:null);
             if (velocity > 0) projectile.speed = velocity;

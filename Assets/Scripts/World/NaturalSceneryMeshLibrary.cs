@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 namespace Emberfall
@@ -7,6 +8,14 @@ namespace Emberfall
     // datum and traversal footprint remain authoritative; no colliders are added.
     internal static class NaturalSceneryMeshLibrary
     {
+        // Keep ownership with the scene: identical procedural geometry can instance,
+        // while a later scene never inherits meshes destroyed by an earlier owner.
+        private static ConditionalWeakTable<WorldResources, Dictionary<(Kind, Vector3, int, Bounds), Mesh>> sceneMeshes =
+            new ConditionalWeakTable<WorldResources, Dictionary<(Kind, Vector3, int, Bounds), Mesh>>();
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetCache()
+        { sceneMeshes = new ConditionalWeakTable<WorldResources, Dictionary<(Kind, Vector3, int, Bounds), Mesh>>(); }
+
         internal enum Kind { None, Stone, Timber, Column, Log, Rock }
         internal struct Topology
         {
@@ -29,10 +38,16 @@ namespace Emberfall
                 if (emission.r + emission.g + emission.b > .035f) return;
             }
             Kind kind = Classify(name, type, scale); if (kind == Kind.None) return;
-            Topology data = Build(kind, scale, StableSeed(name));
-            FitEnvelope(ref data, filter.sharedMesh.bounds);
+            int seed = StableSeed(name);
+            Bounds envelope = filter.sharedMesh.bounds;
+            var key = (kind, scale, seed, envelope);
+            var cache = sceneMeshes.GetOrCreateValue(resources);
+            if (cache.TryGetValue(key, out var shared) && shared != null)
+            { filter.sharedMesh = shared; return; }
+            Topology data = Build(kind, scale, seed);
+            FitEnvelope(ref data, envelope);
             var mesh = new Mesh { name = "Natural closed scenery / " + name, vertices = data.Vertices, uv = data.UV, triangles = data.Triangles };
-            mesh.RecalculateNormals(); mesh.RecalculateTangents(); mesh.RecalculateBounds(); resources.Own(mesh); filter.sharedMesh = mesh;
+            mesh.RecalculateNormals(); mesh.RecalculateTangents(); mesh.RecalculateBounds(); resources.Own(mesh); cache[key] = mesh; filter.sharedMesh = mesh;
         }
 
         internal static Kind Classify(string name, PrimitiveType type, Vector3 scale)

@@ -88,7 +88,7 @@ namespace Emberfall
                 flowVolume=new SkillFlowVolume(transform,kind==SkillPerformanceBody.Fire?SkillFlowVolume.Kind.Fire:kind==SkillPerformanceBody.Poison?SkillFlowVolume.Kind.Poison:kind==SkillPerformanceBody.Frost?SkillFlowVolume.Kind.Frost:SkillFlowVolume.Kind.Spirit,size,kind==SkillPerformanceBody.Fire?1.25f:1.2f,tint,airy:kind==SkillPerformanceBody.Fire);
             for(int i=0;i<count;i++)
             {
-                if(kind==SkillPerformanceBody.ArrowVolley)Add(i,HeroSkillBodyAssets.Spell("Arrow"),new Vector3(1.15f,.6f,2.5f),Vector3.zero,Quaternion.identity,new Color(1,.58f,.055f));
+                if(kind==SkillPerformanceBody.ArrowVolley)Add(i,HeroSkillBodyAssets.Spell("Arrow"),new Vector3(1.55f,.84f,3.4f),Vector3.zero,Quaternion.identity,new Color(1,.58f,.055f));
                 else if(kind==SkillPerformanceBody.Meteor)Add(i,i==0?(HeroSkillBodyAssets.Rock??orb):HeroSkillBodyAssets.Spell("Flame"),i==0?Vector3.one*2.1f:new Vector3(.8f,3f,.8f),Vector3.up*12,Quaternion.identity,i==0?new Color(.4f,.1f,.025f):tint);
                 else if(kind==SkillPerformanceBody.Gravity)Add(i,lensQuad,new Vector3(size*1.4f,size*1.4f,1),Vector3.up*1.45f,Quaternion.identity,tint);
                 else if(kind==SkillPerformanceBody.Pressure)Add(i,orb,Vector3.one*size*.9f,Vector3.up*3.6f,Quaternion.identity,new Color(.35f,.9f,.85f));
@@ -161,7 +161,9 @@ namespace Emberfall
         internal void PrepareBeat(Vector3 at,float until,float impactRadius=-1)
         {
             landing=at;landing.y=WorldTraversal.SurfaceHeight(at,.04f);beatAge=0;beatPreparedFrame=Time.frameCount;beatDuration=Mathf.Max(0,until);
-            flightRadius=impactRadius>=0?impactRadius:size;flightArmed=until>0;
+            flightRadius=impactRadius>=0?impactRadius:size;
+            if(kind==SkillPerformanceBody.ArrowVolley&&owner.HeroClass==HeroClass.Ranger)flightRadius*=1.2f;
+            flightArmed=until>0;
             launch=owner.transform.position+Vector3.up*1.2f;
             Vector3 muzzle;if(model!=null&&model.TryGetWeaponVisualAnchor(WeaponVisualAnchor.BowArrowRest,out muzzle))launch=muzzle;
             if(kind!=SkillPerformanceBody.ArrowVolley&&kind!=SkillPerformanceBody.Meteor)return;
