@@ -30,6 +30,8 @@ public static class GraphicsQualityPolicyTests
         {
             var mobile = GraphicsQualityPolicy.Resolve(mode, unifiedPhone);
             var pc = GraphicsQualityPolicy.Resolve(mode, desktop);
+            check(mobile.AntiAliasing == 2, "mobile bounds MSAA bandwidth without reducing resolution");
+            check(pc.AntiAliasing == (mode == GraphicsQualityMode.High ? 4 : 2), "desktop MSAA remains unchanged");
             check(mobile.AntiAliasing >= 2 && mobile.PixelLights >= 1, "all modes retain readable edges and contact lighting");
             check(mobile.CombatVisualLimit >= 20, "low quality never shrinks the existing phone feedback pool");
             check(mobile.DetailDistance >= 56, "detail culling cannot cut into the large encounter camera range");

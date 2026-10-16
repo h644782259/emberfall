@@ -245,7 +245,7 @@ namespace Emberfall
                     CombatArea.Spawn(owner,session,target,3.7f*range,damage*field.TickCoefficient,0,field.Startup,field.Duration,field.Interval,new Color(.51f,.88f,.32f),false,false,rank==3?2.8f:0,damage*field.FinisherCoefficient,5,rank,castId:castId,visual:SkillVisualRecipe.Poison);
                     break;
                 case 7:
-                    EnemyController mark=lockedTarget != null && !lockedTarget.IsDead ? lockedTarget : null;
+                    EnemyController mark=ResolveRangerVolleyTarget();
                     Vector3 fireDirection=mark!=null?CombatFx.Flat(mark.transform.position-owner.transform.position).normalized:forward;
                     Vector3 side=Vector3.Cross(Vector3.up,fireDirection)*(step%2==0?-.55f:.55f);
                     if (CombatSight.Direct(owner.transform.position, owner.transform.position + side + fireDirection))
@@ -323,6 +323,16 @@ namespace Emberfall
             }
         }
 
+        private EnemyController ResolveRangerVolleyTarget()
+        {
+            // Reacquire between arrows when the current target can no longer be hit.
+            if(lockedTarget==null||lockedTarget.IsDead||!lockedTarget.gameObject.activeInHierarchy||
+                CombatFx.Flat(lockedTarget.transform.position-owner.transform.position).sqrMagnitude>14f*range*14f*range||
+                !CombatSight.Direct(owner.transform.position,lockedTarget.transform.position))
+                lockedTarget=Nearest(owner.transform.position,14f*range);
+            return lockedTarget;
+        }
+
         private EnemyController Nearest(Vector3 at,float maximumDistance)
         {
             EnemyController nearest=null;
@@ -330,7 +340,7 @@ namespace Emberfall
             for(int i=0;i<session.Enemies.Count;i++)
             {
                 EnemyController enemy=session.Enemies[i];
-                if(enemy==null || enemy.IsDead) continue;
+                if(enemy==null || enemy.IsDead || !enemy.gameObject.activeInHierarchy) continue;
                 float distance=CombatFx.Flat(enemy.transform.position-at).magnitude;
                 if(distance<best && CombatSight.Direct(owner.transform.position,enemy.transform.position)) { nearest=enemy; best=distance; }
             }

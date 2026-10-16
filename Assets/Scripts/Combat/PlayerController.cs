@@ -585,14 +585,22 @@ namespace Emberfall
         internal bool IsMobileSelfCenteredSkill(int skill)
         {return MobileControls.Active&&HeroClass==HeroClass.Arcanist&&skill==9;}
         internal void PrepareMobileSkillAim(int skill)
-        {EnemyController enemy;Vector3 point;ResolveMobileSkillAim(skill,out enemy,out point);AimTarget=enemy;aimPoint=point;}
+        {
+            EnemyController enemy;Vector3 point;ResolveMobileSkillAim(skill,out enemy,out point);AimTarget=enemy;aimPoint=point;
+            if(HeroClass==HeroClass.Ranger&&enemy!=null)
+            {
+                Vector3 direction=CombatFx.Flat(point-transform.position);
+                if(direction.sqrMagnitude>.0001f)transform.rotation=Quaternion.LookRotation(direction.normalized);
+            }
+        }
         internal void ResolveMobileSkillAim(int skill,out EnemyController enemy,out Vector3 point,bool observeOnly=false)
         {
             if(IsMobileSelfCenteredSkill(skill)){enemy=null;point=transform.position;return;}
             var preview=SkillTargetingController.Describe(HeroClass,skill,session.Progression.Profile.skillRanks[skill]);
             if(preview.shape==SkillTargetingController.Shape.Self){enemy=null;point=transform.position;return;}
             float range=preview.distance>0?preview.distance:8f;
-            enemy=null;
+            enemy=HeroClass==HeroClass.Ranger?ResolveDesktopBasicTarget(range):null;
+            if(enemy!=null){point=CombatFx.Flat(enemy.transform.position);return;}
             // Meteor is a ranged ground skill; other mobile skills keep their existing landing distance.
             float distance=HeroClass==HeroClass.Arcanist&&skill==1?range*.9f:Mathf.Min(5f,range);
             point=CombatFx.Flat(transform.position+transform.forward*distance);
@@ -696,9 +704,9 @@ namespace Emberfall
             return RollDirectDamage((basic?CombatAttack:SkillAttack) * multiplier);
         }
 
-        private EnemyController ResolveDesktopBasicTarget()
+        private EnemyController ResolveDesktopBasicTarget(float range=0)
         {
-            float range=HeroClass==HeroClass.Vanguard?3.6f:14f;
+            if(range<=0)range=HeroClass==HeroClass.Vanguard?3.6f:14f;
             EnemyController chosen=null;float nearest=range;
             var focused=FocusTarget;
             if(ValidAimTarget(focused)&&CombatFx.Flat(focused.transform.position-transform.position).magnitude<=range+focused.HitFootprintBonus&&CombatSight.Direct(transform.position,focused.transform.position))return focused;
@@ -716,8 +724,13 @@ namespace Emberfall
         }
         private void ResolveBasicAttackFacing()
         {
-            if(!MobileControls.Active)AimTarget=ResolveDesktopBasicTarget();
-            if((HeroClass==HeroClass.Arcanist||HeroClass==HeroClass.Summoner)&&!ValidAimTarget(AimTarget))AimTarget=MagicConeTarget();
+            AimTarget=ResolveDesktopBasicTarget();
+            if(!MobileControls.Active)return;
+            // Mobile skills retain directional aim; only a basic attack acquires a nearby enemy.
+            aimPoint=ValidAimTarget(AimTarget)?CombatFx.Flat(AimTarget.transform.position):transform.position+transform.forward*8f;
+            Vector3 direction=CombatFx.Flat(aimPoint-transform.position);
+            if(!FrostStrideActive&&direction.sqrMagnitude>.0001f)
+                transform.rotation=Quaternion.LookRotation(direction.normalized);
         }
 
         private void BasicAttack()
@@ -726,7 +739,6 @@ namespace Emberfall
             try
             {
             if (TraversalStartedThisFrame || SkillReleaseInputBlocked || skillBasicRecovery.Blocked) return;
-            if(!MobilePinnedActionAllowed(-1,true))return;
             if (charge != null && (charge.IsCharging || charge.ConsumedThisFrame)) return;
             StopSkillChannel();
             ResolveBasicAttackFacing();

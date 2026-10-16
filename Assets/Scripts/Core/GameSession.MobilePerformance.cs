@@ -5,6 +5,7 @@ namespace Emberfall
     {
         private readonly MobileThermalBudget mobileThermalBudget = new MobileThermalBudget();
         private float nextThermalSample;
+        private int appliedThermalLevel = -1;
         internal int PerformanceThermalState {get;private set;}=-1;
         private readonly MobileIdleFrameBudget mobileIdleBudget = new MobileIdleFrameBudget();
         private Vector3 lastMobilePlayerPosition;
@@ -16,7 +17,8 @@ namespace Emberfall
         public bool GraphicsQualityChangePending => graphicsPending;
         public string GraphicsQualitySummary => "当前：" + GraphicsQualityPolicy.Name(GraphicsQualityRuntime.Current.Mode) +
             (graphicsPending ? " · 下次进入场景生效" : graphicsSelection == GraphicsQualityMode.Automatic ? " · 按设备配置" : "") +
-            (mobileThermalBudget.Limited ? " · 设备温度较高，已保护帧率" : "");
+            (mobileThermalBudget.Limited ? " · 设备温度较高，已保护帧率" :
+             mobileThermalBudget.ReducedRendering ? " · 设备升温，已降低阴影负载" : "");
 
         public void SetGraphicsQuality(GraphicsQualityMode selection)
         {
@@ -61,11 +63,8 @@ namespace Emberfall
             GraphicsQualityRuntime.Configure(graphicsSelection);
             var profile = GraphicsQualityRuntime.Current;
             QualitySettings.antiAliasing = profile.AntiAliasing;
-            QualitySettings.shadows = profile.SoftShadows ? ShadowQuality.All : ShadowQuality.HardOnly;
-            QualitySettings.shadowDistance = profile.ShadowDistance;
-            QualitySettings.shadowResolution = profile.Mode == GraphicsQualityMode.High ? ShadowResolution.High : ShadowResolution.Medium;
+            ApplyThermalRendering(profile);
             QualitySettings.shadowCascades = profile.Mobile ? 1 : 2;
-            QualitySettings.pixelLightCount = profile.PixelLights;
             QualitySettings.lodBias = profile.LodBias;
             QualitySettings.skinWeights = SkinWeights.FourBones;
             // Textures are prepared before play; dynamic mip streaming can upload
@@ -97,6 +96,19 @@ namespace Emberfall
             if (graphicsPending) ApplyGraphicsQuality();
             return PreparedWorldDetailBudget.PrepareAsync(world, GraphicsQualityRuntime.Current, progress);
         }
+        // Only cheap runtime lighting settings change as heat rises. Resolution,
+        // world preparation and the saved quality selection remain stable.
+        private void ApplyThermalRendering(GraphicsQualityProfile profile)
+        {
+            bool warm = profile.Mobile && mobileThermalBudget.ReducedRendering;
+            QualitySettings.shadows = profile.SoftShadows && !warm ? ShadowQuality.All : ShadowQuality.HardOnly;
+            QualitySettings.shadowDistance = warm ? Mathf.Min(profile.ShadowDistance, 24f) : profile.ShadowDistance;
+            QualitySettings.shadowResolution = !profile.Mobile && profile.Mode == GraphicsQualityMode.High
+                ? ShadowResolution.High : ShadowResolution.Medium;
+            QualitySettings.pixelLightCount = warm ? 1 : profile.PixelLights;
+            appliedThermalLevel = mobileThermalBudget.ProtectionLevel;
+        }
+
         private int ThermalFrameRate(int requested)
         {
             // Background time is not evidence of sustained cooling. Never poll the OS there.
@@ -109,6 +121,8 @@ namespace Emberfall
                 mobileThermalBudget.Observe(PerformanceThermalState, Time.realtimeSinceStartupAsDouble);
 #endif
             }
+            if (appliedThermalLevel != mobileThermalBudget.ProtectionLevel)
+                ApplyThermalRendering(GraphicsQualityRuntime.Current);
             return mobileThermalBudget.FrameRate(IdleFrameRate(requested));
         }
     }

@@ -212,6 +212,13 @@ namespace Emberfall
                 projectile.visualTrail.endWidth=0;
                 projectile.visualTrail.time=EffectPreferences.ReducedEffects?.06f:.1f;
             }
+            if(arrow&&!basic&&companionSource==null&&player.HeroClass==HeroClass.Ranger)
+            {
+                // Enlarge both the visible arrow and swept contact width, without changing damage.
+                projectile.visualBody.localScale*=1.35f;
+                projectile.radius*=1.5f;
+                projectile.visualTrail.startWidth*=1.35f;
+            }
             projectile.BindVisualOrigin(companionSource==null?player:null);
             if (velocity > 0) projectile.speed = velocity;
             if (tracking != null) projectile.lifetime = 2.5f;

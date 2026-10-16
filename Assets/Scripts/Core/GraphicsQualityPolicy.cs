@@ -24,7 +24,8 @@ namespace Emberfall
             Mode = mode; Mobile = mobile;
             int tier = (int)mode - 1;
             MaximumRenderDimension = mobile ? new[] { 1600, 1920, 2560 }[tier] : 0;
-            AntiAliasing = mode == GraphicsQualityMode.High ? 4 : 2;
+            // Keep native-detail resolution; mobile MSAA bandwidth is bounded at 2x.
+            AntiAliasing = !mobile && mode == GraphicsQualityMode.High ? 4 : 2;
             PixelLights = mode == GraphicsQualityMode.High ? 2 : 1;
             SoftShadows = mode == GraphicsQualityMode.High;
             ShadowDistance = mobile ? new[] { 18f, 24f, 34f }[tier] : new[] { 24f, 36f, 55f }[tier];
