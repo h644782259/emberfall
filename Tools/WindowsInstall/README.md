@@ -16,7 +16,7 @@
 
 入口要求main分支：干净工作区执行 `git pull --ff-only origin main`；存在本地源码改动时保留改动、跳过拉取并构建当前源码，不自动提交、推送或丢弃修改。更新失败或不能快进时停止。Unity更新的ProjectVersion不会被丢弃，若阻碍pull也会停止。
 
-默认安装到 `%LOCALAPPDATA%ProgramsEmberfall`，安装包默认位于其中的“安装包”子目录，并创建 `Emberfall` 桌面快捷方式。成功时直接结束；失败时 `Install.cmd` 保留错误窗口并等待按键。游戏存档位于独立的LocalLow目录，安装更新保留存档。
+默认安装到 `E:\EMBERFALL-exe`，安装包默认位于独立的 `E:\EMBERFALL-packages` 目录，并创建 `Emberfall` 桌面快捷方式。成功时直接结束；失败时 `Install.cmd` 保留错误窗口并等待按键。游戏存档位于独立的LocalLow目录，安装更新保留存档。
 
 在仓库根目录自定义参数：
 
@@ -26,7 +26,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .ToolsWindowsInstallRun-
 
 可选 `-UnityPath "D:UnityEditorUnity.exe"`、`-SkipDesktopShortcut`。源码在其它位置时可传 `-ProjectDirectory "D:Projectsemberfall"`；不存在合法项目时明确停止，不回退到旧E盘源码。
 
-安装与安装包目录必须是仓库外的绝对本地专用目录，不能是磁盘根目录；选择存在且可写的盘符。无需自定义路径时使用当前用户默认目录。
+安装与安装包目录必须相互独立、不能相同或相互嵌套，且必须是仓库外的绝对本地专用目录，不能是磁盘根目录；选择存在且可写的盘符。无需自定义路径时使用当前用户默认目录。
 
 ## 输出
 

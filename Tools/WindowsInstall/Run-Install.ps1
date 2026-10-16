@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$ProjectDirectory,
-    [string]$InstallDirectory = (Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs\Emberfall'),
+    [string]$InstallDirectory = 'E:\EMBERFALL-exe',
     [string]$PackageDirectory,
     [string]$UnityPath,
     [switch]$SkipDesktopShortcut
@@ -11,9 +11,7 @@ if (-not (Get-Command Get-FileHash -ErrorAction SilentlyContinue)) {
     Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1') -ErrorAction Stop
 }
 if (-not $PackageDirectory) {
-    # Keep the launcher ASCII-only; Windows cmd code pages can corrupt Chinese paths.
-    $packageFolder = -join @([char]0x5B89, [char]0x88C5, [char]0x5305)
-    $PackageDirectory = Join-Path $InstallDirectory $packageFolder
+    $PackageDirectory = 'E:\EMBERFALL-packages'
 }
 $projectRoot = if ($ProjectDirectory) { [IO.Path]::GetFullPath($ProjectDirectory) } else { Split-Path -Parent (Split-Path -Parent $PSScriptRoot) }
 if (-not (Test-Path -LiteralPath (Join-Path $projectRoot 'Tools\Build-Windows.ps1') -PathType Leaf)) {

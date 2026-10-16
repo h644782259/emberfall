@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param(
     [string]$ProjectDirectory,
-    [string]$InstallDirectory = (Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs\Emberfall'),
+    [string]$InstallDirectory = 'E:\EMBERFALL-exe',
     [string]$PackageDirectory,
     [string]$UnityPath,
     [switch]$SkipDesktopShortcut
@@ -46,8 +46,13 @@ try {
         }
     }
     $InstallDirectory = Get-ExternalDirectory $InstallDirectory
-    if (-not $PackageDirectory) { $PackageDirectory = Join-Path $InstallDirectory 'Installer' }
+    if (-not $PackageDirectory) { $PackageDirectory = 'E:\EMBERFALL-packages' }
     $PackageDirectory = Get-ExternalDirectory $PackageDirectory
+    if ($PackageDirectory.Equals($InstallDirectory, [StringComparison]::OrdinalIgnoreCase) -or
+        $PackageDirectory.StartsWith($InstallDirectory + '\', [StringComparison]::OrdinalIgnoreCase) -or
+        $InstallDirectory.StartsWith($PackageDirectory + '\', [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'Use separate, non-nested installation and package directories.'
+    }
     if (Get-Process -Name Emberfall -ErrorAction SilentlyContinue) {
         throw 'Close Emberfall before building and installing.'
     }
@@ -75,8 +80,10 @@ try {
 
     Write-Host '[3/5] Installing...'
     $installerPath = Join-Path $PackageDirectory 'Emberfall-Setup.exe'
-    $process = Start-Process -FilePath $installerPath -ArgumentList @('--install-dir', ('"' + $InstallDirectory + '"')) -WindowStyle Hidden -Wait -PassThru
-    if ($process.ExitCode -ne 0) { throw "Installation failed (exit $($process.ExitCode))." }
+    $installerError = Join-Path $projectRoot 'Logs\installer-stderr.log'
+    $installerOutput = Join-Path $projectRoot 'Logs\installer-stdout.log'
+    $process = Start-Process -RedirectStandardError $installerError -RedirectStandardOutput $installerOutput -FilePath $installerPath -ArgumentList @('--install-dir', ('"' + $InstallDirectory + '"')) -WindowStyle Hidden -Wait -PassThru
+    if ($process.ExitCode -ne 0) { $detail = Get-Content -LiteralPath $installerError -Raw; throw "Installation failed (exit $($process.ExitCode)). $detail" }
 
     Write-Host '[4/5] Verifying installed files...'
     $count = 0
