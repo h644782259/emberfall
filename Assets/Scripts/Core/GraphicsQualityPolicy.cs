@@ -18,7 +18,7 @@ namespace Emberfall
     public sealed class GraphicsQualityProfile
     {
         public readonly GraphicsQualityMode Mode;
-        public readonly bool Mobile, SoftShadows, RealtimeShadows;
+        public readonly bool Mobile, SoftShadows, RealtimeShadows, SoftEffectIntersections;
         public readonly int MaximumRenderDimension, AntiAliasing, PixelLights, CombatVisualLimit;
         public readonly float ShadowDistance, DetailDistance, LodBias, DecorativeEffectsScale;
         internal GraphicsQualityProfile(GraphicsQualityMode mode, bool mobile, GraphicsDisplayClass displayClass)
@@ -32,6 +32,9 @@ namespace Emberfall
             // Smooth bounds fill and multisample bandwidth; input/simulation remain 60Hz.
             AntiAliasing = mobile && mode == GraphicsQualityMode.Smooth ? 0 : !mobile && mode == GraphicsQualityMode.High ? 4 : 2;
             RealtimeShadows = !mobile || mode != GraphicsQualityMode.Smooth;
+            // Keep depth-tested effects, but omit optional scene-depth edge feathering.
+            // Ray-marched volumes retain their own depth requests in every profile.
+            SoftEffectIntersections = !mobile || mode != GraphicsQualityMode.Smooth;
             PixelLights = mode == GraphicsQualityMode.High ? 2 : 1;
             SoftShadows = mode == GraphicsQualityMode.High;
             ShadowDistance = mobile ? new[] { 18f, 24f, 34f }[tier] : new[] { 24f, 36f, 55f }[tier];

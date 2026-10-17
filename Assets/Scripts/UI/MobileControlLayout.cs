@@ -20,7 +20,7 @@ namespace Emberfall
         public readonly Area[] Skills = new Area[5];
         public readonly Area[] SkillOpportunities = new Area[10];
         public readonly Area CounterOpportunity, ComboOpportunity;
-        public MobileControlLayout(float pixelWidth,float pixelHeight,float dpi,int positionPreset=0, bool ipad=false)
+        public MobileControlLayout(float pixelWidth,float pixelHeight,float dpi,int positionPreset=0, bool ipad=false, float[] skillOffsets=null)
         {
             pixelWidth=Math.Max(1,pixelWidth);pixelHeight=Math.Max(1,pixelHeight);
             padControls=ipad;
@@ -112,6 +112,7 @@ namespace Emberfall
             Jump=new Area(Jump.X-edgeInset,Jump.Y-bottomInset,Jump.Width,Jump.Height);Cancel=Jump;
             SkillPage=new Area(SkillPage.X-edgeInset,SkillPage.Y-bottomInset,SkillPage.Width,SkillPage.Height);
             for(int i=0;i<Skills.Length;i++){var skill=Skills[i];Skills[i]=new Area(skill.X-edgeInset,skill.Y-bottomInset,skill.Width,skill.Height);}
+            Attack=new Area(Attack.X,Math.Min(Attack.Y+6,Height-20-Attack.Height),Attack.Width,Attack.Height);
             int[] opportunityIdentities={0,1,2,4,5,6,7,9};
             for(int index=0;index<opportunityIdentities.Length;index++)
             {
@@ -148,7 +149,40 @@ namespace Emberfall
             // Keep wave text above the boss bar and clear of the raised skill arc.
             EncounterText=new Area(Map.X+Map.Width+12,12,164,18);float bossWidth=Math.Min(280,Math.Max(48,Math.Min(Width*.3f,2*(Catalog.X-Width*.5f-12))));
             BossHealth=new Area(Width*.5f-bossWidth*.5f,32,bossWidth,6);
+            if(skillOffsets!=null&&skillOffsets.Length==2)
+            {
+                float dx=skillOffsets[0]*Width,dy=skillOffsets[1]*Height;
+                if(!float.IsNaN(dx)&&!float.IsInfinity(dx)&&!float.IsNaN(dy)&&!float.IsInfinity(dy)&&(dx!=0||dy!=0))
+                {
+                    var bounds=CombatButtonBounds();
+                    dx=Math.Max(8-bounds.X,Math.Min(Width-8-bounds.X-bounds.Width,dx));
+                    dy=Math.Max(8-bounds.Y,Math.Min(Height-20-bounds.Y-bounds.Height,dy));
+                    for(int i=0;i<Skills.Length;i++)Skills[i]=Translate(Skills[i],dx,dy);
+                    Attack=Translate(Attack,dx,dy);Dodge=Translate(Dodge,dx,dy);Jump=Translate(Jump,dx,dy);Cancel=Jump;
+                    SkillPage=Translate(SkillPage,dx,dy);
+                    CounterOpportunity=Translate(CounterOpportunity,dx,dy);ComboOpportunity=Translate(ComboOpportunity,dx,dy);
+                    for(int i=0;i<opportunityIdentities.Length;i++)SkillOpportunities[opportunityIdentities[i]]=SkillOpportunityForButton(i==7?4:i%4);
+                }
+            }
             CombatView=ChooseCombatView(Width*.5f-12,Height*.3f-32,96,64);
+        }
+
+        private static Area Translate(Area area,float dx,float dy)
+        {return new Area(area.X+dx,area.Y+dy,area.Width,area.Height);}
+        public Area[] CombatButtons()
+        {return new[]{Skills[0],Skills[1],Skills[2],Skills[3],Skills[4],Attack,Dodge,Jump,SkillPage};}
+        public Area CombatButtonBounds()
+        {
+            float x=Width,y=Height,right=0,bottom=0;
+            foreach(var r in CombatButtons()){x=Math.Min(x,r.X);y=Math.Min(y,r.Y);right=Math.Max(right,r.X+r.Width);bottom=Math.Max(bottom,r.Y+r.Height);}
+            return new Area(x,y,right-x,bottom-y);
+        }
+        public bool CanPlaceCombatButtons()
+        {
+            foreach(var r in CombatButtons())
+                foreach(var fixedArea in new[]{Potion,PlayerStatus,Map,AdventureStatus,Menu,Inventory,SkillsMenu,Catalog,Shop,Smith,Interact,FocusCommand,RecallCommand,MoveZone,DungeonEntrance})
+                    if(r.Overlaps(fixedArea))return false;
+            return true;
         }
 
         // Screen.dpi describes native pixels even when mobile rendering is reduced.

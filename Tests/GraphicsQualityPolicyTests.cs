@@ -32,6 +32,8 @@ public static class GraphicsQualityPolicyTests
             var pc = GraphicsQualityPolicy.Resolve(mode, desktop);
             check(mobile.AntiAliasing == (mode == GraphicsQualityMode.Smooth ? 0 : 2), "mobile Smooth removes multisample cost; richer modes retain edge smoothing");
             check(mobile.RealtimeShadows == (mode != GraphicsQualityMode.Smooth), "only mobile Smooth removes real-time shadow work");
+            check(mobile.SoftEffectIntersections == (mode != GraphicsQualityMode.Smooth), "only mobile Smooth simplifies optional effect intersections");
+            check(pc.SoftEffectIntersections, "desktop effects retain soft intersections at every quality");
             check(pc.RealtimeShadows, "desktop presets retain real-time shadows");
             check(pc.AntiAliasing == (mode == GraphicsQualityMode.High ? 4 : 2), "desktop MSAA remains unchanged");
             check(mobile.PixelLights >= 1, "all modes retain main-light shading");
@@ -59,7 +61,7 @@ public static class GraphicsQualityPolicyTests
         foreach (GraphicsDisplayClass display in new[] { GraphicsDisplayClass.Phone, GraphicsDisplayClass.Tablet, GraphicsDisplayClass.Unknown })
         {
             var smooth=GraphicsQualityPolicy.Resolve(GraphicsQualityMode.Smooth,new GraphicsDeviceCapabilities(true,4096,0,6,50,false,display));
-            check(smooth.MaximumRenderDimension==960 && smooth.AntiAliasing==0 && !smooth.RealtimeShadows,"mobile Smooth uses the complete low-load configuration on phones and tablets");
+            check(smooth.MaximumRenderDimension==960 && smooth.AntiAliasing==0 && !smooth.RealtimeShadows && !smooth.SoftEffectIntersections,"mobile Smooth uses the complete low-load configuration on phones and tablets");
         }
         GraphicsQualityPolicy.RenderSize(2360,1640,tabletProfile.MaximumRenderDimension,out lowWidth,out lowHeight);
         check(lowWidth==1600&&lowHeight==1112,"A14 iPad candidate uses the tested render dimensions");

@@ -18,6 +18,7 @@ Shader "Emberfall/Travelling Sword Energy"
             struct output {float4 vertex:SV_POSITION;float2 uv:TEXCOORD0;float4 screen:TEXCOORD1;float eye:TEXCOORD2;};
             float _Age,_Opacity;
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
+            float _EmberSkipSoftDepth;
             output vert(input v)
             {
                 output o;
@@ -48,7 +49,9 @@ Shader "Emberfall/Travelling Sword Energy"
                 float3 blade=lerp(float3(1.2,.32,.025),float3(1.5,1.1,.38),.3+filament*.7);
                 float3 color=lerp(wake,blade,edge);
                 float density=lerp(.20+filament*.45,.92,edge);
-                float scene=LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture,UNITY_PROJ_COORD(i.screen)));
+                float scene=i.eye+1;
+                if(_EmberSkipSoftDepth<.5)
+                    scene=LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture,UNITY_PROJ_COORD(i.screen)));
                 return fixed4(color,end*fade*density*_Opacity*saturate((scene-i.eye)/.15));
             }
             ENDCG

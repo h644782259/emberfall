@@ -17,7 +17,8 @@ Shader "Emberfall/Layered Spell Energy"
    #include "AutoLight.cginc"
    struct appdata {float4 vertex:POSITION;float3 normal:NORMAL;float2 uv:TEXCOORD0;};
    struct v2f {float4 pos:SV_POSITION;float3 normal:TEXCOORD0;float3 local:TEXCOORD1;float3 view:TEXCOORD2;float2 uv:TEXCOORD3;float3 world:TEXCOORD4;float4 screen:TEXCOORD5;float eye:TEXCOORD6;SHADOW_COORDS(7)};
-   sampler2D _FlameTex;UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);float4 _Tint;float _Opacity,_Phase,_DarkCore,_Heat,_Wispy;
+   sampler2D _FlameTex;UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
+            float _EmberSkipSoftDepth;float4 _Tint;float _Opacity,_Phase,_DarkCore,_Heat,_Wispy;
    float hash(float3 p){p=frac(p*.3183+.17);p*=19;return frac(p.x*p.y*p.z*(p.x+p.y+p.z));}
    float noise(float3 p){float3 b=floor(p),f=frac(p);f=f*f*(3-2*f);return lerp(lerp(lerp(hash(b),hash(b+float3(1,0,0)),f.x),lerp(hash(b+float3(0,1,0)),hash(b+float3(1,1,0)),f.x),f.y),lerp(lerp(hash(b+float3(0,0,1)),hash(b+float3(1,0,1)),f.x),lerp(hash(b+float3(0,1,1)),hash(b+1),f.x),f.y),f.z);}
    v2f vert(appdata v){v2f o;float wave=sin(v.vertex.y*6+v.vertex.x*3-_Phase*7)*.025*(1-_DarkCore);v.vertex.xyz+=v.normal*wave;o.pos=UnityObjectToClipPos(v.vertex);o.local=v.vertex.xyz;o.normal=UnityObjectToWorldNormal(v.normal);o.view=WorldSpaceViewDir(v.vertex);o.uv=v.uv;o.world=mul(unity_ObjectToWorld,v.vertex).xyz;o.screen=ComputeScreenPos(o.pos);o.eye=-UnityObjectToViewPos(v.vertex).z;TRANSFER_SHADOW(o);return o;}
@@ -47,7 +48,7 @@ Shader "Emberfall/Layered Spell Energy"
     }
     if(_Wispy>.5){float flow=noise(i.world*float3(2,3,2)+float3(_Phase*.7,-_Phase*1.8,_Phase*.3));float filaments=noise(i.world*float3(4,7,4)+float3(-_Phase,_Phase*1.4,0));float edge=smoothstep(0,.12,i.uv.y)*(1-smoothstep(.78,1,i.uv.y));alpha*=smoothstep(.25,.65,flow)*(.3+.7*filaments)*edge;color=lerp(_Tint.rgb*.35,_Tint.rgb*.9,flow)*illumination+hot*pow(rim,3)*.04;}
     if(_DarkCore>.5){color=float3(.008,.005,.023)+_Tint.rgb*pow(rim,2)*1.2;alpha=_Opacity;}
-    if(_DarkCore<.5)
+    if(_DarkCore<.5 && _EmberSkipSoftDepth<.5)
     {
      float raw=SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture,UNITY_PROJ_COORD(i.screen));
      float orthographicDepth=raw;

@@ -80,8 +80,10 @@ namespace Emberfall
             }
             failure=session.ControlFailure("dodge");if(hero.BlinkFollowupRemaining<=0&&!string.IsNullOrEmpty(failure))LabelControl(Dodge,failure,true);
         }
+        // Keep generous touch targets while reducing only the iPad combat artwork.
+        public static float CombatButtonVisualScale { get { return EffectPreferences.TouchVisualScale*(IsIPad?.9f:1f); } }
         private static Rect VisualRect(Rect hit)
-        {float ratio=EffectPreferences.TouchVisualScale;return new Rect(hit.center.x-hit.width*ratio*.5f,hit.center.y-hit.height*ratio*.5f,hit.width*ratio,hit.height*ratio);}
+        {float ratio=CombatButtonVisualScale;return new Rect(hit.center.x-hit.width*ratio*.5f,hit.center.y-hit.height*ratio*.5f,hit.width*ratio,hit.height*ratio);}
         private void LabelControl(Rect area,string text,bool center,bool available=true)
         {
             area=VisualRect(area);

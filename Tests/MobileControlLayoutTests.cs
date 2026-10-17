@@ -31,7 +31,7 @@ public static class MobileControlLayoutTests
             double angle=i*Math.PI/6;
             Center(layout.Skills[i],layout.Width-108-144*(float)Math.Cos(angle),layout.Height-44-144*(float)Math.Sin(angle)+shift,AcceptedPhoneSkillDiameter,"restored ordinary arc slot "+i);
         }
-        Center(layout.Attack,layout.Width-AcceptedPhoneAttackInset,layout.Height-67,76,"main-platform basic attack");
+        Center(layout.Attack,layout.Width-AcceptedPhoneAttackInset,layout.Height-61,76,"main-platform basic attack");
         Center(layout.Dodge,layout.Width-48,layout.Height-42+shift,48,"dodge");
         Center(layout.Jump,layout.Width-48,layout.Height-97+shift,48,"jump");
         Center(layout.SkillPage,layout.Width-48,layout.Height-150+shift,44,"page switch");

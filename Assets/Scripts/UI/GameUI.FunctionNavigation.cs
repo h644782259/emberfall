@@ -18,6 +18,7 @@ namespace Emberfall
             if(exitRequest.Open){exitRequest.Cancel();exitError=null;BlockUITransition();return true;}
             if(CancelSaveDeletion()||CancelActiveSaveFlow())return true;
             if(rebindingSlot>=0){rebindingSlot=-1;BlockUITransition();return true;}
+            if(mobilePositionEditor){CancelMobilePositionEditor();BlockUITransition();return true;}
             if(mobileBindingEditor){mobileBindingEditor=false;bindingDragSource=-1;bindingDragFinger=-1000;BlockUITransition();return true;}
             if(entryRewardPopupVisible||entryRewardSelection!=null)
             {dismissedRewardAnchor=entryRewardAnchor;suppressRewardHover=true;entryRewardPopup=null;entryRewardSelection=entryRewardHoverKey=null;entryRewardPopupVisible=false;BlockUITransition();return true;}
@@ -32,6 +33,7 @@ namespace Emberfall
         }
         private void PrepareFunctionSwitch()
         {
+            if(mobilePositionEditor)CancelMobilePositionEditor();
             CancelHotbarPointer();CancelMobileCast();CancelMobileScroll();ResetBuildPlanSurface();ClearReforgeSurface();
             if(saveFlow.Open&&!saveFlow.Busy)saveFlow.Cancel();
             pendingSaveDeletion=null;rebindingSlot=-1;mobileBindingEditor=false;bindingDragSource=-1;bindingDragFinger=-1000;

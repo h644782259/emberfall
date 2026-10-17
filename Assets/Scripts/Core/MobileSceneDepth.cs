@@ -10,6 +10,12 @@ namespace Emberfall
         private static readonly List<Renderer> consumers = new List<Renderer>();
         private static readonly HashSet<Renderer> registered = new HashSet<Renderer>();
         private static readonly Dictionary<Camera, DepthTextureMode> saved = new Dictionary<Camera, DepthTextureMode>();
+        private static readonly Dictionary<Camera, float> savedSoftDepth = new Dictionary<Camera, float>();
+        private static readonly int skipSoftDepthId = Shader.PropertyToID("_EmberSkipSoftDepth");
+        internal static bool SkipSoftDepthForReview { get; private set; }
+        private static bool keepSoftDepthForReview;
+        internal static bool SoftDepthSimplified => SkipSoftDepthForReview ||
+            (!keepSoftDepthForReview && !GraphicsQualityRuntime.Current.SoftEffectIntersections);
         private static readonly Plane[] planes = new Plane[6];
         internal static bool ForceAlwaysForReview;
         internal static bool LastMainCameraRequestedDepth { get; private set; }
@@ -20,7 +26,13 @@ namespace Emberfall
             Camera.onPreCull -= BeforeCamera;
             Camera.onPostRender -= AfterCamera;
             foreach (var pair in saved) if (pair.Key != null) pair.Key.depthTextureMode = pair.Value;
-            saved.Clear(); consumers.Clear(); registered.Clear();
+            saved.Clear(); savedSoftDepth.Clear(); consumers.Clear(); registered.Clear();
+            Shader.SetGlobalFloat(skipSoftDepthId, 0);
+            bool review = Application.isMobilePlatform &&
+                !string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("EMBERFALL_PERF_REVIEW"));
+            string softDepthOverride = System.Environment.GetEnvironmentVariable("EMBERFALL_REVIEW_SKIP_SOFT_DEPTH");
+            SkipSoftDepthForReview = review && softDepthOverride == "1";
+            keepSoftDepthForReview = review && softDepthOverride == "0";
             ForceAlwaysForReview = false; LastMainCameraRequestedDepth = false;
             if (!Application.isMobilePlatform) return;
             Camera.onPreCull += BeforeCamera;
@@ -45,7 +57,8 @@ namespace Emberfall
             {
                 case "Emberfall/Filled Spell Volume":
                 case "Emberfall/Layered Spell Energy":
-                case "Emberfall/Travelling Sword Energy":
+                case "Emberfall/Travelling Sword Energy": return !SoftDepthSimplified;
+                // Ray-marched volumes need scene depth for actual occlusion, not just soft edges.
                 case "Emberfall/Continuous Ground Flame":
                 case "Emberfall/Continuous Skill Volume": return true;
                 default: return false;
@@ -59,6 +72,8 @@ namespace Emberfall
             // Our request lasts for this camera render, including its depth pass.
             if (saved.ContainsKey(camera)) AfterCamera(camera);
             saved.Add(camera, camera.depthTextureMode);
+            savedSoftDepth.Add(camera, Shader.GetGlobalFloat(skipSoftDepthId));
+            Shader.SetGlobalFloat(skipSoftDepthId, SoftDepthSimplified ? 1 : 0);
             bool needed = ForceAlwaysForReview;
             GeometryUtility.CalculateFrustumPlanes(camera, planes);
             for (int i = consumers.Count - 1; i >= 0; i--)
@@ -80,7 +95,9 @@ namespace Emberfall
         {
             if (camera == null || !saved.TryGetValue(camera, out var original)) return;
             camera.depthTextureMode = original;
-            saved.Remove(camera);
+            if (savedSoftDepth.TryGetValue(camera, out var softDepth))
+                Shader.SetGlobalFloat(skipSoftDepthId, softDepth);
+            savedSoftDepth.Remove(camera); saved.Remove(camera);
         }
     }
 }

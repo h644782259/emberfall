@@ -58,6 +58,24 @@ namespace Emberfall
         private Rect lastSafe;
         private Vector2 joystickOrigin;
         private bool hasJoystickOrigin;
+        public static bool SkillPositionPreviewActive { get { return skillPositionDraft!=null; } }
+        private static float[] skillPositionDraft;
+        private static bool skillPositionDraftIPad;
+        private static string SkillPositionKey { get { return "Emberfall.CombatGroupPosition.v1."+(IsIPad?"ipad":"phone"); } }
+        public static float[] SavedSkillPositions()
+        {
+            var values=new float[2];
+            for(int i=0;i<values.Length;i++)values[i]=PlayerPrefs.GetFloat(SkillPositionKey+"."+i,0);
+            return values;
+        }
+        private static float[] SkillPositionOffsets { get { return skillPositionDraft!=null&&skillPositionDraftIPad==IsIPad?skillPositionDraft:SavedSkillPositions(); } }
+        public static void PreviewSkillPositions(float[] offsets)
+        {skillPositionDraft=offsets==null?null:(float[])offsets.Clone();skillPositionDraftIPad=IsIPad;cachedLayout=null;}
+        public static void SaveSkillPositions(float[] offsets)
+        {
+            for(int i=0;i<2;i++)PlayerPrefs.SetFloat(SkillPositionKey+"."+i,offsets[i]);
+            PlayerPrefs.Save();PreviewSkillPositions(null);
+        }
         private static MobileControlLayout cachedLayout;
         private static Vector3 cachedLayoutInputs;
         private static int cachedPosition;
@@ -77,7 +95,7 @@ namespace Emberfall
                 if(ValidationUsesSimulation&&ValidationDpi>0)dpi=ValidationDpi;
 #endif
                 Vector3 input=new Vector3(safe.width,safe.height,dpi);
-                if(cachedLayout==null||input!=cachedLayoutInputs||cachedPosition!=EffectPreferences.TouchPosition||cachedIPad!=IsIPad){cachedLayout=new MobileControlLayout(input.x,input.y,input.z,EffectPreferences.TouchPosition,IsIPad);cachedLayoutInputs=input;cachedPosition=EffectPreferences.TouchPosition;cachedIPad=IsIPad;}
+                if(cachedLayout==null||input!=cachedLayoutInputs||cachedPosition!=EffectPreferences.TouchPosition||cachedIPad!=IsIPad){cachedLayout=new MobileControlLayout(input.x,input.y,input.z,EffectPreferences.TouchPosition,IsIPad,SkillPositionOffsets);cachedLayoutInputs=input;cachedPosition=EffectPreferences.TouchPosition;cachedIPad=IsIPad;}
                 return cachedLayout; }
         }
         private float Scale { get { return Layout.Scale; } }
@@ -243,7 +261,7 @@ namespace Emberfall
         {
             if (!Active || session == null) return;
             if(Event.current!=null)CaptureKeyboardDodge(Event.current.type,Event.current.keyCode,session.InputBlocked||!session.HasStarted);
-            if(session.InputBlocked&&!session.RevivalPending) return;
+            if(session.InputBlocked&&!session.RevivalPending&&!SkillPositionPreviewActive) return;
             if (disc == null)
             {
                 disc = new Texture2D(96, 96, TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave,filterMode=FilterMode.Bilinear,wrapMode=TextureWrapMode.Clamp };

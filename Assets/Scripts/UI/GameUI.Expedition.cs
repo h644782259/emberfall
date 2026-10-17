@@ -25,6 +25,7 @@ namespace Emberfall
         }
         public void CancelBackgroundInput()
         {
+            if(mobilePositionEditor)EndPositionDrag(true);
             CancelForegroundInput();
             // Only focus/suspension and viewport invalidation require every
             // pointer to lift. Room transitions retain their initiating finger.

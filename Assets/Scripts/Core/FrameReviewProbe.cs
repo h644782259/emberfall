@@ -31,13 +31,16 @@ namespace Emberfall
             public int projectionFloorMaterials, treeReviewFilters, preparedTerrainVertices, smallActorFilters;
             public long smallActorSavedTriangles;
             public int groundReviewMaterials;
-            public bool sceneDepthRequested;
+            public bool sceneDepthRequested, skipSoftDepthForReview, softDepthSimplified;
             public double sceneDepthFrameFraction;
             // Renderer.isVisible also includes shadow/other cameras: estimates, not GPU draw counters.
             public GeometryEstimate[] visibleGeometryEstimates, visibleMeshEstimates;
             public ActorViewEstimate[] actorViewEstimates;
             public bool simulationFrozen;
             public bool combatReview;
+            public bool combatCrowdReview;
+            public int combatPeakEnemies;
+            public double combatCrowdedSeconds, combatEnemySeconds;
             public int combatRounds, combatCasts;
             public double combatActiveSeconds;
             public float combatDamage, combatDamageTaken;
@@ -155,7 +158,8 @@ namespace Emberfall
             {probe.groundComparison=true;probe.sustainedGroundMode=int.Parse(groundMode);}
             probe.disableReviewShadows = probe.sustainedReview && Environment.GetEnvironmentVariable("EMBERFALL_REVIEW_SHADOWS") == "off";
             probe.disableReviewAntialiasing = probe.sustainedReview && Environment.GetEnvironmentVariable("EMBERFALL_REVIEW_MSAA") == "off";
-            probe.combatReview = probe.tag == "performance-soak-combat";
+            probe.combatCrowdReview = probe.tag == "performance-soak-combat-crowd";
+            probe.combatReview = probe.tag == "performance-soak-combat" || probe.combatCrowdReview;
             probe.ConfigureResolutionReview();
             DontDestroyOnLoad(probe.gameObject);
         }
@@ -259,6 +263,8 @@ namespace Emberfall
                 meanSetPass = sumPasses / Math.Max(1, renderSamples), meanTriangles = sumTriangles / Math.Max(1, renderSamples),
                 meanGcBytes = sumAllocations / Math.Max(1, allocationSamples)
             };
+            report.skipSoftDepthForReview=MobileSceneDepth.SkipSoftDepthForReview;
+            report.softDepthSimplified=MobileSceneDepth.SoftDepthSimplified;
             report.groundReviewMaterials=GroundMaterialReview.ActiveMaterials;
             WriteCombatReview(report);
             report.renderIsolation = groundComparison ? (GroundMode==1?"ground-texture-512":GroundMode==2?"ground-simple-material":"ground-original") : resolutionComparison ? (comparisonWindow%2==0?"resolution-1920":"resolution-1600") : smallActorComparison ? (comparisonWindow%2==0?"small-actor-original":"small-actor-compact") : preparedTerrainComparison ? (comparisonWindow%2==0?"terrain-per-frame":"terrain-precomputed") : treeGeometryComparison ? (comparisonWindow%2==0?"tree-original":"tree-compact") : worldProjectionComparison ? (comparisonWindow%2==0?"world-all-projections":"world-projection-floor") : sceneDepthComparison ? (comparisonWindow%2==0?"scene-depth-always":"scene-depth-on-demand") : decorationDepthComparison ? (comparisonWindow%2==0?"decoration-always-fade":"decoration-opaque-stable") : renderComparison ? RenderIsolationMode : terrainComparison ? (comparisonWindow%2==0?"legacy-terrain":"analytic-terrain") : opaqueComparison ? (comparisonWindow%2==0?"legacy-clip":"opaque-fast") : "none";

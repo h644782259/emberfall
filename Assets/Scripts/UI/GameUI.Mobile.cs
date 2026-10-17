@@ -181,7 +181,7 @@ namespace Emberfall
             for(int i=0;i<MobileSkillPolicy.ButtonCount;i++)
             {
                 int skill=BoundMobileSkill(i,mobileSkillPage);if(!CombatSkillLearned(p,skill))continue;
-                Rect hit=hotbarSlots[i];blockedRects.Add(hit);Rect r=MobileVisualRect(hit);
+                Rect hit=hotbarSlots[i];blockedRects.Add(hit);Rect r=MobileVisualRect(hit,combatButton:true);
                 bool ready=session.Player!=null&&session.Player.IsSkillAvailable(skill);
                 bool pressed=mobileTap.Skill==skill&&mobileTap.Active;
                 Texture2D skillArt=UIIconAtlas.SkillGlyph(p.heroClass,skill,48);

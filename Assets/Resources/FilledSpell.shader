@@ -38,6 +38,7 @@ Shader "Emberfall/Filled Spell Volume"
             fixed4 _Color; float _Opacity, _Progress, _Style, _EnvelopeMode, _EnvelopeAge, _Element, _Seed, _ImpactLight, _Sculpted, _Ribbon;
             sampler2D _FlameTex;
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
+            float _EmberSkipSoftDepth;
             v2f vert(appdata v)
             {v2f o;o.pos=UnityObjectToClipPos(v.vertex);o.uv=v.uv;o.normal=UnityObjectToWorldNormal(v.normal);o.local=v.vertex.xyz;o.view=WorldSpaceViewDir(v.vertex);o.world=mul(unity_ObjectToWorld,v.vertex).xyz;o.screen=ComputeScreenPos(o.pos);o.eye=-UnityObjectToViewPos(v.vertex).z;TRANSFER_SHADOW(o);return o;}
             float hash(float3 p) { p=frac(p*.3183099+float3(.13,.37,.71));p*=17;return frac(p.x*p.y*p.z*(p.x+p.y+p.z)); }
@@ -139,12 +140,16 @@ Shader "Emberfall/Filled Spell Volume"
                     tint=lerp(float3(.65,.065,.008),float3(1,.58,.09),smoothstep(.25,.85,temperature));
                     alpha=_Color.a*_Opacity*fuel*silhouette*tip*saturate(1-dissolve);
                 }
-                float raw=SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture,UNITY_PROJ_COORD(i.screen));
-                float orthographicDepth=raw;
-                #if defined(UNITY_REVERSED_Z)
-                orthographicDepth=1-raw;
-                #endif
-                float scene=lerp(LinearEyeDepth(raw),lerp(_ProjectionParams.y,_ProjectionParams.z,orthographicDepth),unity_OrthoParams.w);
+                float scene=i.eye+1;
+                if(_EmberSkipSoftDepth<.5)
+                {
+                    float raw=SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture,UNITY_PROJ_COORD(i.screen));
+                    float orthographicDepth=raw;
+                    #if defined(UNITY_REVERSED_Z)
+                    orthographicDepth=1-raw;
+                    #endif
+                    scene=lerp(LinearEyeDepth(raw),lerp(_ProjectionParams.y,_ProjectionParams.z,orthographicDepth),unity_OrthoParams.w);
+                }
                 // Real geometry enters the floor smoothly without losing the
                 // above-ground tongues, ice facets or contracted actor envelope.
                 alpha*=saturate((scene-i.eye)/(_Element>.5&&_Element<1.5?.10:.045));
