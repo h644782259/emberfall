@@ -84,9 +84,7 @@ namespace Emberfall
         private bool heldAwake;
         private int comparisonWindow;
         private bool thermalCheck;
-        private bool groundMaterialComparison;
-        private int sustainedGroundMode;
-        private int GroundMode => sustainedReview ? sustainedGroundMode : groundMaterialComparison ? (comparisonWindow%2==1?2:0) : comparisonWindow==1?1:comparisonWindow==3?2:0;
+        private int GroundMode => comparisonWindow%2;
         private int savedRenderInterval;
 #if UNITY_IOS && !UNITY_EDITOR
         [System.Runtime.InteropServices.DllImport("__Internal")]
@@ -152,10 +150,6 @@ namespace Emberfall
             {probe.decorationDepthComparison=true;probe.reviewSeconds=30;PreparedWorldDetailBudget.SetForceFadeVariant(true);}
             if(probe.tag=="performance-opaque-ab")
             {probe.opaqueComparison=true;probe.reviewSeconds=45;Shader.EnableKeyword("EMBER_WORLD_LEGACY_CLIP");}
-            if(probe.tag=="performance-ground-material-ab")
-            {probe.groundComparison=true;probe.groundMaterialComparison=true;probe.freezeSimulation=true;probe.reviewSeconds=30;}
-            if(probe.sustainedReview && Environment.GetEnvironmentVariable("EMBERFALL_REVIEW_GROUND_MATERIAL") is string groundMode && (groundMode=="0"||groundMode=="2"))
-            {probe.groundComparison=true;probe.sustainedGroundMode=int.Parse(groundMode);}
             probe.disableReviewShadows = probe.sustainedReview && Environment.GetEnvironmentVariable("EMBERFALL_REVIEW_SHADOWS") == "off";
             probe.disableReviewAntialiasing = probe.sustainedReview && Environment.GetEnvironmentVariable("EMBERFALL_REVIEW_MSAA") == "off";
             probe.combatCrowdReview = probe.tag == "performance-soak-combat-crowd";
@@ -267,7 +261,7 @@ namespace Emberfall
             report.softDepthSimplified=MobileSceneDepth.SoftDepthSimplified;
             report.groundReviewMaterials=GroundMaterialReview.ActiveMaterials;
             WriteCombatReview(report);
-            report.renderIsolation = groundComparison ? (GroundMode==1?"ground-texture-512":GroundMode==2?"ground-simple-material":"ground-original") : resolutionComparison ? (comparisonWindow%2==0?"resolution-1920":"resolution-1600") : smallActorComparison ? (comparisonWindow%2==0?"small-actor-original":"small-actor-compact") : preparedTerrainComparison ? (comparisonWindow%2==0?"terrain-per-frame":"terrain-precomputed") : treeGeometryComparison ? (comparisonWindow%2==0?"tree-original":"tree-compact") : worldProjectionComparison ? (comparisonWindow%2==0?"world-all-projections":"world-projection-floor") : sceneDepthComparison ? (comparisonWindow%2==0?"scene-depth-always":"scene-depth-on-demand") : decorationDepthComparison ? (comparisonWindow%2==0?"decoration-always-fade":"decoration-opaque-stable") : renderComparison ? RenderIsolationMode : terrainComparison ? (comparisonWindow%2==0?"legacy-terrain":"analytic-terrain") : opaqueComparison ? (comparisonWindow%2==0?"legacy-clip":"opaque-fast") : "none";
+            report.renderIsolation = groundComparison ? (GroundMode==1?"ground-texture-512":"ground-original") : resolutionComparison ? (comparisonWindow%2==0?"resolution-1920":"resolution-1600") : smallActorComparison ? (comparisonWindow%2==0?"small-actor-original":"small-actor-compact") : preparedTerrainComparison ? (comparisonWindow%2==0?"terrain-per-frame":"terrain-precomputed") : treeGeometryComparison ? (comparisonWindow%2==0?"tree-original":"tree-compact") : worldProjectionComparison ? (comparisonWindow%2==0?"world-all-projections":"world-projection-floor") : sceneDepthComparison ? (comparisonWindow%2==0?"scene-depth-always":"scene-depth-on-demand") : decorationDepthComparison ? (comparisonWindow%2==0?"decoration-always-fade":"decoration-opaque-stable") : renderComparison ? RenderIsolationMode : terrainComparison ? (comparisonWindow%2==0?"legacy-terrain":"analytic-terrain") : opaqueComparison ? (comparisonWindow%2==0?"legacy-clip":"opaque-fast") : "none";
             foreach(var world in FindObjectsByType<PreparedWorldDetailBudget>()) {report.tightDetailBoundsChunks+=world.TightBoundsChunkCount;report.enabledDecorationTriangles+=world.VisibleTriangleCount;report.preparedTerrainVertices+=world.PreparedTerrainVertexCount;}
             report.projectionFloorMaterials=WorldProjectionReview.ActiveMaterialCount;
             report.treeReviewFilters=WorldBuilder.TreeReviewFilters;

@@ -43,14 +43,14 @@ namespace Emberfall.Editor
                 {
                     camera.transform.position=view==0?new Vector3(0,5.7541227f,-20.71851f):view==1?new Vector3(-8,5.7541227f,-12):new Vector3(9,5.7541227f,5);
                     camera.transform.rotation=new Quaternion(.21643959f,0,0,.976296f);
-                    var images=new Color32[3][];
-                    for(int mode=0;mode<3;mode++)
+                    var images=new Color32[2][];
+                    for(int mode=0;mode<2;mode++)
                     {
                         apply.Invoke(null,new object[]{mode});camera.Render();RenderTexture.active=target;
                         pixels.ReadPixels(new Rect(0,0,1920,1334),0,0);pixels.Apply();images[mode]=pixels.GetPixels32();
                         File.WriteAllBytes(Path.Combine(directory,$"view-{view}-{mode}.png"),pixels.EncodeToPNG());
                     }
-                    for(int candidate=1;candidate<3;candidate++)
+                    for(int candidate=1;candidate<2;candidate++)
                     {long difference=0;int changed=0;
                     for(int i=0;i<images[0].Length;i++)
                     {var a=images[0][i];var b=images[candidate][i];int delta=Math.Abs(a.r-b.r)+Math.Abs(a.g-b.g)+Math.Abs(a.b-b.b);difference+=delta;if(delta>24)changed++;}
@@ -81,16 +81,15 @@ namespace Emberfall.Editor
                 {
                     profile.SetValue(null,GraphicsQualityPolicy.Resolve(mode,new GraphicsDeviceCapabilities(true,4096,0,6,50,false,display)));
                     configure.Invoke(null,new object[]{material});
-                    if(!material.IsKeywordEnabled("EMBER_MEADOW_SIMPLE"))throw new Exception("Mobile meadow variant missing");
+                    if(material.GetFloat("_MobileMeadow")!=1)throw new Exception("Meadow material marker missing");
                     reviewApply.Invoke(null,new object[]{0});
-                    if(material.IsKeywordEnabled("EMBER_MEADOW_SIMPLE"))throw new Exception("Review baseline did not select original meadow");
                     reviewRestore.Invoke(null,null);
-                    if(!material.IsKeywordEnabled("EMBER_MEADOW_SIMPLE"))throw new Exception("Review failed to restore mobile meadow default");
+                    if(material.GetFloat("_MobileMeadow")!=1)throw new Exception("Texture review changed material marker");
                 }
                 profile.SetValue(null,GraphicsQualityPolicy.Resolve(GraphicsQualityMode.High,new GraphicsDeviceCapabilities(false,16000,4096,8,50)));
                 configure.Invoke(null,new object[]{material});
-                if(material.IsKeywordEnabled("EMBER_MEADOW_SIMPLE"))throw new Exception("Desktop meadow unexpectedly simplified");
-                Debug.Log("GROUND PLATFORM PASS: phone/tablet/unknown, all mobile tiers; desktop preserved; baseline override and restoration");
+                if(material.GetFloat("_MobileMeadow")!=1)throw new Exception("Meadow material marker missing");
+                Debug.Log("GROUND MATERIAL PASS: phone/tablet/desktop assignment and texture override restoration; shader platform rendering needs separate validation");
             }
             finally {reviewRestore.Invoke(null,null);profile.SetValue(null,previous);UnityEngine.Object.DestroyImmediate(material);}
         }

@@ -12,6 +12,7 @@ Shader "Emberfall/Weathered World"
         [HideInInspector] _ProjectionFloor("Projection contribution floor (-1 uses platform default)",Float)=-1
         _Wind("Leaf breeze",Float)=0
         _Cull("Face culling",Float)=2
+        [HideInInspector] _MobileMeadow("Mobile meadow material",Float)=0
         _ColorTexture("Colored ground detail",Float)=0
         _AtlasRegion("Texture region",Vector)=(1,1,0,0)
         _Relief("Surface micro relief",Range(0,.06))=.012
@@ -37,7 +38,6 @@ Shader "Emberfall/Weathered World"
         #pragma multi_compile __ EMBER_TERRAIN_LEGACY
         #pragma multi_compile __ EMBER_WORLD_LEGACY_CLIP
         #pragma multi_compile_local __ EMBER_WORLD_FADE
-        #pragma multi_compile_local __ EMBER_MEADOW_SIMPLE
         #include "UnityCG.cginc"
         #include "TerrainField.cginc"
         sampler2D _MainTex,_GroundTex;
@@ -46,6 +46,7 @@ Shader "Emberfall/Weathered World"
         float _ProjectionFloor,_GrainScale,_GrainStrength,_Wind,_ColorTexture,_Relief,_Weather,_VertexTint,_TrailEdge,_WaterSurface,_LeafSurface,_TerrainFollow,_OcclusionFade,_PavingBlend,_RugSurface;
         float4 _AtlasRegion;
         float _EmberPreparedTerrain;
+        float _MobileMeadow;
         struct Input {float4 screenPos;float3 worldPos;float3 worldNormal;float2 uv_MainTex;float4 color:COLOR;INTERNAL_DATA};
         fixed3 Tile(float2 uv)
         {
@@ -105,12 +106,19 @@ Shader "Emberfall/Weathered World"
             float3 p=IN.worldPos*_GrainScale;
             fixed3 detail;
             float grain;
-            #if defined(EMBER_MEADOW_SIMPLE)
+            bool simpleMeadow=false;
+            #if defined(SHADER_API_MOBILE)
+            simpleMeadow=_MobileMeadow>.5;
+            #endif
+            UNITY_BRANCH if(simpleMeadow)
+            {
             // Mobile meadow: terrain texture, one projection,
             // no secondary micro-grain or per-pixel relief reconstruction.
             detail=Tile(p.xz);
             grain=dot(detail,float3(.299,.587,.114));
-            #else
+            }
+            else
+            {
             // Subtract a small uniform floor before renormalizing: negligible
             // projections reach zero continuously, allowing Grain to skip them.
             #if defined(SHADER_API_MOBILE)
@@ -130,7 +138,7 @@ Shader "Emberfall/Weathered World"
                 // Preserve the secondary grain frequency without evaluating it on leaves.
                 grain=dot(lerp(detail,Grain(p*3.17+float3(.31,.17,.43),w),.22),float3(.299,.587,.114));
             }
-            #endif
+            }
             o.Albedo=lerp(_Color.rgb*lerp(1, .55+grain*1.1,_GrainStrength),detail*1.15,_ColorTexture);
             if(_LeafSurface>.5)o.Albedo=_Color.rgb*(.65+detail*1.2);
             float macro=.95+.05*sin(IN.worldPos.x*.57+sin(IN.worldPos.z*.41))*sin(IN.worldPos.z*.63);
@@ -168,9 +176,12 @@ Shader "Emberfall/Weathered World"
                 fixed3 dirtyHem=fiber*float3(.71,.62,.46);
                 o.Albedo=lerp(dirtyHem,fiber,hem);
             }
-            #if defined(EMBER_MEADOW_SIMPLE)
+            UNITY_BRANCH if(simpleMeadow)
+            {
             o.Normal=half3(0,0,1);
-            #else
+            }
+            else
+            {
             // Surface gradient uses pixel derivatives: no extra normal-map texture reads.
             float3 dpdx=ddx(IN.worldPos),dpdy=ddy(IN.worldPos);
             float3 r1=cross(dpdy,normal),r2=cross(normal,dpdx);
@@ -190,7 +201,7 @@ Shader "Emberfall/Weathered World"
                 o.Albedo=o.Albedo*(.96+.04*eddy)+glint*float3(.42,.57,.55);
             }
             o.Normal=normalize(float3(dot(bumped,WorldNormalVector(IN,float3(1,0,0))),dot(bumped,WorldNormalVector(IN,float3(0,1,0))),dot(bumped,normal)));
-            #endif
+            }
             o.Metallic=_Metallic;
             o.Smoothness=_Glossiness*lerp(.7,1.05,grain);
             o.Occlusion=lerp(.85,1,grain);

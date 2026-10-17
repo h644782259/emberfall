@@ -1104,10 +1104,9 @@ namespace Emberfall
         public const float MinimumPitch = -18f;
         public const float MaximumPitch = 75f;
         private const float DefaultPitch = 25f;
-        private const float DefaultDistance = 5.5f / .7f;
-        // Perspective size is approximately inverse to distance. Keep the mobile
-        // HUD foot anchor while making the hero about 20% smaller on screen.
-        private const float MobileDistanceMultiplier = 1f / .8f;
+        // At 48 degrees vertical FOV and the existing 25-degree pitch, this
+        // frames the hero at roughly 10-12% of the viewport height on all devices.
+        private const float DefaultDistance = 18f;
         private const float DistanceScale = 1.2041595f;
         private static AdventureCamera active;
         private readonly CameraOrbitInput orbitInput = new CameraOrbitInput();
@@ -1251,7 +1250,6 @@ namespace Emberfall
             smoothPitch = snap ? pitch : Mathf.Lerp(smoothPitch, pitch, orbit);
             GameSession game=GameSession.Instance;
             float encounterDistance=ArenaSizeRules.CameraDistance(distance,game!=null&&game.InDungeon,game==null?-1:game.DungeonLayout);
-            if(MobileControls.Active)encounterDistance*=MobileDistanceMultiplier;
             float visibleDistance=CameraVisibilityRules.Zoom(encounterDistance,CameraOcclusionSurface.Nearest(desired));
             smoothDistance = snap ? visibleDistance : Mathf.Lerp(smoothDistance, visibleDistance, orbit);
             Vector3 position = lookTarget + Quaternion.Euler(smoothPitch, smoothYaw, 0) * Vector3.back * (smoothDistance * DistanceScale);

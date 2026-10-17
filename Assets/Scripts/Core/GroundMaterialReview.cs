@@ -5,7 +5,7 @@ namespace Emberfall
 {
     internal static class GroundMaterialReview
     {
-        struct Saved { internal Texture Main,Ground; internal bool Keyword; }
+        struct Saved { internal Texture Main,Ground;  }
         static readonly Dictionary<Material,Saved> saved=new Dictionary<Material,Saved>();
         static int activeMaterials;
         internal static int ActiveMaterials => activeMaterials;
@@ -21,11 +21,9 @@ namespace Emberfall
                 bool main=material.mainTexture==original;
                 bool ground=material.HasProperty("_GroundTex")&&material.GetTexture("_GroundTex")==original;
                 if(!main&&(mode!=1||!ground))continue;
-                saved.Add(material,new Saved{Main=material.mainTexture,Ground=material.GetTexture("_GroundTex"),Keyword=material.IsKeywordEnabled("EMBER_MEADOW_SIMPLE")});
+                saved.Add(material,new Saved{Main=material.mainTexture,Ground=material.GetTexture("_GroundTex")});
                 if(mode==1)
-                {if(main){material.mainTexture=compact;material.DisableKeyword("EMBER_MEADOW_SIMPLE");}if(ground)material.SetTexture("_GroundTex",compact);}
-                else if(mode==2)material.EnableKeyword("EMBER_MEADOW_SIMPLE");
-                else material.DisableKeyword("EMBER_MEADOW_SIMPLE");
+                {if(main){material.mainTexture=compact;}if(ground)material.SetTexture("_GroundTex",compact);}
             }
             activeMaterials=mode==0?0:saved.Count;
         }
@@ -34,7 +32,6 @@ namespace Emberfall
             foreach(var pair in saved)if(pair.Key!=null)
             {
                 pair.Key.mainTexture=pair.Value.Main;pair.Key.SetTexture("_GroundTex",pair.Value.Ground);
-                if(pair.Value.Keyword)pair.Key.EnableKeyword("EMBER_MEADOW_SIMPLE");else pair.Key.DisableKeyword("EMBER_MEADOW_SIMPLE");
             }
             saved.Clear();activeMaterials=0;
         }
