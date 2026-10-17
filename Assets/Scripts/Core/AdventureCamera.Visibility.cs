@@ -16,11 +16,12 @@ namespace Emberfall
                 if(MobileControls.Active&&game!=null&&game.HasStarted)
                 {
                     var layout=MobileControls.Layout;var health=layout.PlayerHealth;var safe=MobileControls.SafeArea;
-                    // Anchor the feet just above the health bar, independent of zoom and pitch.
+                    // Lift by 12% of the safe viewport to align the hero's head with
+                    // the reference framing; retain the same zoom and HUD positions.
                     if(game.Player!=null)
                     {
                         float x=(safe.x+(health.X+health.Width*.5f)*layout.Scale)/Screen.width;
-                        float y=(safe.y+safe.height-(health.Y-14f)*layout.Scale)/Screen.height;
+                        float y=(safe.y+safe.height-(health.Y-14f)*layout.Scale+safe.height*.12f)/Screen.height;
                         Vector3 feet=viewCamera.WorldToViewportPoint(game.Player.transform.position);
                         if(feet.z>viewCamera.nearClipPlane)
                         {

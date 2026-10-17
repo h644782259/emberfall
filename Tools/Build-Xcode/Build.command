@@ -5,7 +5,7 @@ repo="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 mode="${1:-all}"
 case "$mode" in
   all|device|simulator) ;;
-  --help|-h) echo 'Usage: bash Tools/Build-Xcode/Build.command [all|device|simulator]'; exit 0 ;;
+  --help|-h) echo 'Usage: bash Tools/Build-Xcode/Build.command [device|simulator|all] (default: all)'; exit 0 ;;
   *) echo "Unknown mode: $mode" >&2; exit 2 ;;
 esac
 [[ $# -le 1 ]] || { echo 'Only one mode argument is supported.' >&2; exit 2; }

@@ -45,7 +45,7 @@ namespace Emberfall
             if (revealed && complete && !rewardSoundPlayed)
             {
                 rewardSoundPlayed = true;
-                GameAudio.Play(reward == null || !reward.Rarity.HasValue || reward.Duplicate ? SoundCue.UI : reward.Rarity.Value == Rarity.Legendary ? SoundCue.Victory : reward.Rarity.Value == Rarity.Epic ? SoundCue.LevelUp : reward.Rarity.Value == Rarity.Rare ? SoundCue.Loot : SoundCue.Cast);
+                GameAudio.Play(HasLegendaryChestReward(reward) ? SoundCue.Victory : reward == null || !reward.Rarity.HasValue || reward.Duplicate ? SoundCue.UI : reward.Rarity.Value == Rarity.Legendary ? SoundCue.Victory : reward.Rarity.Value == Rarity.Epic ? SoundCue.LevelUp : reward.Rarity.Value == Rarity.Rare ? SoundCue.Loot : SoundCue.Cast);
             }
             var layout = revealed||!string.IsNullOrEmpty(progression.LastError)?MobilePanelGeometry():new MobilePanelLayout(MobileControls.Layout.Width,MobileControls.Layout.Height,false);
             string title = revealed ? complete ? "宝箱奖励" : "开启宝箱" : "遗迹馈赠";

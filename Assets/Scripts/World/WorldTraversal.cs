@@ -102,7 +102,7 @@ namespace Emberfall
             int x0=SupportCell(t.X0),x1=SupportCell(t.X1),z0=SupportCell(t.Z0),z1=SupportCell(t.Z1);if(x1-x0>128||z1-z0>128)return;
             for(int x=x0;x<=x1;x++)for(int z=z0;z<=z1;z++){int key=SupportKey(x,z);if(!groundSupports.TryGetValue(key,out var bucket)){bucket=new List<SupportTriangle>();groundSupports.Add(key,bucket);}bucket.Add(t);}
         }
-        private static float GroundSupportHeight(Vector3 point,float ceiling=float.MaxValue)
+        internal static float GroundSupportHeight(Vector3 point,float ceiling=float.MaxValue)
         {
             float terrainHeight=WorldTerrain.Height(point),height=terrainHeight;if(!groundSupports.TryGetValue(SupportKey(SupportCell(point.x),SupportCell(point.z)),out var bucket))return height;
             foreach(var t in bucket)

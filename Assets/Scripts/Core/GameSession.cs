@@ -362,10 +362,12 @@ namespace Emberfall
             UpdateMobileFrameRate();
         }
 
-        public static readonly Vector3 ChapterEntrancePosition=new Vector3(-12,0,-17);
+        public static readonly Vector3 ChapterEntrancePosition=new Vector3(PortalInteractionPolicy.ChapterX,0,PortalInteractionPolicy.EntranceZ);
+        public static readonly Vector3 WildernessDungeonEntrancePosition=new Vector3(PortalInteractionPolicy.DungeonX,0,PortalInteractionPolicy.EntranceZ);
+        public Vector3 DungeonEntrancePosition {get{return CurrentHub==0?WildernessDungeonEntrancePosition:new Vector3(0,0,11);}}
         public bool IsNearChapterEntrance => !InDungeon&&Player!=null&&PortalInteractionPolicy.IsNear((Player.transform.position-ChapterEntrancePosition).sqrMagnitude);
         public bool IsNearDungeonEntrance {get{return NearPortal();}}
-        private bool NearPortal() { return Player != null && PortalInteractionPolicy.IsNear((Player.transform.position-new Vector3(0,0,11)).sqrMagnitude); }
+        private bool NearPortal() { return Player != null && PortalInteractionPolicy.IsNear((Player.transform.position-DungeonEntrancePosition).sqrMagnitude); }
 
         internal void RetreatFromPortal(Vector3 center,float triggerRadius)
         {
@@ -522,7 +524,7 @@ namespace Emberfall
                 Vector3 desired=new Vector3(Random.Range(-28f,28f),0,Random.Range(-21f,28f));
                 if(desired.z<-8&&Mathf.Abs(desired.x)<10)continue;
                 Vector3 position;
-                if(!TrySafeSpawn(desired,.6f,8f,out position))continue;
+                if(!TrySafeSpawn(desired,.6f,8f,out position)||IsPortalSanctuary(position,.6f))continue;
                 EnemyKind kind=position.z>7&&Progression.Profile.level>=3?(Random.value<.4f?EnemyKind.Guardian:EnemyKind.Wisp):
                     position.x< -3?(Random.value<.6f?EnemyKind.Slime:EnemyKind.Goblin):(Random.value<.55f?EnemyKind.Goblin:EnemyKind.Wisp);
                 SpawnEnemy(kind,Mathf.Max(1,Progression.Profile.level-1),position,false);return;
@@ -1164,7 +1166,7 @@ namespace Emberfall
         public void ApplyMobileOrbit(float horizontal, float vertical)
         {
             if(!MobileControls.Active||GameSession.Instance==null||GameSession.Instance.InputBlocked)return;
-            manualCameraUntil=Time.unscaledTime+4f;
+            manualCameraUntil=Time.unscaledTime+1.2f;
             StopCombatAssist(false);
             yaw=Mathf.Repeat(yaw+horizontal,360f);
             ApplyMobilePitch(vertical);
@@ -1178,14 +1180,14 @@ namespace Emberfall
             orbitInput.Advance(position, pressed, held, released, canStart, canContinue);
             if (orbitInput.DragDelta.sqrMagnitude > 0)
             {
-                manualCameraUntil=Time.unscaledTime+4f;
+                manualCameraUntil=Time.unscaledTime+1.2f;
                 yaw = Mathf.Repeat(yaw + orbitInput.DragDelta.x * .22f, 360f);
                 pitch = Mathf.Clamp(pitch + orbitInput.DragDelta.y * .18f, MinimumPitch, MaximumPitch);
             }
             if (canStart && canContinue)
             {
                 distance = Mathf.Clamp(distance - scroll * .8f, CameraVisibilityRules.MinimumDistance, 25f);
-                if(Mathf.Abs(scroll)>.001f)manualCameraUntil=Time.unscaledTime+4f;
+                if(Mathf.Abs(scroll)>.001f)manualCameraUntil=Time.unscaledTime+1.2f;
             }
         }
 
@@ -1206,8 +1208,9 @@ namespace Emberfall
             }
             if(boss==null)return null;
             Vector3 direction=CombatFx.Flat(boss.transform.position-game.Player.transform.position);
-            if(direction.sqrMagnitude<.16f||direction.sqrMagnitude>14f*14f||
-                !CombatSight.Direct(game.Player.transform.position,boss.transform.position))return null;
+            // Camera guidance is independent of attack line of sight: scenery must
+            // not prevent finding the last boss while the player moves around it.
+            if(direction.sqrMagnitude<.16f||direction.sqrMagnitude>22f*22f)return null;
             return boss;
         }
 
@@ -1221,7 +1224,7 @@ namespace Emberfall
             if(!focused||game==null||game.InputBlocked&&!game.RevivalPending||game.Player==null)
             {StopCombatAssist(true);return;}
             // A held orbit gesture owns the camera even when the mouse stops moving.
-            if(orbitInput.IsHeld||MobileControls.Active&&MobileControls.CameraLookActive){manualCameraUntil=Time.unscaledTime+4f;StopCombatAssist(false);return;}
+            if(orbitInput.IsHeld||MobileControls.Active&&MobileControls.CameraLookActive){manualCameraUntil=Time.unscaledTime+1.2f;StopCombatAssist(false);return;}
             if(Time.unscaledTime<manualCameraUntil){StopCombatAssist(false);return;}
             if(!game.HasStarted||game.IsDead||game.CombatEnded||game.RevivalPending){StopCombatAssist(true);return;}
             var targeting=game.Player.GetComponent<SkillTargetingController>();
@@ -1230,12 +1233,12 @@ namespace Emberfall
             if(target==null){StopCombatAssist(true);return;}
             Vector3 direction=CombatFx.Flat(target.transform.position-game.Player.transform.position);
             if(assistTarget!=target){assistTarget=target;assistYawVelocity=0;assistTargetSince=Time.unscaledTime;return;}
-            if(Time.unscaledTime-assistTargetSince<.2f)return;
+            if(Time.unscaledTime-assistTargetSince<.1f)return;
             float desiredYaw=Mathf.Atan2(direction.x,direction.z)*Mathf.Rad2Deg;
             float error=Mathf.DeltaAngle(yaw,desiredYaw);
             // Damped angular velocity eases into and out of a restrained turn.
-            if(Mathf.Abs(error)<=4f){assistYawVelocity=0;return;}
-            yaw=Mathf.Repeat(Mathf.SmoothDampAngle(yaw,desiredYaw-Mathf.Sign(error)*4f,ref assistYawVelocity,.65f,55f,Mathf.Min(Time.deltaTime,.05f)),360f);
+            if(Mathf.Abs(error)<=2f){assistYawVelocity=0;return;}
+            yaw=Mathf.Repeat(Mathf.SmoothDampAngle(yaw,desiredYaw-Mathf.Sign(error)*2f,ref assistYawVelocity,.35f,110f,Mathf.Min(Time.unscaledDeltaTime,.05f)),360f);
         }
 
         private void LateUpdate() { using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.Camera)) MoveCamera(false); }

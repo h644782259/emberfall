@@ -10,7 +10,7 @@ namespace Emberfall
             for(int i=0;i<520;i++)
             {
                 Vector3 p=new Vector3((float)random.NextDouble()*62-31,.035f,(float)random.NextDouble()*62-31);
-                if(Mathf.Abs(p.x)<4||p.z>6&&p.x>-7||!WorldTraversal.IsWalkable(p,.3f))continue;
+                if(PortalInteractionPolicy.InSanctuary(p.x,p.z)||Mathf.Abs(p.x)<4||p.z>6&&p.x>-7||!WorldTraversal.IsWalkable(p,.3f))continue;
                 for(int blade=0;blade<4;blade++)
                 {
                     float a=blade*2.4f+i;Vector3 at=p+new Vector3(Mathf.Cos(a),0,Mathf.Sin(a))*.045f;

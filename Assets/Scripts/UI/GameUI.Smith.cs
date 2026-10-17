@@ -367,27 +367,27 @@ namespace Emberfall
             if(draw)
             {
                 Color rarity=GameBalance.RarityColor(item.rarity);
-                Fill(new Rect(0,0,width*u,76*u),new Color(.02f,.035f,.055f));
+                Fill(new Rect(0,0,width*u,88*u),new Color(.02f,.035f,.055f));
                 Rect icon=new Rect((width-50)*u,8*u,42*u,42*u);
                 Fill(icon,card);
                 DrawIcon(new Rect(icon.x+2*u,icon.y+2*u,38*u,38*u),UIIconAtlas.EquipmentCardIcon(item,p.Profile.heroClass),Color.white);
                 Border(icon,rarity,2*u);
-                string title=item.name+"  Lv."+item.level+" +"+p.SlotUpgradeRank(item.slot);
+                string title="Lv"+item.level+"  "+item.name+" +"+p.SlotUpgradeRank(item.slot);
                 float titleWidth=width-68;int titleFont=Mathf.RoundToInt(15*u);
                 while(titleFont>Mathf.RoundToInt(10*u)&&Style(titleFont,true).CalcSize(new GUIContent(title)).x>titleWidth*u)titleFont--;
-                Text(new Rect(8*u,8*u,titleWidth*u,32*u),title,titleFont,rarity,true,false,TextAnchor.MiddleLeft);
-                if(new Rect(8*u,8*u,titleWidth*u,32*u).Contains(Mouse))tooltip=title;
+                Text(new Rect(8*u,8*u,titleWidth*u,42*u),title,titleFont,rarity,true,false,TextAnchor.MiddleLeft);
+                if(new Rect(8*u,8*u,titleWidth*u,42*u).Contains(Mouse))tooltip=title;
                 string[] tags={GameBalance.RarityName(item.rarity),"装备",GameBalance.SlotName(item.slot)};
                 float tagWidth=(width-32)/3;
                 for(int i=0;i<tags.Length;i++)
                 {
-                    Rect tag=new Rect((8+i*(tagWidth+8))*u,48*u,tagWidth*u,22*u);
+                    Rect tag=new Rect((8+i*(tagWidth+8))*u,58*u,tagWidth*u,22*u);
                     Color tint=i==0?rarity:jade;
                     Fill(tag,new Color(tint.r,tint.g,tint.b,.12f));Border(tag,tint,u);
                     Text(tag,tags[i],Mathf.RoundToInt(11*u),pale,true,false,TextAnchor.MiddleCenter);
                 }
             }
-            y=84;
+            y=96;
             if(smithCategory==2)
             {
                 var cap=p.PreviewRefinementLimit(item.id);string reason=p.RefinementLockReason(item.id,SmithServiceActive);
@@ -419,9 +419,9 @@ namespace Emberfall
                         if(progress>.8f)tint=Color.Lerp(tint,gold,(progress-.8f)/.2f);
                         Rect row=new Rect(8*u,y*u,(width-16)*u,28*u);
                         Fill(row,card);
-                        DrawIcon(new Rect(row.x,row.y+6*u,16*u,16*u),UIIconAtlas.Utility(stat==0?"attack":stat==1?"defense":stat==2?"health":"core"),jade);
-                        float labelWidth=70*u;
-                        Text(new Rect(row.x+20*u,row.y,labelWidth-20*u,row.height),labels[stat],Mathf.RoundToInt(11*u),muted,true);
+                        DrawIcon(new Rect(row.x+2*u,row.center.y-8*u,16*u,16*u),UIIconAtlas.Utility(stat==0?"attack":stat==1?"defense":stat==2?"health":"core"),jade);
+                        float labelWidth=96*u;
+                        Text(new Rect(row.x+22*u,row.y,labelWidth-22*u,row.height),labels[stat],Mathf.RoundToInt(11*u),muted,true,false,TextAnchor.MiddleLeft);
                         Rect track=new Rect(row.x+labelWidth+4*u,row.y+2*u,row.width-labelWidth-4*u,24*u);
                         Fill(track,new Color(.025f,.045f,.06f));
                         Fill(new Rect(track.x,track.y,track.width*progress,track.height),tint);
@@ -448,12 +448,12 @@ namespace Emberfall
                         if(before[stat]<=0&&after[stat]<=0)continue;
                         Rect row=new Rect(8*u,(y+visible++*statStep)*u,(width-16)*u,statHeight*u);
                         Fill(row,card);
-                        DrawIcon(new Rect(row.x+2*u,row.y+6*u,16*u,16*u),UIIconAtlas.Utility(stat==0?"attack":stat==1?"defense":"health"),jade);
-                        Text(new Rect(row.x+22*u,row.y,40*u,row.height),stat==0?"攻击":stat==1?"防御":"生命",Mathf.RoundToInt(11*u),muted,true);
-                        float col=(row.width-66*u)/3;
-                        Text(new Rect(row.x+66*u,row.y,col,row.height),before[stat].ToString(),Mathf.RoundToInt(12*u),pale,true,false,TextAnchor.MiddleCenter);
-                        Text(new Rect(row.x+66*u+col,row.y,col,row.height),"→",Mathf.RoundToInt(14*u),muted,false,false,TextAnchor.MiddleCenter);
-                        Text(new Rect(row.x+66*u+col*2,row.y,col,row.height),after[stat].ToString(),Mathf.RoundToInt(12*u),after[stat]>before[stat]?jade:muted,true,false,TextAnchor.MiddleCenter);
+                        DrawIcon(new Rect(row.x+2*u,row.center.y-8*u,16*u,16*u),UIIconAtlas.Utility(stat==0?"attack":stat==1?"defense":"health"),jade);
+                        Text(new Rect(row.x+22*u,row.y,74*u,row.height),stat==0?"攻击":stat==1?"防御":"生命",Mathf.RoundToInt(11*u),muted,true,false,TextAnchor.MiddleLeft);
+                        float col=(row.width-96*u)/3;
+                        Text(new Rect(row.x+96*u,row.y,col,row.height),before[stat].ToString(),Mathf.RoundToInt(12*u),pale,true,false,TextAnchor.MiddleCenter);
+                        Text(new Rect(row.x+96*u+col,row.y,col,row.height),"→",Mathf.RoundToInt(14*u),muted,false,false,TextAnchor.MiddleCenter);
+                        Text(new Rect(row.x+96*u+col*2,row.y,col,row.height),after[stat].ToString(),Mathf.RoundToInt(12*u),after[stat]>before[stat]?jade:muted,true,false,TextAnchor.MiddleCenter);
                     }
                 }
                 y+=visibleStats*statStep+8;
@@ -467,9 +467,9 @@ namespace Emberfall
                         if(draw)
                         {
                             Rect row=new Rect(8*u,y*u,(width-16)*u,28*u);Fill(row,card);
-                            DrawIcon(new Rect(row.x+2*u,row.y+6*u,16*u,16*u),UIIconAtlas.Utility("core"),jade);
-                            Text(new Rect(row.x+22*u,row.y,74*u,row.height),names[i],Mathf.RoundToInt(11*u),muted,true);
-                            Text(new Rect(row.x+96*u,row.y,row.width-96*u,row.height),(stats[i]*100).ToString("0.##")+"%",Mathf.RoundToInt(12*u),pale,true);
+                            DrawIcon(new Rect(row.x+2*u,row.center.y-8*u,16*u,16*u),UIIconAtlas.Utility("core"),jade);
+                            Text(new Rect(row.x+22*u,row.y,74*u,row.height),names[i],Mathf.RoundToInt(11*u),muted,true,false,TextAnchor.MiddleLeft);
+                            Text(new Rect(row.x+96*u,row.y,(row.width-96*u)/3,row.height),(stats[i]*100).ToString("0.##")+"%",Mathf.RoundToInt(12*u),pale,true,false,TextAnchor.MiddleCenter);
                         }
                         y+=32;
                     }

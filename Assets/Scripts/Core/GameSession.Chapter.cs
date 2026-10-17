@@ -11,7 +11,7 @@ namespace Emberfall
             if(InDungeon)return false;
             var goal=Progression.SelectedProgressionGoal(IsInCamp);
             if((goal.Identity??"").StartsWith("main/chapter/")||goal.Identity=="main/complete"){destination=ChapterEntrancePosition;return true;}
-            if((goal.Identity??"").StartsWith("main/tier/")){destination=new Vector3(0,0,11);return true;}
+            if((goal.Identity??"").StartsWith("main/tier/")){destination=DungeonEntrancePosition;return true;}
             return false;
         }
         public ChapterNode SelectedChapterNode {get;set;}

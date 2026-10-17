@@ -8,7 +8,7 @@ namespace Emberfall
         public int Refinement => Id.StartsWith("trial/")||Gold==0?0:Math.Min(30,Math.Max(2,Gold/1000));
         public int Reforge => Gold>=10000?2:Gold>=6000?1:0;
         public int GearSlot => Id=="level/30"||Id=="level/100"?0:Id=="level/60"?1:Id=="kills/10000"?2:-1;
-        public Rarity GearRarity => Id=="level/100"||Id=="kills/10000"?Rarity.Legendary:Rarity.Epic;
+        public Rarity GearRarity => Rarity.Epic;
         public int FashionSlotIndex => Id=="clears/50"?0:Id=="clears/100"?1:-1;
         public AchievementDefinition(string id,string title,int category,int target,int gold,int shards)
         {Id=id;Title=title;Category=category;Target=target;Gold=gold==0?0:Math.Max(500,gold*10);Shards=shards;}

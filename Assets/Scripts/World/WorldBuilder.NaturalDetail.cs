@@ -60,6 +60,7 @@ namespace Emberfall
             for(int i=0;i<count;i++)
             {
                 Vector3 p=new Vector3(Next(random,-extent,extent),.055f,Next(random,-extent,extent));
+                if(!dungeon&&hub==0&&PortalInteractionPolicy.InSanctuary(p.x,p.z))continue;
                 if(!WorldTraversal.IsWalkable(parent.TransformPoint(p),.35f))continue;
                 // Main approaches, shop fronts, combat center and bridge stay easy to read.
                 if(Mathf.Abs(p.x)<3.3f||(!dungeon&&p.z<-8&&Mathf.Abs(p.x)<9))continue;

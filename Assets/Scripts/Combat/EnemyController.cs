@@ -111,7 +111,7 @@ namespace Emberfall
             MaxHealth = CombatBalance.EnemyHealth(level, challengeTier, boss, kind);
             if(game.InDungeon)MaxHealth*=boss?1.6f:kind==EnemyKind.Guardian?1.35f:1.15f;
             damage = CombatBalance.EnemyDamage(level, challengeTier, boss);
-            if(game.InDungeon){MaxHealth*=CombatBalance.DungeonHealthMultiplier(level);damage*=CombatBalance.DungeonDamageMultiplier(level);}
+            if(game.InDungeon){MaxHealth*=CombatBalance.DungeonHealthMultiplier(level,boss);damage*=CombatBalance.DungeonDamageMultiplier(level);}
             if(game.ChapterActive)
             {MaxHealth*=ChapterDefinition.HealthMultiplier(game.ActiveChapterDifficulty)*ChapterProgression.TierHealthMultiplier(challengeTier)/CombatBalance.TierHealthMultiplier(challengeTier);damage*=ChapterDefinition.DamageMultiplier(game.ActiveChapterDifficulty)*ChapterProgression.TierDamageMultiplier(challengeTier)/CombatBalance.TierDamageMultiplier(challengeTier);}
             Health = MaxHealth;
@@ -379,7 +379,9 @@ namespace Emberfall
             float distance = delta.magnitude;
             float effectiveSpeed = speed * (StatusEffects == null ? 1 : StatusEffects.MoveMultiplier);
             // Dungeon defenders pursue immediately; ordinary wildlife remains neutral.
-            if (session.InDungeon || Tier != ThreatTier.Normal && distance < (IsBoss?15f:9f)) aggro = true;
+            if(session.IsPortalSanctuary(combatTargetPosition))
+            {aggro=false;if(preparing||chargeTime>0||pounceRemaining>0)CancelAttack(true);}
+            else if (session.InDungeon || Tier != ThreatTier.Normal && distance < (IsBoss?15f:9f)) aggro = true;
             if (!session.InDungeon && distance > 17f) aggro = false;
             healthFillMaterial.color = DungeonRole == DungeonEnemyRole.Ordinary ? new Color(.94f,.16f,.20f) : RoleTint;
             if (pounceRemaining > 0)
@@ -458,7 +460,10 @@ namespace Emberfall
                 else if (distance > range*.82f || !attackPath)
                 {
                     bool directGround = WorldTraversal.HasGroundPath(transform.position, combatTargetPosition, NavigationRadius);
-                    Vector3 step = (directGround?delta.normalized:route.Direction(transform.position, combatTargetPosition, NavigationRadius)) + Separation() * (directGround ? 1f : .15f);
+                    Vector3 direction=directGround?delta.normalized:route.Direction(transform.position, combatTargetPosition, NavigationRadius);
+                    // A failed route must still attempt collision-safe local sliding.
+                    if(direction.sqrMagnitude<.0001f)direction=delta.normalized;
+                    Vector3 step = direction + Separation() * (directGround ? 1f : .15f);
                     if (directGround && Kind == EnemyKind.Goblin && distance > 2.5f && distance < 9f)
                         step += Vector3.Cross(Vector3.up, delta.normalized) * Mathf.Sin(patrolPhase + Time.time * .8f) * .8f;
                     transform.position = WalkForAnimation(Vector3.ClampMagnitude(step, 1.2f) * effectiveSpeed * dt);
@@ -485,7 +490,7 @@ namespace Emberfall
                 {
                     float angle=Random.Range(0,Mathf.PI*2),extent=Mathf.Sqrt(Random.value)*radius;
                     Vector3 candidate=new Vector3(Mathf.Cos(angle)*extent,0,Mathf.Sin(angle)*extent);
-                    if(!WorldTraversal.IsWalkable(candidate,NavigationRadius)||CombatFx.Flat(candidate-transform.position).sqrMagnitude<36)continue;
+                    if(session.IsPortalSanctuary(candidate,NavigationRadius)||!WorldTraversal.IsWalkable(candidate,NavigationRadius)||CombatFx.Flat(candidate-transform.position).sqrMagnitude<36)continue;
                     if(!route.TryPlan(transform.position,candidate,NavigationRadius))continue;
                     wanderGoal=WorldTraversal.NearestWalkable(candidate,NavigationRadius);hasWanderGoal=true;wanderBlocked=wanderAge=0;wanderSteerAt=0;break;
                 }
@@ -600,7 +605,8 @@ namespace Emberfall
             BossAttackPolicy.Move fallback = BossAttackPolicy.Select(distance/BodyScale, previousMove, repeatedMove);
             BossAttackPolicy.Move preferred = ArenaBossPatternPolicy.Preferred(arenaBossPattern, distance/BodyScale, previousMove, repeatedMove);
             BossAttackPolicy.Move selected = preferred != fallback && !CanUseBossAttack(preferred, target) ? fallback : preferred;
-            return BossAttackPolicy.LegalFallback(selected, distance/BodyScale, advanceBudget.FallbackActive,
+            return BossAttackPolicy.LegalFallback(selected, distance/BodyScale,
+                advanceBudget.FallbackActive||!CanUseBossAttack(selected,target),
                 CanUseBossAttack(BossAttackPolicy.Move.Charge, target), CanUseBossAttack(BossAttackPolicy.Move.Fan, target));
         }
 

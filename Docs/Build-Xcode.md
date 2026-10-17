@@ -9,6 +9,8 @@ bash Tools/Build-Xcode/Build.command
 默认按顺序生成模拟器和真机工程。脚本可从任意工作目录调用；以上相对路径命令需在仓库根目录运行。
 
 ```bash
+# 同时生成模拟器和真机工程
+bash Tools/Build-Xcode/Build.command all
 # 只生成真机工程
 bash Tools/Build-Xcode/Build.command device
 # 只生成 Apple Silicon ARM64 模拟器工程

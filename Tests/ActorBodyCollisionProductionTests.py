@@ -13,7 +13,7 @@ namespace Emberfall{
  public static class PerformanceDiagnostics{public enum Section{ActorSlide}public struct Scope:IDisposable{public void Dispose(){}}public static Scope Measure(Section s)=>new Scope();}
  public class PlayerController{public Transform transform=new Transform();public bool IsDead;}
  public class EnemyController{public int WalkingSlideSide;public Transform transform=new Transform();public GameObject gameObject=new GameObject();public bool IsDead;public float NavigationRadius=.45f,PhysicalBodyHeight=2.8f;}
- public sealed partial class GameSession{public List<EnemyController> Enemies=new List<EnemyController>();public PlayerController Player=new PlayerController();}
+ public sealed partial class GameSession{public bool InDungeon=true,PracticeActive;public int CurrentHub;public List<EnemyController> Enemies=new List<EnemyController>();public PlayerController Player=new PlayerController();}
 }
 class Program{
  static int n;static void C(bool ok,string m){n++;if(!ok)throw new Exception(m);}
@@ -69,6 +69,26 @@ class Program{
   C((result-start).sqrMagnitude>.001f&&WorldTraversal.IsActorCapsuleClear(result,enemy.NavigationRadius,enemy.PhysicalBodyHeight),"enemy slides past physical extent instead of freezing");
   for(int i=0;i<100;i++)result=g.MoveEnemyWalking(result,(new Vector3(9,0,0)-result).normalized*.15f,enemy);
   C(result.x>7.5f,"enemy continues around wide solid without crossing it x="+result.x+" z="+result.z);
+  Reset();WorldTraversal.SetArenaRadius(32);g.InDungeon=false;
+  foreach(float px in new[]{PortalInteractionPolicy.ChapterX,PortalInteractionPolicy.DungeonX}){
+   var portal=new Vector3(px,0,PortalInteractionPolicy.EntranceZ);
+   C(WorldTraversal.IsWalkable(portal,4.3f)&&WorldTraversal.CanReach(new Vector3(0,0,-10),portal,.45f),"portal clearing inside arena and reachable from camp");
+   C(g.IsPortalSanctuary(portal),"both entrance centers protected");
+   var outside=portal+new Vector3(0,0,9);var blocked=g.ResolveEnemyBodyMove(outside,portal,enemy);
+   C(!g.IsPortalSanctuary(blocked,enemy.NavigationRadius),"swept enemy movement stops before safe clearing");
+   g.InDungeon=true;C((g.ResolveEnemyBodyMove(outside,portal,enemy)-portal).sqrMagnitude<.001f,"dungeon enemies have no camp restriction");g.InDungeon=false;
+  }
+  g.InDungeon=true;
+  Reset();g.Player.transform.position=new Vector3(20,0,20);
+  WorldTraversal.AddSurfaceTriangle(new Vector3(-1,0,-3),new Vector3(0,1,-3),new Vector3(0,1,3));
+  WorldTraversal.AddSurfaceTriangle(new Vector3(-1,0,-3),new Vector3(0,1,3),new Vector3(-1,0,3));
+  WorldTraversal.AddSurfaceTriangle(new Vector3(0,1,-3),new Vector3(1,0,-3),new Vector3(1,0,3));
+  WorldTraversal.AddSurfaceTriangle(new Vector3(0,1,-3),new Vector3(1,0,3),new Vector3(0,1,3));
+  var crest=WorldTraversal.AddDynamicBox(Vector3.zero,new Vector2(.02f,3));
+  WorldTraversal.SetPhysicalBounds(crest,new Vector3(0,.405f,0),new Vector3(.04f,.81f,6));
+  var bossBody=new EnemyController{NavigationRadius=1.35f,PhysicalBodyHeight=5.7f};
+  result=g.ResolveEnemyBodyMove(new Vector3(-.2f,.8f,0),new Vector3(.2f,.8f,0),bossBody);
+  C(result.x>.19f,"boss body follows terrain crest instead of cutting into its solid base");
   Reset();
   for(int i=0;i<100;i++)Move(g,Vector3.zero,new Vector3(.2f,0,0));long bytes=GC.GetAllocatedBytesForCurrentThread();for(int i=0;i<10000;i++)Move(g,Vector3.zero,new Vector3(.2f,0,0));bytes=GC.GetAllocatedBytesForCurrentThread()-bytes;C(bytes==0,"warmed body movement allocates zero bytes");
   Console.WriteLine("PASS "+n+" actual scene/body movement, sliding, vertical clearance, landing, retirement and index invalidation assertions; warm allocations="+bytes);
@@ -77,7 +97,7 @@ class Program{
 '''
 with tempfile.TemporaryDirectory(prefix='emberfall-body-collision-') as directory:
  p=Path(directory)
- for name in ['World/WorldTraversal','World/WorldTraversal.ActorBodies','Core/ActorBodyCollision','Core/GameSession.ActorBodies']:
+ for name in ['World/WorldTraversal','World/WorldTraversal.ActorBodies','Core/ActorBodyCollision','Core/GameSession.ActorBodies','Core/PortalInteractionPolicy']:
   (p/(Path(name).name+'.cs')).write_text((root/'Assets/Scripts'/(name+'.cs')).read_text())
  (p/'Math.cs').write_text(math);(p/'Program.cs').write_text(fixture)
  project=p/'Tests.csproj';project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework><OutputType>Exe</OutputType><NuGetAudit>false</NuGetAudit></PropertyGroup></Project>')

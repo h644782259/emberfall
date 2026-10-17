@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Emberfall
 {
@@ -153,7 +153,7 @@ namespace Emberfall
             Rect map=new Rect(body.x+(mapWidth-size)*.5f,body.y+(body.height-size)*.5f,size,size);
             Fill(map,ink);DrawMinimapTerrain(map);Border(map,jade);
             Color portal=new Color(.4f,.65f,1),camp=new Color(.9f,.9f,.85f),ordinary=new Color(.54f,.77f,.5f),aggro=new Color(1,.58f,.35f),boss=new Color(1,.32f,.3f);
-            if(!session.InDungeon){MapDot(map,new Vector3(0,0,11),portal,7*u);MapDot(map,new Vector3(0,0,-10),camp,6*u);}
+            if(!session.InDungeon){MapDot(map,session.DungeonEntrancePosition,portal,7*u);MapDot(map,new Vector3(0,0,-10),camp,6*u);}
             else if(session.DungeonReturnAvailable)MapDot(map,session.DungeonReturnPosition,portal,7*u);
             foreach(var enemy in session.Enemies)if(enemy!=null&&!enemy.IsDead)
                 MapDot(map,enemy.transform.position,enemy.IsBoss?boss:enemy.Tier==EnemyController.ThreatTier.Elite?gold:enemy.IsAggro?aggro:ordinary,enemy.IsBoss?7*u:4*u);

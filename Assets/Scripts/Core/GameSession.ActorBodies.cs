@@ -3,6 +3,8 @@ namespace Emberfall
 {
     public sealed partial class GameSession
     {
+        internal bool IsPortalSanctuary(Vector3 point,float radius=0)
+        {return !InDungeon&&CurrentHub==0&&!PracticeActive&&PortalInteractionPolicy.InSanctuary(point.x,point.z,radius);}
         private bool PlayerBodyPositionClear(Vector3 feet)
         {
             if(!WorldTraversal.IsActorCapsuleClear(feet,ActorBodyCollision.PlayerRadius,ActorBodyCollision.PlayerHeight))return false;
@@ -140,9 +142,15 @@ namespace Emberfall
             if(enemy==null||(desired-from).sqrMagnitude==0)return from;
             int count=Mathf.Clamp(Mathf.CeilToInt((desired-from).magnitude/.08f),1,256);
             Vector3 position=from;
+            bool grounded=Mathf.Abs(from.y-WorldTraversal.GroundSupportHeight(from))<.05f&&
+                Mathf.Abs(desired.y-WorldTraversal.GroundSupportHeight(desired))<.05f;
             for(int i=1;i<=count;i++)
             {
                 Vector3 next=Vector3.Lerp(from,desired,i/(float)count);
+                // Follow each terrain sample instead of cutting a straight height
+                // chord through a crest. Platform/airborne movement keeps its height.
+                if(grounded)next.y=WorldTraversal.GroundSupportHeight(next);
+                if(IsPortalSanctuary(next,enemy.NavigationRadius)&&!IsPortalSanctuary(position,enemy.NavigationRadius))break;
                 if(!WorldTraversal.IsActorCapsuleStepClear(position,next,enemy.NavigationRadius,Mathf.Max(enemy.NavigationRadius*2,enemy.PhysicalBodyHeight)))break;
                 if(Player!=null&&!Player.IsDead&&!ActorBodyCollision.PermitsStep(position,next,enemy.NavigationRadius,enemy.PhysicalBodyHeight,
                     Player.transform.position,ActorBodyCollision.PlayerRadius,ActorBodyCollision.PlayerHeight))break;

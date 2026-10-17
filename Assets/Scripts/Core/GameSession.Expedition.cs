@@ -162,7 +162,7 @@ namespace Emberfall
         }
 
         public bool HasBlessing(RunBlessing blessing) { return InDungeon && RunChoices.Has(blessing); }
-        public void CancelDungeonSelection() { if(SceneLoading)return; if(DungeonSelectionOpen)RetreatFromPortal(new Vector3(0,0,11),PortalInteractionPolicy.EntranceRadius); DungeonSelectionOpen = false; UpdateTimeScale(); }
+        public void CancelDungeonSelection() { if(SceneLoading)return; if(DungeonSelectionOpen)RetreatFromPortal(DungeonEntrancePosition,PortalInteractionPolicy.EntranceRadius); DungeonSelectionOpen = false; UpdateTimeScale(); }
         public void ConfirmDungeonSelection()
         {
             if (SceneLoading || !DungeonSelectionOpen || InDungeon || IsDead || !NearPortal()) return;

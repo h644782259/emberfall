@@ -123,7 +123,7 @@ namespace Emberfall
             }
             GUI.enabled=hudEnabled;
             Rect map=TouchRect(l.Map);blockedRects.Add(map);DrawMinimapTerrain(map);
-            if(!session.InDungeon){MapDot(map,new Vector3(0,0,11),jade,4*TouchRatio);MapDot(map,GameSession.ChapterEntrancePosition,new Color(.8f,.5f,1),4*TouchRatio);for(int npc=0;npc<3;npc++)MapDot(map,GameSession.HubNpcPosition(npc),gold,3*TouchRatio);}
+            if(!session.InDungeon){MapDot(map,session.DungeonEntrancePosition,jade,4*TouchRatio);MapDot(map,GameSession.ChapterEntrancePosition,new Color(.8f,.5f,1),4*TouchRatio);for(int npc=0;npc<3;npc++)MapDot(map,GameSession.HubNpcPosition(npc),gold,3*TouchRatio);}
             else if(session.DungeonReturnAvailable)MapDot(map,session.DungeonReturnPosition,jade,4*TouchRatio);
             if(session.Player!=null)MapDot(map,session.Player.transform.position,jade,4*TouchRatio);
             foreach(var enemy in session.Enemies)if(enemy!=null&&!enemy.IsDead)MapDot(map,enemy.transform.position,enemy.IsBoss?gold:new Color(1,.4f,.3f),2*TouchRatio);

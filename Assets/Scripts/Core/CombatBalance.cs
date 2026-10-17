@@ -86,8 +86,8 @@ namespace Emberfall
             return (float)(1d + .014d * step + .00008d * step * step);
         }
 
-        public static float DungeonHealthMultiplier(int level)
-        {return level<30?1f:1.15f+Math.Min(.35f,(Math.Min(100,level)-30)*.005f);}
+        public static float DungeonHealthMultiplier(int level,bool boss=false)
+        {return (boss?5f:2f)*(level<30?1f:1.15f+Math.Min(.35f,(Math.Min(100,level)-30)*.005f));}
         public static float DungeonDamageMultiplier(int level)
         {return level<30?1f:1.10f+Math.Min(.25f,(Math.Min(100,level)-30)*.004f);}
 
@@ -95,7 +95,7 @@ namespace Emberfall
         {
             int safeLevel = Clamp(level, 1, MaximumLevel);
             float basis;
-            if (boss) basis = 750f + 590f * safeLevel;
+            if (boss) basis = (750f + 590f * safeLevel) * .8f;
             else
             {
                 switch (kind)

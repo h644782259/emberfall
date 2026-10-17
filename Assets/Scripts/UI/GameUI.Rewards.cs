@@ -101,7 +101,7 @@ namespace Emberfall
             var reward=revealed?savedReward:null;
             Color accent=reward!=null&&reward.Rarity.HasValue?GameBalance.RarityColor(reward.Rarity.Value):gold;
             if(revealed&&complete&&!rewardSoundPlayed)
-            {rewardSoundPlayed=true;GameAudio.Play(reward==null||!reward.Rarity.HasValue||reward.Duplicate?SoundCue.UI:reward.Rarity.Value==Rarity.Legendary?SoundCue.Victory:reward.Rarity.Value==Rarity.Epic?SoundCue.LevelUp:reward.Rarity.Value==Rarity.Rare?SoundCue.Loot:SoundCue.Cast);}
+            {rewardSoundPlayed=true;GameAudio.Play(HasLegendaryChestReward(reward)?SoundCue.Victory:reward==null||!reward.Rarity.HasValue||reward.Duplicate?SoundCue.UI:reward.Rarity.Value==Rarity.Legendary?SoundCue.Victory:reward.Rarity.Value==Rarity.Epic?SoundCue.LevelUp:reward.Rarity.Value==Rarity.Rare?SoundCue.Loot:SoundCue.Cast);}
 
             float ww=Mathf.Min(860,width-32),wh=Mathf.Min(550,height-24);
             Rect w=new Rect((width-ww)*.5f,(height-wh)*.5f,ww,wh);

@@ -150,9 +150,9 @@ namespace Emberfall
         }
         private void DrawSettlementNavigation(Rect footer,float u)
         {
+            // Keep navigation hidden until the chest reward is saved and revealed.
+            if(!SettlementNavigationReady)return;
             float gap=8*u,bw=(footer.width-gap*2)/3;
-            // The actions keep a stable footer. Their gates open only when the
-            // reward is saved and its reveal finished, before acknowledging it.
             if(Button(new Rect(footer.x,footer.y,bw,footer.height),"挑战下一阶",gold,CanNavigateSettlement(1)))
             {NavigateSettlement(1);return;}
             if(Button(new Rect(footer.x+bw+gap,footer.y,bw,footer.height),"返回营地",jade,CanNavigateSettlement(2)))
@@ -177,11 +177,51 @@ namespace Emberfall
             else {panel=Panel.Summary;session.SetUIBlocking(true);}
             BlockUITransition();
         }
+        private bool HasLegendaryChestReward(ChestReward reward)
+        {
+            if(reward==null)return false;
+            if(reward.Rarity==Rarity.Legendary&&reward.Slot.HasValue&&!reward.Duplicate)return true;
+            if(reward.gemMechanic!=EquipmentMechanic.None&&reward.gemRarity==Rarity.Legendary&&!reward.duplicateGem)return true;
+            if(reward.equipmentIds!=null)foreach(string id in reward.equipmentIds)
+            {
+                var item=session.Progression.Profile.inventory.Find(v=>v!=null&&v.id==id);
+                if(item!=null&&item.rarity==Rarity.Legendary)return true;
+            }
+            return false;
+        }
+        private void DrawLegendaryChestGlow(Rect icon,float opacity,float reveal)
+        {
+            if(Event.current.type!=EventType.Repaint)return;
+            Color previous=GUI.color;
+            float pulse=EffectPreferences.ReducedEffects?0:.5f+.5f*Mathf.Sin(Time.unscaledTime*2.4f);
+            var disc=UIIconAtlas.ControlDisc();
+            for(int layer=0;layer<4;layer++)
+            {
+                float size=icon.width*(1.65f-layer*.22f);
+                GUI.color=new Color(1f,.62f,.12f,opacity*(.07f+layer*.025f+pulse*.025f));
+                GUI.DrawTexture(new Rect(icon.center.x-size*.5f,icon.center.y-size*.5f,size,size),disc,ScaleMode.StretchToFill,true);
+            }
+            GUI.color=previous;
+            if(EffectPreferences.ReducedEffects)return;
+            float burst=Mathf.Sin(reveal*Mathf.PI);
+            for(int i=0;i<10;i++)
+            {
+                float angle=i*Mathf.PI*.2f+Time.unscaledTime*.15f;
+                Vector2 point=icon.center+new Vector2(Mathf.Cos(angle),Mathf.Sin(angle))*icon.width*(.60f+burst*.22f);
+                float size=icon.width*(.025f+burst*.025f);
+                Color light=new Color(1f,.85f,.43f,opacity*(.45f+pulse*.35f));
+                Fill(new Rect(point.x-size,point.y-size*.2f,size*2,size*.4f),light);
+                Fill(new Rect(point.x-size*.2f,point.y-size,size*.4f,size*2),light);
+            }
+        }
         private void DrawSettlementChestStage(Rect stage,ChestReward reward,float u)
         {
             bool animating=chestReceiptId==reward.Id&&!ChestAnimationDone;
             float progress=animating?ChestRevealPresentation.Progress(Time.unscaledTime-chestRevealedAt,ChestDuration):1;
-            if(stage.height>=100*u)Text(new Rect(stage.x,stage.y,stage.width,24*u),"宝箱已开启",Mathf.RoundToInt(15*u),gold,true,false,TextAnchor.MiddleCenter);
+            bool legendary=HasLegendaryChestReward(reward);
+            if(legendary&&progress>=.60f&&chestReceiptId==reward.Id&&!rewardSoundPlayed)
+            {rewardSoundPlayed=true;GameAudio.Play(SoundCue.Victory);}
+            if(stage.height>=100*u)Text(new Rect(stage.x,stage.y,stage.width,24*u),legendary&&progress>=.42f?"传说降临 · 珍稀奖励入手":"宝箱已开启",Mathf.RoundToInt((legendary?18:15)*u),legendary?new Color(1f,.82f,.38f):gold,true,false,TextAnchor.MiddleCenter);
             for(int choice=0;choice<3;choice++)
             {
                 Rect art=SettlementChestArt(stage,choice,u);
@@ -214,9 +254,11 @@ namespace Emberfall
                     // Settlement pauses gameplay, so selection uses the UI clock.
                     // Only the granted chest pulses; hit bounds and quantity stay stable.
                     float pulse=selected?.5f+.5f*Mathf.Cos(Time.unscaledTime*Mathf.PI*2/1.2f):0;
+                    bool legendaryItem=selected&&legendary&&item.Rarity==Rarity.Legendary;
+                    if(legendaryItem)DrawLegendaryChestGlow(icon,opacity,reveal);
                     DrawChestItemGrounding(icon,item.QualityColor,opacity,selected,pulse);
                     Color artTint=item.QualityColor;
-                    artTint.a=opacity*(selected?Mathf.Lerp(EffectPreferences.ReducedEffects?.8f:.5f,1f,pulse):1f);
+                    artTint.a=opacity*(selected&&!legendaryItem?Mathf.Lerp(EffectPreferences.ReducedEffects?.8f:.5f,1f,pulse):1f);
                     DrawIcon(new Rect(icon.x+4*u,icon.y+4*u,icon.width-8*u,icon.height-8*u),item.Icon,artTint);
                     GUI.color=new Color(before.r,before.g,before.b,opacity);
                     if(item.Quantity>1)DrawOutlinedIconText(new Rect(icon.x,icon.yMax-16*u,icon.width-2*u,16*u),item.Quantity.ToString(),Mathf.RoundToInt(11*u),pale,TextAnchor.MiddleRight);
@@ -225,7 +267,7 @@ namespace Emberfall
                     Rect hit=MobileControls.Active?new Rect(icon.center.x-Mathf.Max(icon.width,44*u)*.5f,icon.center.y-Mathf.Max(icon.height,44*u)*.5f,Mathf.Max(icon.width,44*u),Mathf.Max(icon.height,44*u)):icon;
                     InspectRewardItem(hit,item,false,inspectionKey);
                 }
-                if(side>=80*u)Text(new Rect(square.x,square.yMax-18*u,square.width,18*u),selected?"已获得":"未选中",Mathf.RoundToInt(11*u),selected?gold:muted,true,false,TextAnchor.MiddleCenter);
+                if(side>=80*u)Text(new Rect(square.x,square.yMax-18*u,square.width,18*u),selected?(legendary?"传说 · 已获得":"已获得"):"未选中",Mathf.RoundToInt(11*u),selected?gold:muted,true,false,TextAnchor.MiddleCenter);
             }
         }
         private void DrawChestItemGrounding(Rect icon,Color rarity,float opacity,bool selected,float pulse)

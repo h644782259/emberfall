@@ -1081,7 +1081,7 @@ namespace Emberfall
             if (!session.InDungeon)
             {
                 MapDot(field, new Vector3(0, 0, -10), gold, 7);
-                MapDot(field, new Vector3(0, 0, 11), jade, 7);
+                MapDot(field, session.DungeonEntrancePosition, jade, 7);
                 MapDot(field,GameSession.ChapterEntrancePosition,new Color(.8f,.5f,1),7);
                 for (int npc = 0; npc < 2; npc++) MapDot(field, GameSession.HubNpcPosition(npc), gold, 4);
             }
@@ -1384,11 +1384,11 @@ namespace Emberfall
                 if(IconButton(new Rect(x + 46,y,38,38),"shop","P","商店",jade))OpenHubService(HubNpcKind.Merchant);
                 if(IconButton(new Rect(x + 92,y,38,38),"smith","O","铁匠",jade))OpenHubService(HubNpcKind.Blacksmith);
             }
-            if(IconButton(new Rect(x + 138,y,38,38),"achievement","J","成就",jade))OpenProgressionGoals();
+            if(IconButton(new Rect(x + 184,y,38,38),"achievement","J","成就",jade))OpenProgressionGoals();
 
-            if (IconButton(new Rect(x + 230, y, 38, 38), "inventory", "I", "行囊", jade))
+            if (IconButton(new Rect(x + 138, y, 38, 38), "inventory", "I", "行囊", jade))
                 TogglePanel(Panel.Inventory);
-            if (IconButton(new Rect(x + 184, y, 38, 38), "skills", "K", "技能", jade, p.skillPoints > 0 ? "+" + p.skillPoints : null))
+            if (IconButton(new Rect(x + 230, y, 38, 38), "skills", "K", "技能", jade, p.skillPoints > 0 ? "+" + p.skillPoints : null))
                 TogglePanel(Panel.Skills);
             GUI.enabled=hudEnabled;
             if (IconButton(new Rect(x, y, 38, 38), "camp", "H", "回到起点", jade))

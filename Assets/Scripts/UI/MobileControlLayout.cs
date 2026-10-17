@@ -44,8 +44,8 @@ namespace Emberfall
             float bottomLift=Width<700?36:0;
             Potion=Centered(Width*.5f-108,Height-30,52);
             // Width already excludes Screen.safeArea insets. Never subtract them again.
-            Menu=Centered(Width-28,32,44);Inventory=Centered(Width-74,32,44);
-            SkillsMenu=Centered(Width-120,32,44);Catalog=Centered(Width-166,32,44);
+            Menu=Centered(Width-28,32,44);Inventory=Centered(Width-166,32,44);
+            SkillsMenu=Centered(Width-74,32,44);Catalog=Centered(Width-120,32,44);
             Shop=Centered(Width-258,32,44);Smith=Centered(Width-212,32,44);
             Interact=ipad?new Area(Width-54,92,48,48):new Area(Width-156,56,48,48);
             DungeonEntrance=new Area(Width*.5f-58,54,116,44);
@@ -76,8 +76,8 @@ namespace Emberfall
                 }
                 // Ultimate stays fixed above the page switch, freeing the bottom HUD.
                 Skills[4]=Centered(SkillPage.X+SkillPage.Width*.5f,SkillPage.Y-10-31.2f,62.4f);
-                Menu=Centered(Width-38,38,52.8f);Inventory=Centered(Width-93.2f,38,52.8f);
-                SkillsMenu=Centered(Width-148.4f,38,52.8f);Catalog=Centered(Width-203.6f,38,52.8f);
+                Menu=Centered(Width-38,38,52.8f);Inventory=Centered(Width-203.6f,38,52.8f);
+                SkillsMenu=Centered(Width-93.2f,38,52.8f);Catalog=Centered(Width-148.4f,38,52.8f);
                 Smith=Centered(Width-258.8f,38,52.8f);Shop=Centered(Width-314,38,52.8f);
                 DungeonEntrance=new Area(Width*.5f-58,76,116,44);
                 Potion=Centered(Width*.5f-151,Height-34,62.4f);
