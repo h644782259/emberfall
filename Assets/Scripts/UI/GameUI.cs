@@ -180,6 +180,19 @@ namespace Emberfall
             using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.InterfaceUpdate)) UpdateMeasuredInterface();
         }
 
+        private int proximityPortal;
+        private PlayerController proximityPortalPlayer;
+        private void UpdatePortalProximity()
+        {
+            if(proximityPortalPlayer!=session.Player){proximityPortal=0;proximityPortalPlayer=session.Player;}
+            int nearby=session.NearDungeonReturn?3:session.IsNearChapterEntrance?2:!session.InDungeon&&session.IsNearDungeonEntrance?1:0;
+            if(nearby==0){proximityPortal=0;return;}
+            if(proximityPortal==nearby||panel!=Panel.None||session.InputBlocked||UITransitionBlocked||!session.HasStarted||session.IsDead)return;
+            proximityPortal=nearby;
+            CancelHotbarPointer();CancelMobileScroll();MobileControls.ResetInput();
+            if(nearby==3)OpenDungeonExit();else session.EnterDungeon();
+        }
+
         private void UpdateMeasuredInterface()
         {
             UpdateFrameRateDisplay();
@@ -229,6 +242,7 @@ namespace Emberfall
             {if(session.FinishedResultReady&&Input.GetKeyDown(KeyCode.Escape))CloseSettlement();return;}
             if(masteryResetConfirm&&panel==Panel.Skills&&Input.GetKeyDown(KeyCode.Escape)){masteryResetConfirm=false;return;}
             EnsurePendingChestPanel();
+            UpdatePortalProximity();
             if ((session.DungeonSelectionOpen || session.RunChoices.AwaitingChoice) && !session.Paused && !PauseUtilityVisible)
             {if(Input.GetKeyDown(KeyCode.Escape)){if(session.DungeonSelectionOpen)session.CancelDungeonSelection();else session.SetPaused(true);}return;}
             if (rebindingSlot >= 0) return;
@@ -1019,7 +1033,7 @@ namespace Emberfall
             DrawExpeditionHUD();
             DrawTownActivityEntry();
             EnemyController target = session.Player == null ? null : session.Player.AimTarget;
-            if (target != null && !target.IsDead)
+            if (!session.InDungeon && target != null && !target.IsDead)
             {
                 DrawEnemyTargetPanel(target);
             }
@@ -1096,6 +1110,7 @@ namespace Emberfall
 
         private void DrawEnemyTargetPanel(EnemyController target)
         {
+            if(target==null||!target.IsBoss)return;
             bool boss=target.IsBoss,elite=!boss&&target.Tier==EnemyController.ThreatTier.Elite;
             float u=MobileControls.Active?TouchRatio:1;
             float w=Mathf.Min((boss?350:elite?270:220)*u,width*.52f);
@@ -1119,8 +1134,7 @@ namespace Emberfall
         private void DrawDungeonStatus()
         {
             if(!session.InDungeon||session.DungeonCleared)return;
-            if(session.Player!=null&&session.Player.AimTarget!=null&&!session.Player.AimTarget.IsDead)return;
-            foreach(var enemy in session.Enemies)if(enemy!=null&&enemy.IsBoss&&!enemy.IsDead){DrawEnemyTargetPanel(enemy);break;}
+            foreach(var enemy in session.Enemies)if(enemy!=null&&enemy.IsBoss&&!enemy.IsDead&&enemy.gameObject.activeInHierarchy){DrawEnemyTargetPanel(enemy);break;}
         }
 
         private void DrawHotbar()
@@ -2011,11 +2025,13 @@ namespace Emberfall
 
         private void ClosePanel()
         {
+            if(smithUpgradeResultOpen){CloseSmithUpgradeResult();return;}
             if(smithFashionQuote!=null){ReleaseFashionSmithPreview();return;}
             if(CloseTopPopup())return;
             if(SmithServiceActive&&smithPreviewMechanic!=EquipmentMechanic.None){smithPreviewMechanic=EquipmentMechanic.None;return;}
             if(MobileControls.Active&&merchantExchangeOpen&&panel==Panel.HubUtility){merchantExchangeOpen=false;panel=Panel.Inventory;BlockUITransition();return;}
             if(MerchantServiceActive||SmithServiceActive){merchantShopOpen=smithShopOpen=false;inventoryHubNpc=HubNpcKind.None;merchantExchangeOpen=false;panel=Panel.None;session.SetUIBlocking(false);BlockUITransition();return;}
+            if(panel==Panel.DungeonExit)session.RetreatFromPortal(session.DungeonReturnPosition,3.5f);
             if(CloseChapterSelection())return;
             if(CloseRouteSkill())return;
             if(CloseMobileInventoryDetail())return;

@@ -6,10 +6,27 @@ namespace Emberfall
         private int smithCategory,smithSelectedSlot;
         private string smithUpgradeNotice,smithUpgradeNoticeItem,smithUpgradeNoticeSlot;
         private ProgressionService smithUpgradeNoticeOwner;
-        private float smithUpgradeNoticeUntil;
-        private bool smithUpgradeNoticeSuccess;
-        private bool HasSmithUpgradeNotice(ItemData item,ProgressionService owner)
-        {return item!=null&&smithUpgradeNoticeOwner==owner&&smithUpgradeNoticeSlot==owner.CurrentSlotId&&smithUpgradeNoticeItem==item.id&&Time.unscaledTime<smithUpgradeNoticeUntil;}
+        private bool smithUpgradeNoticeSuccess,smithUpgradeResultOpen;
+        private void CloseSmithUpgradeResult(){smithUpgradeResultOpen=false;BlockUITransition();}
+        private void DrawSmithUpgradeResult(float u)
+        {
+            if(!smithUpgradeResultOpen)return;
+            Color accent=smithUpgradeNoticeSuccess?jade:new Color(1f,.43f,.35f);
+            Fill(new Rect(0,0,width,height),new Color(0,0,0,.72f));
+            blockedRects.Add(new Rect(0,0,width,height));
+            float w=Mathf.Min(420*u,width-24*u),h=Mathf.Min(290*u,height-24*u);
+            Rect box=new Rect((width-w)*.5f,(height-h)*.5f,w,h);
+            Fill(box,card);Border(box,accent,2*u);
+            Fill(new Rect(box.x,box.y,w,7*u),accent);
+            Rect badge=new Rect(box.center.x-26*u,box.y+23*u,52*u,52*u);
+            Fill(badge,new Color(accent.r,accent.g,accent.b,.16f));Border(badge,accent);
+            Text(badge,smithUpgradeNoticeSuccess?"↑":"!",Mathf.RoundToInt(30*u),accent,true,false,TextAnchor.MiddleCenter);
+            Text(new Rect(box.x+20*u,box.y+84*u,w-40*u,32*u),smithUpgradeNoticeSuccess?"强化成功":"强化失败",Mathf.RoundToInt(24*u),accent,true,false,TextAnchor.MiddleCenter);
+            Text(new Rect(box.x+20*u,box.y+122*u,w-40*u,24*u),smithUpgradeNoticeItem,Mathf.RoundToInt(14*u),pale,true,false,TextAnchor.MiddleCenter);
+            Text(new Rect(box.x+20*u,box.y+152*u,w-40*u,h-214*u),smithUpgradeNotice,Mathf.RoundToInt(14*u),pale,false,true,TextAnchor.MiddleCenter);
+            if(NavigationButton(new Rect(box.x+24*u,box.yMax-54*u,w-48*u,38*u),"知道了",accent))CloseSmithUpgradeResult();
+            if(PopupCloseButton(new Rect(box.xMax-44*u,box.y+10*u,32*u,32*u)))CloseSmithUpgradeResult();
+        }
 
         private readonly System.Collections.Generic.Dictionary<string,Vector2> smithVariantScroll=new System.Collections.Generic.Dictionary<string,Vector2>();
         private bool smithSocketPicker;
@@ -63,7 +80,8 @@ namespace Emberfall
         {
             var p=session.Progression;float u=MobileControls.Active?TouchRatio:1;
             if(MobileControls.Active&&width<height)u=Mathf.Max(u,1f/scale);
-            bool prior=GUI.enabled;GUI.enabled=prior&&smithPreviewMechanic==EquipmentMechanic.None&&!smithSocketPicker&&smithAffixQuote==null;
+            if(smithUpgradeResultOpen&&(smithUpgradeNoticeOwner!=p||smithUpgradeNoticeSlot!=p.CurrentSlotId))smithUpgradeResultOpen=false;
+            bool prior=GUI.enabled;GUI.enabled=prior&&!smithUpgradeResultOpen&&smithPreviewMechanic==EquipmentMechanic.None&&!smithSocketPicker&&smithAffixQuote==null;
             var l=new SmithServiceLayout(width/u,height/u,MobileControls.IsIPad);
             blockedRects.Add(new Rect(0,0,width,height));
             Box(new Rect(8*u,4*u,width-16*u,height-8*u),jade,false);
@@ -87,7 +105,7 @@ namespace Emberfall
             if(smithCategory==1)
             {
                 DrawPhoneSocketService(body,u);
-                GUI.enabled=prior;DrawGemPreview(u);DrawSocketPicker(u);DrawAffixConfirmation(u);return;
+                GUI.enabled=prior;DrawGemPreview(u);DrawSocketPicker(u);DrawAffixConfirmation(u);DrawSmithUpgradeResult(u);return;
             }
             int columns=width/u>=540?3:1;
             float cardWidth=(body.width/u-(columns-1)*12)/columns;
@@ -95,7 +113,7 @@ namespace Emberfall
             for(int i=0;i<3;i++)
             {
                 var gear=p.Equipped((ItemSlot)i);
-                cardHeights[i]=gear==null?180:DrawSmithDetail(gear,cardWidth-16,u,false)+(smithCategory==0?(HasSmithUpgradeNotice(gear,p)?(MobileControls.Active?94:106):(MobileControls.Active?50:62)):0)+16;
+                cardHeights[i]=gear==null?180:DrawSmithDetail(gear,cardWidth-16,u,false)+(smithCategory==0?(MobileControls.Active?50:62):0)+16;
                 rowHeight=Mathf.Max(rowHeight,cardHeights[i]);
             }
             float contentHeight=columns==3?rowHeight:cardHeights[0]+cardHeights[1]+cardHeights[2]+24;
@@ -139,15 +157,14 @@ namespace Emberfall
                         Fill(action,new Color(accent.r,accent.g,accent.b,.13f));Border(action,new Color(accent.r,accent.g,accent.b,.55f));
                         if(!capped&&QuietAction(action,"",quote!=null))
                         {
-                            int attempts=p.Profile.equipmentUpgradeAttempts;
+                            int attempts=p.Profile.equipmentUpgradeAttempts;int oldRank=p.SlotUpgradeRank(slot);
                             bool success=p.UpgradeAtSmith(quote,SmithServiceActive);
                             bool paid=p.Profile.equipmentUpgradeAttempts>attempts;
-                            smithUpgradeNotice=success?"强化成功 · +"+p.SlotUpgradeRank(slot)+"\n已消耗 "+cost+" 金币":paid?"强化失败 · 等级保持 +"+p.SlotUpgradeRank(slot)+"\n已消耗 "+cost+" 金币":p.LastError;
-                            smithUpgradeNoticeOwner=p;smithUpgradeNoticeSlot=p.CurrentSlotId;smithUpgradeNoticeItem=item.id;
-                            smithUpgradeNoticeSuccess=success;smithUpgradeNoticeUntil=Time.unscaledTime+5;
-                            Feedback(success,smithUpgradeNotice.Replace("\n"," · "));
+                            smithUpgradeNotice=success?"强化等级  +"+oldRank+" → +"+p.SlotUpgradeRank(slot)+"\n消耗 "+cost+" 金币":paid?"强化等级保持 +"+p.SlotUpgradeRank(slot)+"\n消耗 "+cost+" 金币":(string.IsNullOrEmpty(p.LastError)?"本次未执行强化，请检查条件后重试。":p.LastError);
+                            smithUpgradeNoticeOwner=p;smithUpgradeNoticeSlot=p.CurrentSlotId;smithUpgradeNoticeItem=ItemTitle(item);
+                            smithUpgradeNoticeSuccess=success;smithUpgradeResultOpen=true;
+                            BlockUITransition();
                         }
-                        if(HasSmithUpgradeNotice(item,p))Text(new Rect(8*u,action.y-44*u,(cardWidth-32)*u,40*u),smithUpgradeNotice,Mathf.RoundToInt(12*u),smithUpgradeNoticeSuccess?jade:new Color(1,.48f,.4f),true,true,TextAnchor.MiddleCenter);
                         if(capped)DrawSmithMaxBadge(action,"已满级",u);
                         else DrawIcon(new Rect(action.x+10*u,action.y+11*u,22*u,22*u),UIIconAtlas.Utility("upgrade"),accent);
                         if(!capped)
@@ -160,7 +177,7 @@ namespace Emberfall
                 GUI.EndGroup();top+=cardHeights[i]+12;
             }
             EndTouchScroll();
-            GUI.enabled=prior;DrawGemPreview(u);DrawSocketPicker(u);DrawAffixConfirmation(u);
+            GUI.enabled=prior;DrawGemPreview(u);DrawSocketPicker(u);DrawAffixConfirmation(u);DrawSmithUpgradeResult(u);
         }
         private string PhoneGemFormDescription(MechanicAttachment gem,int variant)
         {

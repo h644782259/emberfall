@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 namespace Emberfall
 {
     public sealed partial class GameUI
@@ -129,8 +129,13 @@ namespace Emberfall
             inventoryLastClick=null;
             var p=session.Progression;
             if(id=="@potion")session.DrinkPotion();
-            else if(id.StartsWith("@fashion:"))MobileFashionResult(p.EquipFashion(id.Substring(9)),"外观已穿戴");
-            else MobileInventoryResult(p.Equip(id),"装备已穿戴");
+            else
+            {
+                bool fashion=id.StartsWith("@fashion:");
+                bool saved=fashion?p.EquipFashion(id.Substring(9)):p.Equip(id);
+                if(fashion)MobileFashionResult(saved,"外观已穿戴");else MobileInventoryResult(saved,"装备已穿戴");
+                if(saved)DismissEquippedItemDetails();
+            }
         }
         private Rect DesktopInventorySheet(float w,float h)
         {
@@ -289,7 +294,7 @@ namespace Emberfall
                     bool saved=worn?session.Progression.Unequip(item.slot):session.Progression.Equip(item.id);
                     MobileInventoryResult(saved,worn?"装备已脱下":"装备已穿戴");
                     inventoryPopupOpened=Time.frameCount;
-                    if(saved&&!worn){inventoryComparisonOpen=false;inventoryPopupCompare=false;CancelMobileScroll();}
+                    if(saved&&!worn)DismissEquippedItemDetails();
                 }
             }
             if(!inventoryPopupCompare&&!potion&&!fashion)

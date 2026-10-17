@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace Emberfall
@@ -587,7 +587,7 @@ namespace Emberfall
         internal void PrepareMobileSkillAim(int skill)
         {
             EnemyController enemy;Vector3 point;ResolveMobileSkillAim(skill,out enemy,out point);AimTarget=enemy;aimPoint=point;
-            if(HeroClass==HeroClass.Ranger&&enemy!=null)
+            if(enemy!=null)
             {
                 Vector3 direction=CombatFx.Flat(point-transform.position);
                 if(direction.sqrMagnitude>.0001f)transform.rotation=Quaternion.LookRotation(direction.normalized);
@@ -599,12 +599,39 @@ namespace Emberfall
             var preview=SkillTargetingController.Describe(HeroClass,skill,session.Progression.Profile.skillRanks[skill]);
             if(preview.shape==SkillTargetingController.Shape.Self){enemy=null;point=transform.position;return;}
             float range=preview.distance>0?preview.distance:8f;
-            enemy=HeroClass==HeroClass.Ranger?ResolveDesktopBasicTarget(range):null;
+            enemy=ResolveMobileForwardSkillTarget(preview);
             if(enemy!=null){point=CombatFx.Flat(enemy.transform.position);return;}
             // Meteor is a ranged ground skill; other mobile skills keep their existing landing distance.
             float distance=HeroClass==HeroClass.Arcanist&&skill==1?range*.9f:Mathf.Min(5f,range);
             point=CombatFx.Flat(transform.position+transform.forward*distance);
             point=CombatSight.GroundPoint(transform.position,Vector3.ClampMagnitude(point,Mathf.Max(1,session.ArenaRadius-.65f)));
+        }
+
+        private EnemyController ResolveMobileForwardSkillTarget(SkillTargetingController.Preview preview)
+        {
+            EnemyController best=null;int bestPriority=int.MaxValue;float nearest=float.PositiveInfinity;
+            var pinned=ReadMobilePinnedTarget();var focused=FocusTarget;
+            foreach(var candidate in session.Enemies)
+            {
+                if(!ValidAimTarget(candidate)||!CombatSight.Direct(transform.position,candidate.transform.position))continue;
+                Vector3 offset=CombatFx.Flat(candidate.transform.position-transform.position);
+                float distance=offset.magnitude,forward=Vector3.Dot(offset,CombatFx.Flat(transform.forward).normalized);
+                float reach=preview.distance>0?preview.distance:8f;
+                if(forward<=0||distance>reach+candidate.HitFootprintBonus)continue;
+                if(preview.shape==SkillTargetingController.Shape.Cone&&
+                    forward<distance*Mathf.Cos(preview.angle*.5f*Mathf.Deg2Rad))continue;
+                if(preview.shape==SkillTargetingController.Shape.Lane||preview.shape==SkillTargetingController.Shape.Retreat)
+                {
+                    float lateral=Mathf.Sqrt(Mathf.Max(0,offset.sqrMagnitude-forward*forward));
+                    float halfWidth=Mathf.Max(preview.radius,Mathf.Max(preview.startRadius,preview.endRadius));
+                    if(lateral>halfWidth+candidate.HitFootprintBonus)continue;
+                }
+                int priority=candidate==pinned?0:candidate==focused?1:candidate==AimTarget?2:3;
+                float effective=Mathf.Max(0,distance-candidate.HitFootprintBonus);
+                if(priority<bestPriority||priority==bestPriority&&effective<nearest)
+                {best=candidate;bestPriority=priority;nearest=effective;}
+            }
+            return best;
         }
 
         private static bool ProjectedBounds(Camera camera,Bounds bounds,out Rect screenBounds)
@@ -726,7 +753,7 @@ namespace Emberfall
         {
             AimTarget=ResolveDesktopBasicTarget();
             if(!MobileControls.Active)return;
-            // Mobile skills retain directional aim; only a basic attack acquires a nearby enemy.
+            // Basic attacks may acquire nearby enemies in any direction.
             aimPoint=ValidAimTarget(AimTarget)?CombatFx.Flat(AimTarget.transform.position):transform.position+transform.forward*8f;
             Vector3 direction=CombatFx.Flat(aimPoint-transform.position);
             if(!FrostStrideActive&&direction.sqrMagnitude>.0001f)

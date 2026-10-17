@@ -69,21 +69,38 @@ namespace Emberfall
         }
         private Rect RewardMomentSkipRect(Rect area)
         {float u=MobileControls.Active?TouchRatio:1;return new Rect(area.xMax-52*u,area.y+2*u,48*u,48*u);}
+        private string RewardMomentTitle()
+        {
+            if(rewardMoment.Attachment!=null)return BuildCatalog.GemName(rewardMoment.Attachment.mechanic);
+            if(rewardMoment.Item!=null)return rewardMoment.Item.name;
+            if(rewardMoment.Fashion!=null)return rewardMoment.Fashion.name;
+            if(rewardMoment.MaterialsDelta!=0)return "星烬碎片 ×"+rewardMoment.MaterialsDelta;
+            if(rewardMoment.ThreadsDelta!=0)return "星纹 ×"+rewardMoment.ThreadsDelta;
+            if(rewardMoment.GoldDelta!=0)return "金币 ×"+rewardMoment.GoldDelta;
+            return "奖励已获得";
+        }
+        private Texture2D RewardMomentIcon()
+        {
+            if(rewardMoment.Attachment!=null)return UIIconAtlas.Utility("gem");
+            if(rewardMoment.Item!=null)return UIIconAtlas.EquipmentCardIcon(rewardMoment.Item,session.Progression.Profile.heroClass);
+            if(rewardMoment.Fashion!=null)return UIIconAtlas.FashionCardIcon(rewardMoment.Fashion,session.Progression.Profile.heroClass);
+            return rewardMoment.MaterialsDelta!=0?UIIconAtlas.Reward(1):rewardMoment.ThreadsDelta!=0?UIIconAtlas.Reward(2):rewardMoment.GoldDelta!=0?UIIconAtlas.Reward(0):UIIconAtlas.Utility("bag");
+        }
         private void DrawRewardMoment()
         {
             if(rewardMoment==null)return;
             if(session.RunChoices.AwaitingChoice){ClearRewardMoment();return;}
             Rect area=RewardMomentRect();float u=MobileControls.Active?TouchRatio:1;
             bool canEquip=RewardUpgradeItem()!=null;
-            Color accent=rewardMoment.Item!=null?GameBalance.RarityColor(rewardMoment.Item.rarity):rewardMoment.Fashion!=null?GameBalance.RarityColor(rewardMoment.Fashion.rarity):jade;
+            Color accent=rewardMoment.Attachment!=null?GameBalance.RarityColor(rewardMoment.Attachment.rarity):rewardMoment.Item!=null?GameBalance.RarityColor(rewardMoment.Item.rarity):rewardMoment.Fashion!=null?GameBalance.RarityColor(rewardMoment.Fashion.rarity):jade;
             Fill(area,new Color(.025f,.045f,.065f,.98f));Border(area,accent);
             if(!RewardMomentSafe)
             {
-                DrawIcon(new Rect(area.x+6*u,area.y+6*u,38*u,38*u),UIIconAtlas.Utility(rewardMoment.Item!=null&&rewardMoment.Item.slot==ItemSlot.Weapon?"attack":"bag"),accent);
-                Text(new Rect(area.x+50*u,area.y+5*u,area.width-56*u,42*u),rewardMoment.Item==null?"星烬碎片":rewardMoment.Item.name,Mathf.RoundToInt(12*u),pale,false,true);if(canEquip)DrawRewardEquip(area);return;
+                DrawIcon(new Rect(area.x+6*u,area.y+6*u,38*u,38*u),RewardMomentIcon(),accent);
+                Text(new Rect(area.x+50*u,area.y+5*u,area.width-56*u,42*u),RewardMomentTitle(),Mathf.RoundToInt(12*u),pale,false,true);if(canEquip)DrawRewardEquip(area);return;
             }
             DrawIcon(RewardMomentSkipRect(area),UIIconAtlas.Utility("cancel"),muted);
-            string title=rewardMoment.Attachment!=null?BuildCatalog.GemName(rewardMoment.Attachment.mechanic):rewardMoment.Item!=null?GameBalance.SlotName(rewardMoment.Item.slot)+" · "+rewardMoment.Item.name:rewardMoment.Fashion!=null?rewardMoment.Fashion.name:"星烬碎片";
+            string title=RewardMomentTitle();
             Text(new Rect(area.x+10*u,area.y+6*u,area.width-66*u,38*u),title,Mathf.RoundToInt(14*u),accent,true,true);
             int rows=(rewardMoment.MaterialsDelta!=0?1:0)+(rewardMoment.ThreadsDelta!=0?1:0)+(rewardMoment.GoldDelta!=0?1:0);
             Rect body=new Rect(area.x+8*u,area.y+52*u,area.width-16*u,area.height-60*u-(canEquip?48*u:0));

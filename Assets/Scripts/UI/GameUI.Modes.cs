@@ -72,7 +72,7 @@ namespace Emberfall
   private string GemRewardDescription(EquipmentMechanic gem,Rarity rarity,int rank=0)
   {
    string attribute=BuildCatalog.IsAttributeGem(gem)?BuildCatalog.GemAttributeSummary(gem,rarity,rank):BuildCatalog.AttributeLabel(BuildCatalog.MechanicAttribute(gem))+" +"+(BuildCatalog.MechanicAttributeValue(gem,rank)*100).ToString("0.#")+"%";
-   return BuildCatalog.GemName(gem)+"\n"+(BuildCatalog.IsAttributeGem(gem)?"属性宝石":"机制宝石")+"\n"+GameBalance.SlotName(BuildCatalog.MechanicSlot(gem))+"槽\n"+(rank==0?"未升阶基础属性":"当前升阶属性")+"\n"+attribute+(BuildCatalog.IsAttributeGem(gem)?"":"\n"+BuildCatalog.MechanicDescription(gem));
+   return BuildCatalog.GemName(gem)+"\n"+GameBalance.SlotName(BuildCatalog.MechanicSlot(gem))+"槽\n"+attribute+(BuildCatalog.IsAttributeGem(gem)?"":"\n"+BuildCatalog.MechanicDescription(gem));
   }
   private string GemDropDescription(EquipmentMechanic gem,bool preview)
   {return BuildCatalog.GemName(gem)+"\n"+GameBalance.ClassName(BuildCatalog.MechanicClass(gem))+"专用 · "+GameBalance.SlotName(BuildCatalog.MechanicSlot(gem))+"槽\n"+(preview?"通关宝箱必得整件；已拥有则转为3枚星烬碎片。\n":"")+"机制\n"+BuildCatalog.MechanicDescription(gem);}
@@ -123,11 +123,12 @@ namespace Emberfall
     var stat=System.Text.RegularExpressions.Regex.Match(line,@"^(攻击加成|攻击|防御|生命|暴击率|暴击几率|暴击伤害|移动速度|受到伤害减免|技能冷却缩减|能量回复|护甲|数量)[ ：]*(.+)$");
     if(stat.Success)
     {
-     if(draw){Rect row=new Rect(0,y*u,available*u,30*u);Fill(row,new Color(.07f,.12f,.16f));string name=stat.Groups[1].Value;
-      DrawIcon(new Rect(5*u,(y+5)*u,20*u,20*u),UIIconAtlas.Utility(name=="攻击"?"attack":name=="防御"?"defense":name=="生命"?"health":name=="数量"?"shard":"core"),jade);
-      DrawGemEffectText(new Rect(30*u,y*u,Mathf.Min(76,available*.45f)*u,30*u),name,Mathf.RoundToInt(11*u),muted,false,TextAnchor.MiddleLeft);
-      Text(new Rect((30+Mathf.Min(76,available*.45f))*u,y*u,Mathf.Max(36,available-36-Mathf.Min(76,available*.45f))*u,30*u),stat.Groups[2].Value,Mathf.RoundToInt(12*u),pale,true,false,TextAnchor.MiddleRight);}
-     y+=34;continue;
+     if(draw){Rect row=new Rect(0,y*u,available*u,36*u);Fill(row,new Color(.06f,.10f,.14f));Border(row,new Color(.23f,.43f,.48f),u);
+      string name=stat.Groups[1].Value;float valueWidth=Mathf.Min(72,available*.3f),labelWidth=available-40-valueWidth;
+      DrawIcon(new Rect(7*u,(y+8)*u,20*u,20*u),UIIconAtlas.Utility(name=="攻击"?"attack":name=="防御"||name=="受到伤害减免"?"defense":name=="生命"?"health":name=="数量"?"shard":"core"),jade);
+      DrawGemEffectText(new Rect(34*u,y*u,labelWidth*u,36*u),name,Mathf.RoundToInt(12*u),pale,true,TextAnchor.MiddleLeft);
+      Text(new Rect((available-valueWidth-6)*u,y*u,valueWidth*u,36*u),stat.Groups[2].Value,Mathf.RoundToInt(14*u),jade,true,false,TextAnchor.MiddleRight);}
+     y+=40;continue;
     }
     if(CompactRewardItem(item))continue;
     float h=Mathf.Max(24*u,Style(Mathf.RoundToInt(section?12*u:11*u),section,true).CalcHeight(new GUIContent(line),(available-16)*u)+8*u);
@@ -234,7 +235,7 @@ namespace Emberfall
      if(InventoryPictogramAction(new Rect((actionX+cardWidth*.15f)*u,y*u,cardWidth*.7f*u,40*u),selectedWorn?"卸下":"穿戴",UIIconAtlas.Utility("confirm"),selectedWorn||owned==null||owned.level<=progression.Profile.level,selectedWorn,true))
      {
       bool saved=owned!=null?(selectedWorn?progression.Unequip(owned.slot):progression.Equip(owned.id)):(selectedWorn?progression.UnequipFashion(ownedFashion.slot):progression.EquipFashion(ownedFashion.id));
-      Feedback(saved,selectedWorn?"已卸下":"已穿戴");if(saved)RebuildBagItems();
+      Feedback(saved,selectedWorn?"已卸下":"已穿戴");if(saved){RebuildBagItems();if(!selectedWorn)DismissEquippedItemDetails();}
      }
     }
     y+=48;

@@ -70,8 +70,8 @@ namespace Emberfall
             bool ground = RequiresConfirmation(owner.HeroClass,index);
             if(MobileControls.Active)
             {
-                owner.ClearMobilePinnedTarget();
                 owner.PrepareMobileSkillAim(index);
+                owner.ClearMobilePinnedTarget();
                 if(!owner.CanBeginSkillTargeting(index))return false;
                 bool committed=ground?owner.ConfirmTargetedSkill(index,owner.AimPoint):owner.CastImmediateSkill(index);
                 Cancel();

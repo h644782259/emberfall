@@ -104,7 +104,7 @@ namespace Emberfall
                 string prefix="房间 "+(ChapterRoomIndex+1)+" / "+ChapterDefinition.RoomCount(ActiveChapterNode)+" · ";
                 if(ChapterRun.DoorUnlocked)return prefix+(ChapterRoomIndex+1<ChapterDefinition.RoomCount(ActiveChapterNode)?"目标完成 · 前往出口进入下一房":"目标完成 · 前往出口完成节点");
                 if(ChapterRun.Objective==RoomObjective.Hunt)return prefix+"击败金环断供目标 · 可绕开其余敌人";
-                if(ChapterRun.Objective==RoomObjective.Boss)return prefix+"击败星环执政官与护卫 · 摧毁供能锚可中止扫射";
+                if(ChapterRun.Objective==RoomObjective.Boss)return prefix+"击败星环执政官即可通关 · 摧毁供能锚可中止扫射";
                 return prefix+(ChapterRun.Objective==RoomObjective.Purify?"净化 "+ChapterRun.Seals+"/2":"撤离")+" · 站入光环 "+ChapterRun.Progress.ToString("0.0")+"/"+(ChapterRun.Objective==RoomObjective.Purify?"3":"4")+"秒 · 敌人入环时暂停累计";
             }
         }
@@ -116,7 +116,7 @@ namespace Emberfall
                 if(ChapterFinished)return ChapterRun.Failed?"挑战结束\n返回营地重整":"节点完成\n"+(ChapterRewardPending?"奖励待保存 · 可重试":"奖励已保存 · 返回营地");
                 if(ChapterRun.DoorUnlocked)return ChapterRoomIndex+1<ChapterDefinition.RoomCount(ActiveChapterNode)?"目标完成\n前往出口 · 进入下一房":"目标完成\n前往出口 · 完成节点";
                 if(ChapterRun.Objective==RoomObjective.Hunt)return "猎杀金环断供目标\n可绕开其余敌人";
-                if(ChapterRun.Objective==RoomObjective.Boss)return "击败首领与护卫\n摧毁供能锚中止扫射";
+                if(ChapterRun.Objective==RoomObjective.Boss)return "击败首领即可通关\n摧毁供能锚中止扫射";
                 return (ChapterRun.Objective==RoomObjective.Purify?"净化 "+ChapterRun.Seals+"/2":"撤离")+" · "+ChapterRun.Progress.ToString("0.0")+"/"+(ChapterRun.Objective==RoomObjective.Purify?"3":"4")+"秒\n敌人入环暂停累计";
             }
         }

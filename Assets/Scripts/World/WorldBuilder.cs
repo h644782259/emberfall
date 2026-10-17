@@ -614,7 +614,10 @@ namespace Emberfall
             NaturalSceneryMeshLibrary.Apply(rock,"Weathered rock",PrimitiveType.Cube,new Vector3(scale*1.3f,scale,scale*.9f),r);
             rock.transform.rotation = Quaternion.Euler(seed % 27, seed * 67 % 360, seed % 18);
             if (p.y >= -.1f && NavigationScenePoint(parent,p).sqrMagnitude < WorldTraversal.SceneLocalArenaRadius*WorldTraversal.SceneLocalArenaRadius)
-                RegisterSceneryCircle(NavigationScenePoint(parent,p),NavigationSceneRadius(parent,scale*.82f),rock);
+            {
+                var obstacle=RegisterSceneryCircle(NavigationScenePoint(parent,p),NavigationSceneRadius(parent,scale*.82f),rock);
+                WorldTraversal.RemoveLowRockObstacle(obstacle);
+            }
         }
 
         private static void Pillar(Transform parent, WorldResources r, Vector3 p, float height, bool dungeon)

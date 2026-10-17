@@ -46,7 +46,7 @@ namespace Emberfall
                 if (Progression.Profile.level < 2) return "击败原野怪物，升至 2 级 · 按 K 查看职业技能";
                 if (Progression.Profile.skillRanks[0] == 0) return "你已获得技能点！按 K 学习第一个职业技能";
                 if(IsNearChapterEntrance)return "按 E 进入星路章节 · 主线副本";
-                if (NearPortal()) return "按 E 进入沉星遗迹 · 三波挑战 / 首领 / 稀有装备";
+                if (NearPortal()) return "靠近传送门选择冒险 · 三波挑战 / 首领 / 稀有装备";
                 return "探索原野收集装备 · 前往北方发光的遗迹传送门";
             }
         }
@@ -367,6 +367,22 @@ namespace Emberfall
         public bool IsNearDungeonEntrance {get{return NearPortal();}}
         private bool NearPortal() { return Player != null && PortalInteractionPolicy.IsNear((Player.transform.position-new Vector3(0,0,11)).sqrMagnitude); }
 
+        internal void RetreatFromPortal(Vector3 center,float triggerRadius)
+        {
+            if(Player==null||IsDead||SceneLoading)return;
+            Vector3 outward=CombatFx.Flat(Player.transform.position-center).normalized;
+            if(outward.sqrMagnitude<.01f)outward=Vector3.back;
+            for(float distance=triggerRadius+1f;distance<=triggerRadius+5f;distance+=.5f)
+            for(int sample=0;sample<16;sample++)
+            {
+                int offset=sample==0?0:(sample+1)/2*(sample%2==1?1:-1);
+                Vector3 candidate=WorldTraversal.NearestWalkable(center+Quaternion.Euler(0,offset*22.5f,0)*outward*distance,.45f);
+                if(CombatFx.Flat(candidate-center).sqrMagnitude<(triggerRadius+.5f)*(triggerRadius+.5f)||
+                    !WorldTraversal.CanStand(candidate)||!PlayerBodyPositionClear(candidate))continue;
+                Player.RepositionAtOrigin(candidate);MobileControls.ResetInput();return;
+            }
+        }
+
         public void EnterDungeon()
         {
             if (!HasStarted || IsDead || InDungeon || DungeonSelectionOpen || InputBlocked) return;
@@ -662,8 +678,10 @@ namespace Emberfall
             if(ChapterActive)FinalizeChapterBoss();
             if(RoomChainRun!=null)FinalizeRoomChain();
             if(ModeRun!=null)FinalizeArenaResult();
-            if (InDungeon && !ChapterActive && ModeRun==null && RoomChainRun==null && !changingZone && Enemies.Count == 0 && !DungeonCleared)
+            if (InDungeon && !ChapterActive && ModeRun==null && RoomChainRun==null && !changingZone && !DungeonCleared)
             {
+                // The final boss completes the encounter; retiring guards grants no kill rewards.
+                if(boss&&DungeonWave==TotalWaves)RetireRemainingEncounterEnemies();
                 // Advancing is deferred until the finishing combat action has returned.
                 if(Enemies.Count==0 && !wavePreparing) waveRoutine=StartCoroutine(NextWave());
             }
@@ -1147,6 +1165,8 @@ namespace Emberfall
         public void ApplyMobileOrbit(float horizontal, float vertical)
         {
             if(!MobileControls.Active||GameSession.Instance==null||GameSession.Instance.InputBlocked)return;
+            manualCameraUntil=Time.unscaledTime+4f;
+            StopCombatAssist(false);
             yaw=Mathf.Repeat(yaw+horizontal,360f);
             ApplyMobilePitch(vertical);
         }
@@ -1175,10 +1195,26 @@ namespace Emberfall
             if(holdView)yaw=smoothYaw;
             assistTarget=null;assistYawVelocity=0;
         }
+        private static EnemyController ResolveLoneBossCameraTarget(GameSession game)
+        {
+            if(game==null||!game.InDungeon||game.Player==null)return null;
+            EnemyController boss=null;
+            foreach(var enemy in game.Enemies)
+            {
+                if(enemy==null||enemy.IsDead||!enemy.isActiveAndEnabled||!enemy.gameObject.activeInHierarchy)continue;
+                if(!enemy.IsBoss||boss!=null)return null;
+                boss=enemy;
+            }
+            if(boss==null)return null;
+            Vector3 direction=CombatFx.Flat(boss.transform.position-game.Player.transform.position);
+            if(direction.sqrMagnitude<.16f||direction.sqrMagnitude>14f*14f||
+                !CombatSight.Direct(game.Player.transform.position,boss.transform.position))return null;
+            return boss;
+        }
+
         private void AssistCombatView()
         {
             var game=GameSession.Instance;
-            if(MobileControls.Active){StopCombatAssist(false);return;}
             bool focused=Application.isFocused;
 #if EMBERFALL_VISUAL_VALIDATION
             focused |= VisualValidationPlayer.PerformanceRun;
@@ -1186,17 +1222,14 @@ namespace Emberfall
             if(!focused||game==null||game.InputBlocked&&!game.RevivalPending||game.Player==null)
             {StopCombatAssist(true);return;}
             // A held orbit gesture owns the camera even when the mouse stops moving.
-            if(orbitInput.IsHeld){manualCameraUntil=Time.unscaledTime+4f;StopCombatAssist(false);return;}
+            if(orbitInput.IsHeld||MobileControls.Active&&MobileControls.CameraLookActive){manualCameraUntil=Time.unscaledTime+4f;StopCombatAssist(false);return;}
             if(Time.unscaledTime<manualCameraUntil){StopCombatAssist(false);return;}
-            if(!game.InCombat||game.RevivalPending){StopCombatAssist(true);return;}
+            if(!game.HasStarted||game.IsDead||game.CombatEnded||game.RevivalPending){StopCombatAssist(true);return;}
             var targeting=game.Player.GetComponent<SkillTargetingController>();
             if(targeting!=null&&targeting.IsTargeting){StopCombatAssist(true);return;}
-            var target=game.Player.FocusTarget!=null?game.Player.FocusTarget:game.Player.AimTarget;
-            if(target==null||target.IsDead||!target.isActiveAndEnabled||!target.gameObject.activeInHierarchy)
-            {StopCombatAssist(true);return;}
-            Vector3 direction=Vector3.ProjectOnPlane(target.transform.position-game.Player.transform.position,Vector3.up);
-            if(direction.sqrMagnitude<.16f||direction.sqrMagnitude>18f*18f||!CombatSight.Direct(game.Player.transform.position,target.transform.position))
-            {StopCombatAssist(true);return;}
+            var target=ResolveLoneBossCameraTarget(game);
+            if(target==null){StopCombatAssist(true);return;}
+            Vector3 direction=CombatFx.Flat(target.transform.position-game.Player.transform.position);
             if(assistTarget!=target){assistTarget=target;assistYawVelocity=0;assistTargetSince=Time.unscaledTime;return;}
             if(Time.unscaledTime-assistTargetSince<.2f)return;
             float desiredYaw=Mathf.Atan2(direction.x,direction.z)*Mathf.Rad2Deg;
@@ -1209,7 +1242,7 @@ namespace Emberfall
         private void LateUpdate() { using (PerformanceDiagnostics.Measure(PerformanceDiagnostics.Section.Camera)) MoveCamera(false); }
         private void MoveCamera(bool snap)
         {
-            if(!snap&&!MobileControls.Active)AssistCombatView();
+            if(!snap)AssistCombatView();
             Vector3 desired = DesiredTarget();
             float follow = 1f - Mathf.Exp(-8f * Time.unscaledDeltaTime);
             float orbit = 1f - Mathf.Exp(-12f * Time.unscaledDeltaTime);

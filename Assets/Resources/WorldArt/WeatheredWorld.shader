@@ -38,6 +38,7 @@ Shader "Emberfall/Weathered World"
         #pragma multi_compile __ EMBER_WORLD_LEGACY_CLIP
         #pragma multi_compile_local __ EMBER_WORLD_FADE
         #pragma multi_compile_local __ EMBER_MEADOW_SIMPLE
+        #pragma multi_compile __ EMBER_WORLD_SINGLE_GRAIN_REVIEW
         #include "UnityCG.cginc"
         #include "TerrainField.cginc"
         sampler2D _MainTex,_GroundTex;
@@ -127,8 +128,13 @@ Shader "Emberfall/Weathered World"
             else
             {
                 detail=Grain(p,w);
+                #if defined(EMBER_WORLD_SINGLE_GRAIN_REVIEW)
+                // Explicit profiling candidate; ordinary launches retain both frequencies.
+                grain=dot(detail,float3(.299,.587,.114));
+                #else
                 // Preserve the secondary grain frequency without evaluating it on leaves.
                 grain=dot(lerp(detail,Grain(p*3.17+float3(.31,.17,.43),w),.22),float3(.299,.587,.114));
+                #endif
             }
             #endif
             o.Albedo=lerp(_Color.rgb*lerp(1, .55+grain*1.1,_GrainStrength),detail*1.15,_ColorTexture);

@@ -37,6 +37,7 @@ namespace Emberfall
             public GeometryEstimate[] visibleGeometryEstimates, visibleMeshEstimates;
             public ActorViewEstimate[] actorViewEstimates;
             public bool simulationFrozen;
+            public bool singleGrainReview;
             public bool combatReview;
             public bool combatCrowdReview;
             public int combatPeakEnemies;
@@ -161,6 +162,7 @@ namespace Emberfall
             probe.combatCrowdReview = probe.tag == "performance-soak-combat-crowd";
             probe.combatReview = probe.tag == "performance-soak-combat" || probe.combatCrowdReview;
             probe.ConfigureResolutionReview();
+            probe.ConfigureSingleGrainReview();
             DontDestroyOnLoad(probe.gameObject);
         }
         private void Start()
@@ -263,6 +265,7 @@ namespace Emberfall
                 meanSetPass = sumPasses / Math.Max(1, renderSamples), meanTriangles = sumTriangles / Math.Max(1, renderSamples),
                 meanGcBytes = sumAllocations / Math.Max(1, allocationSamples)
             };
+            report.singleGrainReview=Shader.IsKeywordEnabled(SingleGrainKeyword);
             report.skipSoftDepthForReview=MobileSceneDepth.SkipSoftDepthForReview;
             report.softDepthSimplified=MobileSceneDepth.SoftDepthSimplified;
             report.groundReviewMaterials=GroundMaterialReview.ActiveMaterials;
@@ -349,6 +352,6 @@ namespace Emberfall
             DisposeReview();
         }
         private void DisposeReview()
-        { DisposeCombatReview(); if(groundComparison)GroundMaterialReview.Restore(); RestoreReviewResolution(); if(smallActorComparison)SmallActorPrimitiveReview.Dispose(); if(preparedTerrainComparison)Shader.SetGlobalFloat("_EmberPreparedTerrain",0); if(treeGeometryComparison)WorldBuilder.DisposeTreeGeometryReview(); if(worldProjectionComparison)WorldProjectionReview.Restore(); if(heldFreeze)Time.timeScale=savedTimeScale; if(sceneDepthComparison)MobileSceneDepth.ForceAlwaysForReview=false; if(decorationDepthComparison)PreparedWorldDetailBudget.SetForceFadeVariant(false); if(heldAwake)Screen.sleepTimeout=savedSleepTimeout; batches.Dispose(); draws.Dispose(); passes.Dispose(); triangles.Dispose(); allocations.Dispose(); RestoreRenderIsolation(); if(terrainComparison)Shader.DisableKeyword("EMBER_TERRAIN_LEGACY"); if(opaqueComparison)Shader.DisableKeyword("EMBER_WORLD_LEGACY_CLIP"); }
+        { RestoreSingleGrainReview(); DisposeCombatReview(); if(groundComparison)GroundMaterialReview.Restore(); RestoreReviewResolution(); if(smallActorComparison)SmallActorPrimitiveReview.Dispose(); if(preparedTerrainComparison)Shader.SetGlobalFloat("_EmberPreparedTerrain",0); if(treeGeometryComparison)WorldBuilder.DisposeTreeGeometryReview(); if(worldProjectionComparison)WorldProjectionReview.Restore(); if(heldFreeze)Time.timeScale=savedTimeScale; if(sceneDepthComparison)MobileSceneDepth.ForceAlwaysForReview=false; if(decorationDepthComparison)PreparedWorldDetailBudget.SetForceFadeVariant(false); if(heldAwake)Screen.sleepTimeout=savedSleepTimeout; batches.Dispose(); draws.Dispose(); passes.Dispose(); triangles.Dispose(); allocations.Dispose(); RestoreRenderIsolation(); if(terrainComparison)Shader.DisableKeyword("EMBER_TERRAIN_LEGACY"); if(opaqueComparison)Shader.DisableKeyword("EMBER_WORLD_LEGACY_CLIP"); }
     }
 }

@@ -229,6 +229,18 @@ namespace Emberfall
             {obstacles.RemoveAt(i);grids.Clear();revision++;return true;}
             return false;
         }
+        // Only called for decorative rocks, never walls, platforms or destructible props.
+        internal static bool RemoveLowRockObstacle(ObstacleHandle handle)
+        {
+            foreach(var o in obstacles)
+                if(object.ReferenceEquals(o.Handle,handle)&&o.HasPhysicalBounds)
+                {
+                    float top=o.PhysicalCenter.y+o.PhysicalHalf.y;
+                    if(top-GroundSupportHeight(o.PhysicalCenter)>.45f)return false;
+                    return RemoveDynamicObstacle(handle);
+                }
+            return false;
+        }
         internal static void SetPhysicalBounds(ObstacleHandle handle,Vector3 center,Vector3 size)
         {
             if(handle==null||!Finite(center.x)||!Finite(center.y)||!Finite(center.z)||!Finite(size.x)||!Finite(size.y)||!Finite(size.z)||size.x<=0||size.y<=0||size.z<=0)return;

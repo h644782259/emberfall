@@ -30,7 +30,7 @@ namespace Emberfall
         }
         private bool StockTargetReady(int skill,int rank)
         {
-            if(HeroClass!=HeroClass.Arcanist||skill!=4)return true;
+            if(MobileControls.Active||HeroClass!=HeroClass.Arcanist||skill!=4)return true;
             float range=GameBalance.SkillRangeMultiplier(rank);
             Vector3 point=ValidAimTarget(AimTarget)?AimTarget.transform.position:aimPoint;
             point=ResolveSkillGroundTarget(point,range);

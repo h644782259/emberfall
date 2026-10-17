@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 namespace Emberfall
 {
     public sealed partial class GameSession
@@ -54,7 +54,7 @@ namespace Emberfall
                 var run=RoomChainRun;
                 if(run.DoorUnlocked)return "北门已开 · 可撤离或留下获取击杀收益";
                 if(run.Room.Interlude)return "选择星泉祝福";
-                if(run.Room.Boss)return "击败首领与护卫";
+                if(run.Room.Boss)return "击败首领即可通关";
                 if(run.Room.Objective==RoomObjective.Hunt)return "击败金环供能魔灵 · "+RoomSupport.Hint;
                 if(run.Room.Objective==RoomObjective.Purify)return "净化 "+run.Seals+"/2 · "+RoomSealView(0).Label+" · "+RoomSealView(1).Label+" · "+RoomSupport.Hint;
                 return "突围 · "+"站入光环 "+run.Progress.ToString("0.0")+"/"+(run.Room.Objective==RoomObjective.Purify?"3":"4")+"秒 · "+(RoomCaptureContested?"争夺 "+RoomContestantCount+" 敌 · 进度保留":"进入2.4米金环累计")+" · "+RoomSupport.Hint;

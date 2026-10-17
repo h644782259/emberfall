@@ -157,7 +157,8 @@ namespace Emberfall
 
             }
             var target=session.Player==null?null:session.Player.AimTarget;
-            if(target!=null&&!target.IsDead)DrawEnemyTargetPanel(target);else DrawDungeonStatus();
+            if(session.InDungeon)DrawDungeonStatus();
+            else if(target!=null&&!target.IsDead)DrawEnemyTargetPanel(target);
             var targeting=session.Player==null?null:session.Player.GetComponent<SkillTargetingController>();
             var charge=session.Player==null?null:session.Player.GetComponent<SkillChargeController>();
             if(charge!=null&&charge.IsCharging)Bar(TouchRect(26,l.Height-40,128,5),charge.Progress,gold);

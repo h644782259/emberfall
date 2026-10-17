@@ -46,7 +46,7 @@ namespace Emberfall
         { return MobilePinnedActionReasonFor(skill,MobilePinnedTarget); }
         private string MobilePinnedActionReasonFor(int skill,EnemyController enemy)
         {
-            if(!MobileControls.Active||!MobilePinAppliesToSkill(skill))return "";
+            if(!MobileControls.Active||skill>=0||!MobilePinAppliesToSkill(skill))return "";
             if(enemy==null)return "";
             if(skill<0&&ReturningCounterReady)
             {

@@ -19,7 +19,7 @@ namespace Emberfall
         private Color color;
         private EnemyController lockedTarget;
         private FilledSkillVfx.ArrowBatchHandle arrowBatch;
-        private bool restrictedHealing;
+        private bool restrictedHealing,mobileDirectionalCast;
         private AdvancedSkillVfx healingAura,ultimateField;
         private SkillPerformanceVfx performance;private CombatModel performanceModel;
 
@@ -31,7 +31,7 @@ namespace Emberfall
             sequence.skill = index; sequence.rank = skillRank; sequence.epoch = hero.CombatEpoch;
             sequence.damage = strength; sequence.castId = castId==0?hero.NewCastId():castId; sequence.castReceipt=hero.RetainCastReceipt(sequence.castId); sequence.range = GameBalance.SkillRangeMultiplier(hero.HeroClass,index,skillRank);
             sequence.target = aim; sequence.origin = hero.transform.position; sequence.forward = CombatFx.Flat(direction).normalized;
-            sequence.color = tint;
+            sequence.color = tint; sequence.mobileDirectionalCast=MobileControls.Active;
             sequence.restrictedHealing = game.ChallengeRun && game.InDungeon;
             sequence.Configure();
         }
@@ -297,6 +297,11 @@ namespace Emberfall
                 {
                     EnemyController enemy=session.Enemies[j];
                     if(enemy==null || enemy.IsDead || struck.Contains(enemy)) continue;
+                    if(i==0&&mobileDirectionalCast)
+                    {
+                        Vector3 offset=CombatFx.Flat(enemy.transform.position-origin);
+                        if(Vector3.Dot(offset,forward)<=0||offset.magnitude>9f*range+enemy.HitFootprintBonus)continue;
+                    }
                     float distance=CombatFx.Flat(enemy.transform.position-search).magnitude;
                     if(distance<best && CombatSight.Chain(previous,enemy.transform.position)) { best=distance; nearest=enemy; }
                 }

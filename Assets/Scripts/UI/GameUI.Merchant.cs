@@ -50,7 +50,7 @@ namespace Emberfall
                 var bulk=p.PrepareMerchantBulkSale(MerchantServiceActive);
                 Text(BuildPlanRect(l.Info,u),bulk==null?"暂无可一键出售的装备":"未锁定且评分更低 · "+bulk.Count+"件 · +"+bulk.Gold+"金币",Mathf.RoundToInt(12*u),muted,false,true);
                 if(DrawButton(BuildPlanRect(l.Action,u),"一键出售",ButtonRole.Primary,bulk!=null&&Time.unscaledTime>=merchantActionUntil,fontSize:Mathf.RoundToInt(15*u))&&StartMerchantAction())
-                {bool sold=p.SellAtMerchant(bulk,MerchantServiceActive);Feedback(sold,"已出售 "+bulk.Count+" 件 · +"+bulk.Gold+" 金币");if(sold){RebuildBagItems();ResolveSelectedItem();}}
+                {bool sold=p.SellAtMerchant(bulk,MerchantServiceActive);MerchantFeedback(sold,"已出售 "+bulk.Count+" 件 · +"+bulk.Gold+" 金币");if(sold){RebuildBagItems();ResolveSelectedItem();}}
             }
             var mechanics=BuildCatalog.GemsFor(p.Profile.heroClass);
             var saleItems=new List<ItemData>();
@@ -85,7 +85,7 @@ namespace Emberfall
                     Text(new Rect(tile.x+6*u,tile.y+105*u,tile.width-12*u,22*u),"随机宝石",Mathf.RoundToInt(11*u),muted,false,false,TextAnchor.MiddleCenter);
                     InspectRewardItem(new Rect(tile.x,tile.y,tile.width,128*u),bag,true);
                     DrawPrice(new Rect(tile.x+8*u,tile.y+131*u,tile.width-16*u,20*u),ProgressionService.GemBagPrice,true,u);
-                    if(PrimaryButton(new Rect(tile.x+6*u,tile.y+154*u,tile.width-12*u,44*u),reason.Length==0?"兑换":reason,gold,reason.Length==0&&Time.unscaledTime>=merchantActionUntil)&&StartMerchantAction())Feedback(p.BuyGemBag(slot,MerchantServiceActive),"宝石袋已放入行囊");
+                    if(PrimaryButton(new Rect(tile.x+6*u,tile.y+154*u,tile.width-12*u,44*u),reason.Length==0?"兑换":reason,gold,reason.Length==0&&Time.unscaledTime>=merchantActionUntil)&&StartMerchantAction())MerchantFeedback(p.BuyGemBag(slot,MerchantServiceActive),"兑换成功 · "+GameBalance.SlotName(slot)+"宝石袋 ×1，已放入背包");
                     continue;
                 }
                 if(merchantMode==0&&index==3)
@@ -134,7 +134,7 @@ namespace Emberfall
                     string reason=p.GemSaleLock(gem.mechanic,MerchantServiceActive);
                     bool confirming=merchantGemSaleConfirmation==gem.mechanic;
                     if(DrawButton(new Rect(tile.x+6*u,tile.y+100*u,tile.width-12*u,44*u),reason.Length>0?(gem.mounted?"已镶嵌":reason):confirming?"确认出售":"出售",ButtonRole.Primary,reason.Length==0,fontSize:Mathf.RoundToInt(15*u))&&StartMerchantAction())
-                    {if(confirming){Feedback(p.SellGem(gem.mechanic,MerchantServiceActive),"宝石已出售");merchantGemSaleConfirmation=EquipmentMechanic.None;}else merchantGemSaleConfirmation=gem.mechanic;}
+                    {if(confirming){MerchantFeedback(p.SellGem(gem.mechanic,MerchantServiceActive),"宝石已出售");merchantGemSaleConfirmation=EquipmentMechanic.None;}else merchantGemSaleConfirmation=gem.mechanic;}
                     continue;
                 }
                 ItemData item=merchantMode==2?saleItems[itemIndex]:null;
@@ -174,7 +174,7 @@ namespace Emberfall
                     if(PrimaryButton(action,captionAction,gold,quote!=null&&Time.unscaledTime>=merchantActionUntil)&&StartMerchantAction())
                     {
                         if(mechanic==EquipmentMechanic.None)OpenMerchantQuantity(0,mechanic,merchantGemRarity,caption);
-                        else Feedback(p.BuyAtMerchant(p.PrepareMerchantPurchase(mechanic,MerchantServiceActive,merchantGemRarity),MerchantServiceActive),first?"首通宝石已领取":"宝石已兑换");
+                        else MerchantFeedback(p.BuyAtMerchant(p.PrepareMerchantPurchase(mechanic,MerchantServiceActive,merchantGemRarity),MerchantServiceActive),(first?"领取成功 · ":"兑换成功 · ")+caption);
                     }
 
                 }
@@ -182,7 +182,32 @@ namespace Emberfall
             EndTouchScroll();
             Rect info=BuildPlanRect(l.Info,u);
             if(merchantMode==2&&count==0)Text(BuildPlanRect(l.Body,u),"没有可出售物品。",Mathf.RoundToInt(16*u),jade);
-            GUI.enabled=prior;DrawMerchantQuantity(u);
+            GUI.enabled=prior;DrawMerchantQuantity(u);DrawMerchantFeedback(u);
+        }
+
+        private string merchantFeedbackText,merchantFeedbackSlot;
+        private bool merchantFeedbackSuccess;
+        private float merchantFeedbackUntil;
+        private ProgressionService merchantFeedbackOwner;
+        private void MerchantFeedback(bool success,string message)
+        {
+            Feedback(success,message);
+            merchantFeedbackText=session.Notification;
+            merchantFeedbackSuccess=success;merchantFeedbackUntil=Time.unscaledTime+4.5f;
+            merchantFeedbackOwner=session.Progression;merchantFeedbackSlot=session.Progression.CurrentSlotId;
+            if(success)GameAudio.Play(SoundCue.Loot);
+        }
+        private void DrawMerchantFeedback(float u)
+        {
+            if(string.IsNullOrEmpty(merchantFeedbackText)||Time.unscaledTime>=merchantFeedbackUntil||
+                merchantFeedbackOwner!=session.Progression||merchantFeedbackSlot!=session.Progression.CurrentSlotId)return;
+            float w=Mathf.Min(480*u,width-32*u);
+            float h=Mathf.Max(54*u,Style(Mathf.RoundToInt(14*u),true,true).CalcHeight(new GUIContent(merchantFeedbackText),w-64*u)+20*u);
+            Rect box=new Rect((width-w)*.5f,height-h-20*u,w,h);
+            Color accent=merchantFeedbackSuccess?jade:new Color(1f,.42f,.36f);
+            Fill(box,merchantFeedbackSuccess?new Color(.035f,.16f,.13f,.98f):new Color(.22f,.06f,.06f,.98f));Border(box,accent,2*u);
+            DrawIcon(new Rect(box.x+12*u,box.center.y-12*u,24*u,24*u),UIIconAtlas.Utility(merchantFeedbackSuccess?"confirm":"cancel"),accent);
+            Text(new Rect(box.x+46*u,box.y+10*u,w-58*u,h-20*u),merchantFeedbackText,Mathf.RoundToInt(14*u),pale,true,true,TextAnchor.MiddleLeft);
         }
 
         private bool CanSellMerchantEquipment(ItemData item)
@@ -253,7 +278,7 @@ namespace Emberfall
             DrawPrice(new Rect(box.x+16*u,box.yMax-92*u,w-32*u,28*u),unitPrice*merchantQuantity,merchantQuantityKind==3,u);
             if(Button(new Rect(box.x+16*u,box.yMax-54*u,(w-40*u)*.5f,44*u),"取消",muted)){merchantQuantityKind=-1;return;}
             if(Button(new Rect(box.center.x+4*u,box.yMax-54*u,(w-40*u)*.5f,44*u),fresh?"确认交易":"请重新选择",gold,quote!=null))
-            {bool saved=p.BuyAtMerchant(quote,MerchantServiceActive);Feedback(saved,"交易成功 ×"+merchantQuantity);if(saved)merchantQuantityKind=-1;}
+            {bool saved=p.BuyAtMerchant(quote,MerchantServiceActive);MerchantFeedback(saved,"购买成功 · "+merchantQuantityName+" ×"+merchantQuantity);if(saved)merchantQuantityKind=-1;}
         }
         private bool ServiceCostAction(Rect r,string caption,int cost,bool material,float u,bool enabled,string reason=null)
         {

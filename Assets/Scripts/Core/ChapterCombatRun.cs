@@ -34,7 +34,7 @@ namespace Emberfall
         {
             if(Finished||Epoch<0||room!=RoomIndex||epoch!=Epoch||index<0||index>=EnemyCount||!spawned[index]||defeated[index])return false;
             defeated[index]=true;kills++;
-            if(registered==EnemyCount&&((Objective==RoomObjective.Hunt&&defeated[0]&&kills>=(EnemyCount*7+9)/10)||(Objective==RoomObjective.Boss&&kills==EnemyCount)))DoorUnlocked=true;
+            if(registered==EnemyCount&&((Objective==RoomObjective.Hunt&&defeated[0]&&kills>=(EnemyCount*7+9)/10)||(Objective==RoomObjective.Boss&&defeated[0])))DoorUnlocked=true;
             return true;
         }
         private bool CanAdvance(float delta,bool active,bool inside,bool contested)

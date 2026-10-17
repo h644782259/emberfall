@@ -378,9 +378,8 @@ namespace Emberfall
             Vector3 delta = CombatFx.Flat(combatTargetPosition-transform.position);
             float distance = delta.magnitude;
             float effectiveSpeed = speed * (StatusEffects == null ? 1 : StatusEffects.MoveMultiplier);
-            // Ordinary wildlife stays neutral regardless of proximity. Damage/control
-            // explicitly provokes retaliation; only elites and bosses acquire on sight.
-            if (Tier != ThreatTier.Normal && (session.InDungeon || distance < (IsBoss?15f:9f))) aggro = true;
+            // Dungeon defenders pursue immediately; ordinary wildlife remains neutral.
+            if (session.InDungeon || Tier != ThreatTier.Normal && distance < (IsBoss?15f:9f)) aggro = true;
             if (!session.InDungeon && distance > 17f) aggro = false;
             healthFillMaterial.color = DungeonRole == DungeonEnemyRole.Ordinary ? new Color(.94f,.16f,.20f) : RoleTint;
             if (pounceRemaining > 0)
@@ -526,10 +525,11 @@ namespace Emberfall
             return accepted;
         }
 
+        internal int WalkingSlideSide;
         private Vector3 WalkForAnimation(Vector3 displacement)
         {
             if(Time.time<vortexDragUntil)displacement*=.25f;
-            Vector3 next = MoveWithBodies(displacement,NavigationRadius);
+            Vector3 next = session==null?MoveWithBodies(displacement,NavigationRadius):session.MoveEnemyWalking(transform.position,displacement,this);
             // Only this explicit three-member roster is tethered. Knockback still uses authoritative traversal directly.
             if(mobileSupplier!=null&&!mobileSupplier.IsDead&&mobileSupplier.isActiveAndEnabled&&
                 (CombatFx.Flat(next-mobileSupplier.transform.position).sqrMagnitude>27.04f||!WorldTraversal.HasLineOfSight(next,mobileSupplier.transform.position)))

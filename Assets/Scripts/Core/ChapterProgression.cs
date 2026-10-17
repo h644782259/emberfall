@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 namespace Emberfall
 {
     public enum ChapterNode { ForestCourt=0, Redrock=1, StarPlatform=2 }
@@ -12,7 +12,7 @@ namespace Emberfall
         static readonly ChapterDefinition[] Nodes={
             new ChapterDefinition("林庭复明",1,"净化林庭残火，沿旧径撤离。","先净化，再寻找出口","林庭封印重归稳定，撤离的通路已经打开。","循残余火迹前往赤岩，寻找封锁线的供能者。"),
             new ChapterDefinition("赤岩断供",1,"截断赤岩守军，穿越封锁线。","先猎杀，再突破封锁","赤岩供能被切断，星台的外缘防线出现缺口。","穿过封锁线，在入口确认整备后直面守望者。"),
-            new ChapterDefinition("星台封印",2,"在入口确认整备，直入星台迎战守望者。","直入首领场，击败守望者与护卫","守望者退去，第一章的星路重新连通。","可以重访三处节点，挑战已解锁的更高阶数。")};
+            new ChapterDefinition("星台封印",2,"在入口确认整备，直入星台迎战守望者。","直入首领场，击败守望者即可通关","守望者退去，第一章的星路重新连通。","可以重访三处节点，挑战已解锁的更高阶数。")};
         public static ChapterDefinition Get(ChapterNode node){if(!ChapterProgression.Valid(node))throw new ArgumentOutOfRangeException(nameof(node));return Nodes[(int)node];}
         public static int RoomCount(ChapterNode node){Get(node);return node==ChapterNode.StarPlatform?1:2;}
         public static RoomObjective RoomKind(ChapterNode node,int index)

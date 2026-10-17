@@ -52,7 +52,7 @@ namespace Emberfall
         {
             if(Finished||!ReferenceEquals(plan,Room)||index<0||index>=spawned.Length||!spawned[index]||defeated[index])return false;
             defeated[index]=true;kills++;
-            if(Room.Boss && kills==Room.EnemyCount && spawnedCount==Room.EnemyCount)Finished=true;
+            if(Room.Boss && defeated[0] && spawnedCount==Room.EnemyCount)Finished=true;
             if(Room.Objective==RoomObjective.Hunt && defeated[0] && kills>=(Room.EnemyCount*7+9)/10 && spawnedCount==Room.EnemyCount)DoorUnlocked=true;
             return true;
         }
