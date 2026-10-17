@@ -58,6 +58,7 @@ namespace Emberfall
         public int PreparedRendererCount => chunks.Count;
         public int SourceTriangleCount { get; private set; }
         internal int PreparedTerrainVertexCount { get; private set; }
+        internal int TightBoundsChunkCount { get; private set; }
         public int PreparedTriangleCount
         { get { int total = 0; foreach (var chunk in chunks) total += chunk.TriangleCount; return total; } }
         public float RenderDetailDistance => detailDistance;
@@ -190,7 +191,12 @@ namespace Emberfall
                 var scale = source.transform.lossyScale;
                 bounds.Expand(new Vector3(3 / sx, 8 / Mathf.Max(.01f, Mathf.Abs(scale.y)), 3 / sz));
                 renderer.localBounds = bounds;
+                // Keep existing distance-fade spheres; this experiment only tightens render culling.
                 var worldBounds = renderer.bounds;
+                if (PreparedDetailBounds.Requested && PreparedDetailBounds.TryCalculate(
+                    geometry.Positions, geometry.Colors, child.transform, opaqueMaterials, out var tightBounds))
+                { bounds = tightBounds; TightBoundsChunkCount++; }
+                renderer.localBounds = bounds;
                 chunks.Add(new Chunk { Renderer = renderer, OpaqueMaterials = opaqueMaterials, FadeMaterials = materials, UsingFade = ForceFadeVariant, Sphere = new BoundingSphere(worldBounds.center, worldBounds.extents.magnitude), TriangleCount = geometry.Indices.Count / 3 });
                 // Upload occurs only while the scene loader blocks action.
                 if(PreparedTerrainVertexData.Enabled && PreparedTerrainVertexData.TryBake(result,child.transform,opaqueMaterials))

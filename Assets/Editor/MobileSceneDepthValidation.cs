@@ -52,6 +52,24 @@ namespace Emberfall.Editor
                     render(true, DepthTextureMode.MotionVectors);
                     render(true, DepthTextureMode.Depth | DepthTextureMode.DepthNormals);
                 }
+                // Dark-core energy bypasses depth in the shader. Honor runtime
+                // property blocks, including per-material precedence and pooling.
+                renderer.sharedMaterial = materials[1];
+                var energy = materials[1];
+                energy.SetFloat("_DarkCore", 1); render(false, DepthTextureMode.None);
+                var properties = new MaterialPropertyBlock();
+                properties.SetFloat("_DarkCore", 0); renderer.SetPropertyBlock(properties);
+                render(true, DepthTextureMode.None);
+                properties.SetFloat("_DarkCore", 1); renderer.SetPropertyBlock(properties);
+                render(false, DepthTextureMode.None);
+                energy.SetFloat("_DarkCore", 0);
+                var perMaterial = new MaterialPropertyBlock(); perMaterial.SetFloat("_Opacity", .8f);
+                renderer.SetPropertyBlock(perMaterial, 0); render(true, DepthTextureMode.None);
+                perMaterial.SetFloat("_DarkCore", 1); renderer.SetPropertyBlock(perMaterial, 0);
+                render(false, DepthTextureMode.None);
+                render(true, DepthTextureMode.Depth); // Another consumer's depth is retained.
+                renderer.SetPropertyBlock(null, 0); renderer.SetPropertyBlock(null);
+                render(true, DepthTextureMode.None); // Pooled renderer returns to luminous mode.
                 renderer.enabled = false;
                 render(true, DepthTextureMode.Depth); // External requests are never removed.
                 render(false, DepthTextureMode.DepthNormals);

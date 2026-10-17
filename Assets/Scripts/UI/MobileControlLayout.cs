@@ -112,7 +112,13 @@ namespace Emberfall
             Jump=new Area(Jump.X-edgeInset,Jump.Y-bottomInset,Jump.Width,Jump.Height);Cancel=Jump;
             SkillPage=new Area(SkillPage.X-edgeInset,SkillPage.Y-bottomInset,SkillPage.Width,SkillPage.Height);
             for(int i=0;i<Skills.Length;i++){var skill=Skills[i];Skills[i]=new Area(skill.X-edgeInset,skill.Y-bottomInset,skill.Width,skill.Height);}
-            Attack=new Area(Attack.X,Math.Min(Attack.Y+6,Height-20-Attack.Height),Attack.Width,Attack.Height);
+            // iPad basic attack sits slightly lower/right inside the surrounding skill arc.
+            Attack=new Area(Attack.X+(ipad?8:0),Math.Min(Attack.Y+(ipad?20:6),Height-20-Attack.Height),Attack.Width,Attack.Height);
+            if(ipad)
+            {
+                var ultimate=Skills[4];
+                Skills[4]=Centered(ultimate.X+ultimate.Width*.5f,ultimate.Y+ultimate.Height*.5f,ultimate.Width*1.15f);
+            }
             int[] opportunityIdentities={0,1,2,4,5,6,7,9};
             for(int index=0;index<opportunityIdentities.Length;index++)
             {

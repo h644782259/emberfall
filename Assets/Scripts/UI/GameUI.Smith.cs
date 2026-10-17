@@ -333,24 +333,44 @@ namespace Emberfall
             Text(new Rect(r.xMax-costWidth+iconSize,r.y,costWidth-iconSize-3*u,r.height),"×1",Mathf.RoundToInt(10*u),textColor,true,false,TextAnchor.MiddleCenter);
             return clicked;
         }
+        private void DrawSmithStatHeading(ref float y,float width,float u,string title,bool draw)
+        {
+            if(draw)
+            {
+                Fill(new Rect(0,y*u,width*u,28*u),new Color(.07f,.13f,.16f));
+                Fill(new Rect(8*u,(y+8)*u,3*u,12*u),jade);
+                Text(new Rect(18*u,y*u,(width-24)*u,28*u),title,Mathf.RoundToInt(12*u),pale,true,false,TextAnchor.MiddleLeft);
+            }
+            y+=32;
+        }
         private float DrawSmithDetail(ItemData item,float width,float u,bool draw)
         {
             var p=session.Progression;float y=8;
-            if(smithCategory==0){float iconSize=MobileControls.Active?32:64;if(draw)DrawIcon(new Rect((width-iconSize)*.5f*u,y*u,iconSize*u,iconSize*u),UIIconAtlas.EquipmentCardIcon(item,session.Progression.Profile.heroClass),GameBalance.RarityColor(item.rarity));y+=iconSize+8;}
-            GoalParagraph(ref y,width,u,item.name,15,gold,true,draw);
+            // Shared item-card presentation, without inventory ownership/actions.
             if(draw)
             {
-                float chip=(width-24)/3;
-                string[] tags={"Lv."+item.level,GameBalance.RarityName(item.rarity),"+"+p.SlotUpgradeRank(item.slot)};
+                Color rarity=GameBalance.RarityColor(item.rarity);
+                Fill(new Rect(0,0,width*u,76*u),new Color(.02f,.035f,.055f));
+                Rect icon=new Rect((width-50)*u,8*u,42*u,42*u);
+                Fill(icon,card);
+                DrawIcon(new Rect(icon.x+2*u,icon.y+2*u,38*u,38*u),UIIconAtlas.EquipmentCardIcon(item,p.Profile.heroClass),Color.white);
+                Border(icon,rarity,2*u);
+                string title=item.name+"  Lv."+item.level+" +"+p.SlotUpgradeRank(item.slot);
+                float titleWidth=width-68;int titleFont=Mathf.RoundToInt(15*u);
+                while(titleFont>Mathf.RoundToInt(10*u)&&Style(titleFont,true).CalcSize(new GUIContent(title)).x>titleWidth*u)titleFont--;
+                Text(new Rect(8*u,8*u,titleWidth*u,32*u),title,titleFont,rarity,true,false,TextAnchor.MiddleLeft);
+                if(new Rect(8*u,8*u,titleWidth*u,32*u).Contains(Mouse))tooltip=title;
+                string[] tags={GameBalance.RarityName(item.rarity),"装备",GameBalance.SlotName(item.slot)};
+                float tagWidth=(width-32)/3;
                 for(int i=0;i<tags.Length;i++)
                 {
-                    Rect tag=new Rect((8+i*(chip+4))*u,y*u,chip*u,24*u);
-                    Color tint=i==1?GameBalance.RarityColor(item.rarity):i==2?jade:muted;
-                    Fill(tag,new Color(tint.r,tint.g,tint.b,.15f));
-                    Text(tag,tags[i],Mathf.RoundToInt(10*u),tint,true,false,TextAnchor.MiddleCenter);
+                    Rect tag=new Rect((8+i*(tagWidth+8))*u,48*u,tagWidth*u,22*u);
+                    Color tint=i==0?rarity:jade;
+                    Fill(tag,new Color(tint.r,tint.g,tint.b,.12f));Border(tag,tint,u);
+                    Text(tag,tags[i],Mathf.RoundToInt(11*u),pale,true,false,TextAnchor.MiddleCenter);
                 }
             }
-            y+=34;
+            y=84;
             if(smithCategory==2)
             {
                 var cap=p.PreviewRefinementLimit(item.id);string reason=p.RefinementLockReason(item.id,SmithServiceActive);
@@ -368,7 +388,7 @@ namespace Emberfall
                     {
                         if(stat==3)y+=8;
                         float headingY=y;
-                        GoalParagraph(ref y,width,u,stat==0?"基础词条":"随机词条",12,stat==0?jade:gold,true,draw);
+                        DrawSmithStatHeading(ref y,width,u,stat==0?"基础词条":"随机词条",draw);
                         if(draw&&new Rect(0,headingY*u,width*u,(y-headingY)*u).Contains(Event.current.mousePosition))
                             tooltip=stat==0?"显示数值包含强化加成。洗练可提升基础属性，词条重铸不影响基础属性。":"洗练提升已有随机词条数值；词条重铸会重新随机这些词条，数值可能降低或词条消失。";
                         if(stat==3&&item.criticalChance<=0&&item.criticalDamageBonus<=0&&item.attackPercent<=0)
@@ -381,8 +401,10 @@ namespace Emberfall
                         Color tint=Color.Lerp(new Color(.24f,.62f,.82f),new Color(.35f,.88f,.64f),Mathf.Clamp01(progress/.8f));
                         if(progress>.8f)tint=Color.Lerp(tint,gold,(progress-.8f)/.2f);
                         Rect row=new Rect(8*u,y*u,(width-16)*u,28*u);
-                        float labelWidth=48*u;
-                        Text(new Rect(row.x,row.y,labelWidth,row.height),labels[stat],Mathf.RoundToInt(11*u),pale);
+                        Fill(row,card);
+                        DrawIcon(new Rect(row.x,row.y+6*u,16*u,16*u),UIIconAtlas.Utility(stat==0?"attack":stat==1?"defense":stat==2?"health":"core"),jade);
+                        float labelWidth=70*u;
+                        Text(new Rect(row.x+20*u,row.y,labelWidth-20*u,row.height),labels[stat],Mathf.RoundToInt(11*u),muted,true);
                         Rect track=new Rect(row.x+labelWidth+4*u,row.y+2*u,row.width-labelWidth-4*u,24*u);
                         Fill(track,new Color(.025f,.045f,.06f));
                         Fill(new Rect(track.x,track.y,track.width*progress,track.height),tint);
@@ -397,6 +419,7 @@ namespace Emberfall
             }
             else if(smithCategory==0)
             {
+                DrawSmithStatHeading(ref y,width,u,"基础词条",draw);
                 int rank=p.SlotUpgradeRank(item.slot);var next=p.PreviewUpgrade(item,Mathf.Max(rank,Mathf.Min(rank+1,p.CurrentUpgradeLimit)));
                 int[] before={item.attack,item.defense,item.health},after={next.attack,next.defense,next.health};
                 int visibleStats=0;for(int stat=0;stat<3;stat++)if(before[stat]>0||after[stat]>0)visibleStats++;
@@ -407,16 +430,33 @@ namespace Emberfall
                     {
                         if(before[stat]<=0&&after[stat]<=0)continue;
                         Rect row=new Rect(8*u,(y+visible++*statStep)*u,(width-16)*u,statHeight*u);
-                        Fill(row,new Color(.025f,.045f,.065f,.8f));
-                        Texture2D icon=stat==1?UIIconAtlas.EquipmentCardIcon(ItemSlot.Armor,item.level,item.rarity,p.Profile.heroClass):UIIconAtlas.Utility(stat==0?"attack":"potion");
-                        DrawIcon(new Rect(row.x+4*u,row.y+4*u,24*u,24*u),icon,pale);
-                        float col=(row.width-32*u)/3;
-                        Text(new Rect(row.x+32*u,row.y,col,row.height),before[stat].ToString(),Mathf.RoundToInt(12*u),pale,true,false,TextAnchor.MiddleCenter);
-                        Text(new Rect(row.x+32*u+col,row.y,col,row.height),"→",Mathf.RoundToInt(14*u),muted,false,false,TextAnchor.MiddleCenter);
-                        Text(new Rect(row.x+32*u+col*2,row.y,col,row.height),after[stat].ToString(),Mathf.RoundToInt(12*u),after[stat]>before[stat]?jade:muted,true,false,TextAnchor.MiddleCenter);
+                        Fill(row,card);
+                        DrawIcon(new Rect(row.x+2*u,row.y+6*u,16*u,16*u),UIIconAtlas.Utility(stat==0?"attack":stat==1?"defense":"health"),jade);
+                        Text(new Rect(row.x+22*u,row.y,40*u,row.height),stat==0?"攻击":stat==1?"防御":"生命",Mathf.RoundToInt(11*u),muted,true);
+                        float col=(row.width-66*u)/3;
+                        Text(new Rect(row.x+66*u,row.y,col,row.height),before[stat].ToString(),Mathf.RoundToInt(12*u),pale,true,false,TextAnchor.MiddleCenter);
+                        Text(new Rect(row.x+66*u+col,row.y,col,row.height),"→",Mathf.RoundToInt(14*u),muted,false,false,TextAnchor.MiddleCenter);
+                        Text(new Rect(row.x+66*u+col*2,row.y,col,row.height),after[stat].ToString(),Mathf.RoundToInt(12*u),after[stat]>before[stat]?jade:muted,true,false,TextAnchor.MiddleCenter);
                     }
                 }
-                y+=MobileControls.Active?visibleStats*statStep+6:114;
+                y+=visibleStats*statStep+8;
+                if(item.criticalChance>0||item.criticalDamageBonus>0||item.attackPercent>0)
+                {
+                    DrawSmithStatHeading(ref y,width,u,"随机词条",draw);
+                    string[] names={"暴击率","暴击伤害","攻击加成"};
+                    float[] stats={item.criticalChance,item.criticalDamageBonus,item.attackPercent};
+                    for(int i=0;i<stats.Length;i++)if(stats[i]>0)
+                    {
+                        if(draw)
+                        {
+                            Rect row=new Rect(8*u,y*u,(width-16)*u,28*u);Fill(row,card);
+                            DrawIcon(new Rect(row.x+2*u,row.y+6*u,16*u,16*u),UIIconAtlas.Utility("core"),jade);
+                            Text(new Rect(row.x+22*u,row.y,74*u,row.height),names[i],Mathf.RoundToInt(11*u),muted,true);
+                            Text(new Rect(row.x+96*u,row.y,row.width-96*u,row.height),(stats[i]*100).ToString("0.##")+"%",Mathf.RoundToInt(12*u),pale,true);
+                        }
+                        y+=32;
+                    }
+                }
 
             }
             else

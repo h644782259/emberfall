@@ -16,6 +16,8 @@ namespace Emberfall
         private static bool keepSoftDepthForReview;
         internal static bool SoftDepthSimplified => SkipSoftDepthForReview ||
             (!keepSoftDepthForReview && !GraphicsQualityRuntime.Current.SoftEffectIntersections);
+        private static readonly int darkCoreId = Shader.PropertyToID("_DarkCore");
+        private static MaterialPropertyBlock depthProperties;
         private static readonly Plane[] planes = new Plane[6];
         internal static bool ForceAlwaysForReview;
         internal static bool LastMainCameraRequestedDepth { get; private set; }
@@ -65,6 +67,24 @@ namespace Emberfall
             }
         }
 
+        private static bool RendererReadsDepth(Renderer renderer)
+        {
+            var material = renderer.sharedMaterial;
+            if (!ReadsDepth(material)) return false;
+            if (material.shader.name != "Emberfall/Layered Spell Energy") return true;
+            float darkCore = material.GetFloat(darkCoreId);
+            if (renderer.HasPropertyBlock())
+            {
+                if (depthProperties == null) depthProperties = new MaterialPropertyBlock();
+                // A per-material block takes precedence over the whole-renderer block.
+                renderer.GetPropertyBlock(depthProperties, 0);
+                if (depthProperties.isEmpty) renderer.GetPropertyBlock(depthProperties);
+                if (depthProperties.HasFloat(darkCoreId)) darkCore = depthProperties.GetFloat(darkCoreId);
+            }
+            // Match the shader branch exactly: dark cores do not sample scene depth.
+            return darkCore < .5f;
+        }
+
         private static void BeforeCamera(Camera camera)
         {
             if (camera == null) return;
@@ -85,7 +105,7 @@ namespace Emberfall
                 }
                 if (needed || !renderer.enabled || renderer.forceRenderingOff || !renderer.gameObject.activeInHierarchy ||
                     (camera.cullingMask & (1 << renderer.gameObject.layer)) == 0) continue;
-                if (ReadsDepth(renderer.sharedMaterial) && GeometryUtility.TestPlanesAABB(planes, renderer.bounds)) needed = true;
+                if (RendererReadsDepth(renderer) && GeometryUtility.TestPlanesAABB(planes, renderer.bounds)) needed = true;
             }
             if (needed) camera.depthTextureMode |= DepthTextureMode.Depth;
             if (camera.CompareTag("MainCamera")) LastMainCameraRequestedDepth = (camera.depthTextureMode & DepthTextureMode.Depth) != 0;

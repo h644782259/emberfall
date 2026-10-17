@@ -133,7 +133,9 @@ public static class MobileControlLayoutTests
             Check(Math.Abs(l.Map.Width-158.4f)<.01&&Math.Abs(l.Map.Height-122.4f)<.01,"iPad map dimensions are 1.8x");
             Check(Math.Abs(l.Skills[0].Width-62.4f)<.01,"iPad skill diameter is 1.3x");
             Check(Near(l.Menu.Width,52.8f)&&Near(l.Potion.Width,62.4f),"iPad navigation and potion retain their existing touch sizes");
-            Check(l.Skills[4].Y+l.Skills[4].Height+9.9f<=l.SkillPage.Y,"iPad ultimate sits above page switch with a gap");
+            Check(Near(l.Skills[4].Width,62.4f*1.15f)&&Near(l.Skills[4].Height,62.4f*1.15f),"iPad ultimate grows 15 percent");
+            Check(Near(l.Skills[4].Y+l.Skills[4].Height*.5f,l.SkillPage.Y-41.2f),"iPad ultimate keeps its center");
+            Check(l.Skills[4].Y+l.Skills[4].Height+5.3f<=l.SkillPage.Y,"iPad enlarged ultimate retains a gap above page switch");
             Check(Math.Abs(l.Skills[4].X+l.Skills[4].Width*.5f-l.SkillPage.X-l.SkillPage.Width*.5f)<.01f,"iPad ultimate and switch share right column");
             Check(l.SkillPage.Width>68,"iPad page switch has enlarged hit area");
             Check(l.PlayerHealth.Width>=120&&l.PlayerHealth.Width<=184&&Near(l.PlayerHealth.Height,16),"iPad health bar remains readable while clearing its lowest skill");

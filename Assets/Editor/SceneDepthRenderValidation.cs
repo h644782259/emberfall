@@ -66,6 +66,21 @@ namespace Emberfall.Editor
                     if(visible<.00001)throw new Exception("Ineffective fixture: skill was invisible "+path);
                     if(negative<.000001)throw new Exception("Ineffective fixture: depth did not affect image "+path);
                     if(mean>.0001)throw new Exception("First-consumer image differs from always-depth "+path);
+                    if(path=="SpellEnergySurface")
+                    {
+                        material.SetFloat("_DarkCore",1);
+                        camera.depthTextureMode=DepthTextureMode.Depth;
+                        var darkReference=Capture(camera,target,pixels);
+                        camera.depthTextureMode=DepthTextureMode.None;
+                        Shader.SetGlobalTexture("_CameraDepthTexture",Texture2D.blackTexture);
+                        Camera.onPreCull+=pre;Camera.onPostRender+=post;
+                        var darkDemand=Capture(camera,target,pixels);
+                        Camera.onPreCull-=pre;Camera.onPostRender-=post;
+                        double darkDifference=Difference(darkReference,darkDemand);
+                        if(camera.depthTextureMode!=DepthTextureMode.None||darkDifference>.000001||Difference(darkDemand,empty)<.00001)
+                            throw new Exception("Dark-core depth omission changed visible output");
+                        Debug.Log($"DARK CORE DEPTH RENDER PASS: imageDifference={darkDifference}; visible effect retained without depth request");
+                    }
                     UnityEngine.Object.DestroyImmediate(material);material=null;
                 }
             }

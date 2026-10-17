@@ -30,7 +30,7 @@ namespace Emberfall
             public bool frameTimingEnabled;
             public int projectionFloorMaterials, treeReviewFilters, preparedTerrainVertices, smallActorFilters;
             public long smallActorSavedTriangles;
-            public int groundReviewMaterials;
+            public int groundReviewMaterials, tightDetailBoundsChunks;
             public bool sceneDepthRequested, skipSoftDepthForReview, softDepthSimplified;
             public double sceneDepthFrameFraction;
             // Renderer.isVisible also includes shadow/other cameras: estimates, not GPU draw counters.
@@ -268,7 +268,7 @@ namespace Emberfall
             report.groundReviewMaterials=GroundMaterialReview.ActiveMaterials;
             WriteCombatReview(report);
             report.renderIsolation = groundComparison ? (GroundMode==1?"ground-texture-512":GroundMode==2?"ground-simple-material":"ground-original") : resolutionComparison ? (comparisonWindow%2==0?"resolution-1920":"resolution-1600") : smallActorComparison ? (comparisonWindow%2==0?"small-actor-original":"small-actor-compact") : preparedTerrainComparison ? (comparisonWindow%2==0?"terrain-per-frame":"terrain-precomputed") : treeGeometryComparison ? (comparisonWindow%2==0?"tree-original":"tree-compact") : worldProjectionComparison ? (comparisonWindow%2==0?"world-all-projections":"world-projection-floor") : sceneDepthComparison ? (comparisonWindow%2==0?"scene-depth-always":"scene-depth-on-demand") : decorationDepthComparison ? (comparisonWindow%2==0?"decoration-always-fade":"decoration-opaque-stable") : renderComparison ? RenderIsolationMode : terrainComparison ? (comparisonWindow%2==0?"legacy-terrain":"analytic-terrain") : opaqueComparison ? (comparisonWindow%2==0?"legacy-clip":"opaque-fast") : "none";
-            foreach(var world in FindObjectsByType<PreparedWorldDetailBudget>()) {report.enabledDecorationTriangles+=world.VisibleTriangleCount;report.preparedTerrainVertices+=world.PreparedTerrainVertexCount;}
+            foreach(var world in FindObjectsByType<PreparedWorldDetailBudget>()) {report.tightDetailBoundsChunks+=world.TightBoundsChunkCount;report.enabledDecorationTriangles+=world.VisibleTriangleCount;report.preparedTerrainVertices+=world.PreparedTerrainVertexCount;}
             report.projectionFloorMaterials=WorldProjectionReview.ActiveMaterialCount;
             report.treeReviewFilters=WorldBuilder.TreeReviewFilters;
             report.smallActorFilters=SmallActorPrimitiveReview.ChangedFilters;report.smallActorSavedTriangles=SmallActorPrimitiveReview.SavedTriangles;
