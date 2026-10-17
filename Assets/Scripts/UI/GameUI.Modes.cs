@@ -11,6 +11,9 @@ namespace Emberfall
   private Vector2 entryRewardContentOrigin;
   private void BeginEntryRewardPopup()
   {
+   if(panel==Panel.Inventory&&entryRewardPopupVisible&&Event.current.type==EventType.MouseDown&&Event.current.button==0&&
+      !entryRewardPopupRect.Contains(Event.current.mousePosition))
+   {DismissEquippedItemDetails();entryRewardPopup=null;Event.current.Use();return;}
    entryRewardPopup=null;entryRewardAnchorIsRoot=false;
    if(suppressRewardHover&&!dismissedRewardAnchor.Contains(Mouse))suppressRewardHover=false;
    if((!MobileControls.Active&&!(entryRewardSelection??" ").StartsWith("merchant:"))||!entryRewardPopupVisible||Event.current.type!=EventType.MouseDown)return;
@@ -43,7 +46,7 @@ namespace Emberfall
    x=Mathf.Clamp(x,12*u,Mathf.Max(12*u,width-w-12*u));
    float y=Mathf.Clamp(entryRewardAnchor.y,12*u,Mathf.Max(12*u,height-h-12*u));
    Rect box=new Rect(x,y,w,h);entryRewardPopupRect=box;blockedRects.Add(box);
-   if(!comparing){Fill(box,ink);Border(box,entryRewardPopup.QualityColor,2*u);}
+   Fill(box,ink);Border(box,entryRewardPopup.QualityColor,2*u);
    if(!comparing)
    {
     float closeInset=(MobileControls.Active||(entryRewardSelection??"").StartsWith("merchant:"))?40*u:0;
@@ -305,7 +308,7 @@ namespace Emberfall
      result.Add(new EntryRewardPreview{Key="clear:"+slot+":"+rarity,GearSlot=slot,Clear=true,Rarity=rarity,Name=GameBalance.SlotName(slot),Icon=UIIconAtlas.EquipmentCardIcon(slot,level,rarity,session.Progression.Profile.heroClass),Tint=GameBalance.RarityColor(rarity),Description=ProgressionService.EquipmentDropPreview(slot,rarity,level)});
    }
    if(chapter&&session.SelectedChapterNode==ChapterNode.StarPlatform)
-   foreach(var gem in BuildCatalog.GemsFor(session.Progression.Profile.heroClass))foreach(var rarity in new[]{Rarity.Epic,Rarity.Legendary})
+   foreach(var gem in BuildCatalog.DroppableGemsFor(session.Progression.Profile.heroClass))foreach(var rarity in new[]{Rarity.Epic,Rarity.Legendary})
     result.Add(new EntryRewardPreview{Key="gem:"+gem+":"+rarity,Clear=true,Rarity=rarity,Name=BuildCatalog.GemName(gem),Icon=UIIconAtlas.Utility("gem"),Tint=GameBalance.RarityColor(rarity),Description=GemRewardDescription(gem,rarity)});
    if(!(chapter&&session.SelectedChapterNode==ChapterNode.StarPlatform))result.Add(new EntryRewardPreview{Key="refinement",Clear=true,Rarity=Rarity.Epic,Name="装备洗练石\n"+ProgressionService.ChestStackMinimum(true,tier)+"～"+ProgressionService.ChestStackMaximum(true,tier),Icon=UIIconAtlas.Utility("gem"),Tint=GameBalance.RarityColor(Rarity.Epic),Description="装备洗练石\n数量  "+ProgressionService.ChestStackMinimum(true,tier)+"～"+ProgressionService.ChestStackMaximum(true,tier)+"\n提高装备属性数值，不会降低。"});
    if(!(chapter&&session.SelectedChapterNode==ChapterNode.StarPlatform))result.Add(new EntryRewardPreview{Key="shard",Clear=true,Rarity=Rarity.Rare,Name="星烬碎片\n"+ProgressionService.ChestStackMinimum(false,tier)+"～"+ProgressionService.ChestStackMaximum(false,tier),Icon=UIIconAtlas.Utility("shard"),Tint=jade,Description="星烬碎片\n数量："+ProgressionService.ChestStackMinimum(false,tier)+"～"+ProgressionService.ChestStackMaximum(false,tier)+"\n用于机制宝石兑换、升阶与升华。"});

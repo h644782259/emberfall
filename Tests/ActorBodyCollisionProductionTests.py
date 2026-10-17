@@ -78,7 +78,16 @@ class Program{
    C(!g.IsPortalSanctuary(blocked,enemy.NavigationRadius),"swept enemy movement stops before safe clearing");
    g.InDungeon=true;C((g.ResolveEnemyBodyMove(outside,portal,enemy)-portal).sqrMagnitude<.001f,"dungeon enemies have no camp restriction");g.InDungeon=false;
   }
-  g.InDungeon=true;
+  g.Player.transform.position=new Vector3(20,0,20);
+  var court=new Vector3(0,0,-10);
+  C(g.IsPortalSanctuary(court),"camp resting court is protected");
+  foreach(var outside in new[]{new Vector3(-8,0,-10),new Vector3(8,0,-10),new Vector3(0,0,-4),new Vector3(0,0,-16)})
+  {
+   var blocked=g.ResolveEnemyBodyMove(outside,court,enemy);
+   C(!g.IsPortalSanctuary(blocked,enemy.NavigationRadius),"enemy blocked at every camp court edge");
+  }
+  C((Move(g,new Vector3(0,0,-4),new Vector3(0,0,-6))-court).sqrMagnitude<.001f,"player can enter invisible camp boundary");
+  g.InDungeon=true;C((g.ResolveEnemyBodyMove(new Vector3(0,0,-4),court,enemy)-court).sqrMagnitude<.001f,"camp court boundary does not affect dungeons");
   Reset();g.Player.transform.position=new Vector3(20,0,20);
   WorldTraversal.AddSurfaceTriangle(new Vector3(-1,0,-3),new Vector3(0,1,-3),new Vector3(0,1,3));
   WorldTraversal.AddSurfaceTriangle(new Vector3(-1,0,-3),new Vector3(0,1,3),new Vector3(-1,0,3));

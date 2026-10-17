@@ -74,7 +74,9 @@ namespace Emberfall
             Box(ChapterRect(new MobilePanelLayout.Area(8,4,layout.Width-16,layout.Height-8),u),jade,false);
             Text(ChapterRect(new MobilePanelLayout.Area(28,24,112,40),u),"星路章节",Mathf.RoundToInt(20*u),pale,true);
             var profile=session.Progression.Profile;var node=session.SelectedChapterNode;var difficulty=session.SelectedChapterDifficulty;
-            float cardWidth=(layout.Width-180)/3;
+            if(PopupCloseButton(ChapterRect(new MobilePanelLayout.Area(layout.Width-64,24,44,44),u)))
+            {CloseChapterSelection();return;}
+            float cardWidth=(layout.Width-236)/3;
             for(int i=0;i<3;i++)
             {
                 var choice=(ChapterNode)i;bool unlocked=ChapterProgression.IsUnlocked(profile,choice);
@@ -83,7 +85,6 @@ namespace Emberfall
             }
             DrawChapterEntryDetails(ChapterRect(new MobilePanelLayout.Area(28,88,layout.Width-56,layout.Height-184),u),u);
             DrawChapterEntryControls(ChapterRect(new MobilePanelLayout.Area(28+0*((layout.Width-56)/3),layout.Height-76,(layout.Width-56)/3-8,48),u),u);
-            if(NavigationButton(ChapterRect(new MobilePanelLayout.Area(28+1*((layout.Width-56)/3),layout.Height-76,(layout.Width-56)/3-8,48),u),"返回营地",jade)){CloseChapterSelection();return;}
             if(PrimaryButton(ChapterRect(new MobilePanelLayout.Area(28+2*((layout.Width-56)/3),layout.Height-76,(layout.Width-56)/3-8,48),u),"进入 "+ChapterDefinition.Get(node).Name,gold,ChapterProgression.CanEnter(profile,node,difficulty)))
             {ConfirmSelectedChapter();return;}
         }

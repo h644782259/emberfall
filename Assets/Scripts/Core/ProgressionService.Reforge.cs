@@ -5,10 +5,15 @@ namespace Emberfall
     {
 
         public const int AffixReforgeStonePrice=20000;
+        public static int EquipmentRandomAffixCount(ItemData item)
+        {return item==null?0:(item.criticalChance>0?1:0)+(item.criticalDamageBonus>0?1:0)+(item.attackPercent>0?1:0);}
+        public static bool HasFullEquipmentAffixes(ItemData item)
+        {return EquipmentRandomAffixCount(item)>=3;}
         public string AffixReforgeLockReason(string id,bool inCamp)
         {
             if(IsPracticeOnly||!inCamp)return "请在铁匠处重铸";
             var item=FindItem(id);if(item==null)return "请选择装备";
+            if(HasFullEquipmentAffixes(item))return "满词条";
             if(EquipmentAffixLimit(item.rarity)==0)return "普通装备无随机词条";
             if(Profile.affixReforgeCount==int.MaxValue)return "重铸次数已达上限";
             return Profile.affixReforgeStones<1?"重铸石不足":string.Empty;
@@ -34,7 +39,7 @@ namespace Emberfall
             candidate.affixReforgeStones--;candidate.affixReforgeCount++;
             return CommitCandidate(candidate,true);
         }
-        public const int RefinementStonePrice=50;
+        public const int RefinementStonePrice=2000;
         public static int DungeonRefinementStones(int tier)
         {return 2+TierRewardBand.Of(tier);}
 

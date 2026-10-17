@@ -50,7 +50,7 @@ namespace Emberfall
         public const int MaximumRetainedEquipment = 4096; // Visible overflow; bounded by the save byte limit as well.
         public const int MaximumUpgrade = CombatBalance.MaximumUpgradeRank;
         public int CurrentUpgradeLimit {get{return Clamp(Profile.level,1,MaximumUpgrade);}}
-        public const int PotionPrice = 20;
+        public const int PotionPrice = 2000;
         public const int PendingLootCapacity = 24;
         public const int RecoveryLootCapacity = 256;
         public const int MechanicExchangeCost = 12;
@@ -780,6 +780,7 @@ namespace Emberfall
                 case 6:stats.EnergyRecovery+=value;break;
                 case 7:stats.CooldownReduction=Math.Min(.4f,stats.CooldownReduction+value);break;
                 case 8:stats.MoveSpeed*=1+value;break;
+                case 9:stats.LifeSteal+=value;break;
             }
         }
         public StatBlock GetStats()
@@ -834,7 +835,7 @@ namespace Emberfall
                         case ItemSlot.Weapon:if(a.variant==1)stats.GemLowHealthDamage+=.075f*ascension;else stats.GemHealthyDamage+=.05f*ascension;break;
                         case ItemSlot.Armor:if(a.variant==1)stats.GemHealthyGuard+=.05f*ascension;else stats.GemLowHealthGuard+=.05f*ascension;break;
                         case ItemSlot.Relic:
-                            if(a.mechanic==EquipmentMechanic.RelicVitality||a.mechanic==EquipmentMechanic.RelicWard)
+                            if(a.mechanic==EquipmentMechanic.RelicVitality||a.mechanic==EquipmentMechanic.RelicWard||a.mechanic==EquipmentMechanic.RelicLeech)
                             {if(a.variant==1)stats.GemHighEnergyRecovery+=.2f*ascension;else stats.GemLowEnergyRecovery+=.2f*ascension;}
                             break; // Original relic forms trigger through skill/dodge combinations.
                     }
@@ -1190,7 +1191,7 @@ namespace Emberfall
 
         public bool SelectMasteryCore(MasteryType mastery, bool inCamp)
         {
-            if (!inCamp) return Fail("只能在营地切换精通核心。");
+            if (!inCamp && Profile.masteryCore>=0 && Profile.masteryCore!=(int)mastery) return Fail("只能在营地切换精通核心。");
             if (!Enum.IsDefined(typeof(MasteryType), mastery) || Profile.masteryRanks[(int)mastery] < MasteryCoreRules.InitialInvestment)
                 return Fail(MasteryProgressionRules.CoreSummary);
             GameProfile candidate = Snapshot(); candidate.masteryCore = (int)mastery;
@@ -1825,7 +1826,7 @@ namespace Emberfall
             else if(r.primaryKind==4)
             {
                 uint seed=2166136261;foreach(char c in id)seed=unchecked((seed^c)*16777619);
-                var gems=BuildCatalog.GemsFor(profile.heroClass);r.gemMechanic=gems[(int)(seed%(uint)gems.Length)];
+                var gems=BuildCatalog.DroppableGemsFor(profile.heroClass);r.gemMechanic=gems[(int)(seed%(uint)gems.Length)];
                 r.gemRarity=qualityRoll<20?Rarity.Legendary:Rarity.Epic;
             }
             else if(r.primaryKind==7){r.primaryCount=1;r.primaryRarity=Rarity.Legendary;}
@@ -2004,7 +2005,7 @@ namespace Emberfall
                 if(Profile.pendingChestGemSource)
                 {
                     uint gemSeed=2166136261;foreach(char c in receipt.id)gemSeed=unchecked((gemSeed^c)*16777619);
-                    var gems=BuildCatalog.GemsFor(candidate.heroClass);
+                    var gems=BuildCatalog.DroppableGemsFor(candidate.heroClass);
                     receipt.gemMechanic=gems[(int)(gemSeed%(uint)gems.Length)];
                     receipt.gemRarity=(gemSeed/((uint)gems.Length))%100<20?Rarity.Legendary:Rarity.Epic;
                     var existing=candidate.attachments.Find(a=>a.mechanic==receipt.gemMechanic);

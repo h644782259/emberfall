@@ -72,7 +72,7 @@ namespace Emberfall
                 Border(evolution, new Color(accent.r, accent.g, accent.b, current ? .75f : .18f));
                 if(current)Fill(new Rect(evolution.x,evolution.y,3,evolution.height),gold);
                 Text(new Rect(evolution.x+9,evolution.y+7,65,20),GameBalance.SkillRankName(stage),14,stage<=rank?gold:pale,true);
-                SkillStateTag(new Rect(evolution.x+9,evolution.y+31,60,22),"Lv."+GameBalance.SkillRankRequiredLevel(skill,stage),muted,10);
+                SkillStageLevelTag(new Rect(evolution.x+9,evolution.y+31,60,22),skill,stage,p.level,10);
                 if(current)DrawIcon(new Rect(evolution.xMax-30,evolution.y+7,22,22),UIIconAtlas.Utility("confirm"),gold);
                 Text(new Rect(evolution.x+9,evolution.y+(scaleLine?78:60),154,evolutionHeight),evolutions[stage-1],scaleLine?10:11,pale,false,true);
             }

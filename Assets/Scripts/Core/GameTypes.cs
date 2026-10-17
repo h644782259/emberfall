@@ -35,7 +35,7 @@ namespace Emberfall
     public enum Rarity { Common, Rare, Epic, Legendary }
     public enum FashionSlot { Wings, Weapon }
     public enum ElementalistSpecialization { None, Shatter, Burn }
-    public enum EquipmentMechanic { None, FrostEcho, CinderTrail, ReturningBlade, VenomSpread, TwinSummonResonance, WeaponPower, WeaponPrecision, WeaponRuin, ArmorPower, ArmorPrecision, ArmorRuin, RelicPower, RelicPrecision, RelicRuin, WeaponFlow, WeaponTempo, ArmorFlow, ArmorStride, RelicVitality, RelicWard }
+    public enum EquipmentMechanic { None, FrostEcho, CinderTrail, ReturningBlade, VenomSpread, TwinSummonResonance, WeaponPower, WeaponPrecision, WeaponRuin, ArmorPower, ArmorPrecision, ArmorRuin, RelicPower, RelicPrecision, RelicRuin, WeaponFlow, WeaponTempo, ArmorFlow, ArmorStride, RelicVitality, RelicWard, RelicLeech }
     public enum SummonerRoute { Bonded, Pack }
     public enum MasteryType { Offense, Vitality, Guard, Technique }
 
@@ -55,25 +55,27 @@ namespace Emberfall
         }
 
         public static bool IsAttributeGem(EquipmentMechanic gem)
-        {return gem>=EquipmentMechanic.WeaponPower&&gem<=EquipmentMechanic.RelicWard;}
+        {return gem>=EquipmentMechanic.WeaponPower&&gem<=EquipmentMechanic.RelicLeech;}
         public static bool GemCompatible(EquipmentMechanic gem,HeroClass hero)
         {return IsAttributeGem(gem);}
         public static EquipmentMechanic[] GemsFor(HeroClass hero)
         {
             var gems=new List<EquipmentMechanic>();
-            for(int i=(int)EquipmentMechanic.WeaponPower;i<=(int)EquipmentMechanic.RelicWard;i++)gems.Add((EquipmentMechanic)i);
+            for(int i=(int)EquipmentMechanic.WeaponPower;i<=(int)EquipmentMechanic.RelicLeech;i++)gems.Add((EquipmentMechanic)i);
             return gems.ToArray();
         }
+        public static EquipmentMechanic[] DroppableGemsFor(HeroClass hero)
+        {return Array.FindAll(GemsFor(hero),gem=>gem!=EquipmentMechanic.RelicVitality);}
         public static EquipmentMechanic CurrentGem(EquipmentMechanic gem)
         {
             if(IsAttributeGem(gem)||gem==EquipmentMechanic.None)return gem;
             return gem==EquipmentMechanic.CinderTrail?EquipmentMechanic.WeaponPower:gem==EquipmentMechanic.ReturningBlade?EquipmentMechanic.WeaponRuin:gem==EquipmentMechanic.FrostEcho?EquipmentMechanic.RelicWard:gem==EquipmentMechanic.VenomSpread?EquipmentMechanic.RelicPrecision:EquipmentMechanic.RelicVitality;
         }
-        public static int GemAttribute(EquipmentMechanic gem){if(gem>=EquipmentMechanic.WeaponFlow&&gem<=EquipmentMechanic.RelicWard)return new[]{6,7,6,8,3,5}[(int)gem-(int)EquipmentMechanic.WeaponFlow];return IsAttributeGem(gem)?(int)gem-(int)EquipmentMechanic.WeaponPower:MechanicAttribute(gem);}
+        public static int GemAttribute(EquipmentMechanic gem){if(gem==EquipmentMechanic.RelicLeech)return 9;if(gem>=EquipmentMechanic.WeaponFlow&&gem<=EquipmentMechanic.RelicWard)return new[]{6,7,6,8,3,5}[(int)gem-(int)EquipmentMechanic.WeaponFlow];return IsAttributeGem(gem)?(int)gem-(int)EquipmentMechanic.WeaponPower:MechanicAttribute(gem);}
         public static float GemAttributeValue(EquipmentMechanic gem,Rarity rarity,int rank)
-        {float[] basis={.03f,.015f,.06f,.05f,.08f,.01f,.04f,.015f,.02f};int attribute=GemAttribute(gem);return basis[Math.Max(0,Math.Min(8,attribute))]*(1+(int)rarity)*(1+.2f*rank);}
+        {float[] basis={.03f,.015f,.06f,.05f,.08f,.01f,.04f,.015f,.02f,.0025f};int attribute=GemAttribute(gem);return basis[Math.Max(0,Math.Min(9,attribute))]*(1+(int)rarity)*(1+.2f*rank);}
         public static string AttributeLabel(int attribute)
-        {return new[]{"攻击","暴击率","暴击伤害","生命","护甲","受到伤害减免","能量回复","技能冷却缩减","移动速度"}[Math.Max(0,Math.Min(8,attribute))];}
+        {return new[]{"攻击","暴击率","暴击伤害","生命","护甲","受到伤害减免","能量回复","技能冷却缩减","移动速度","吸血"}[Math.Max(0,Math.Min(9,attribute))];}
         public static string GemAttributeLabel(EquipmentMechanic gem){return AttributeLabel(GemAttribute(gem));}
         public static string GemAttributeSummary(EquipmentMechanic gem,Rarity rarity,int rank)
         {return GemAttributeLabel(gem)+" +"+(GemAttributeValue(gem,rarity,rank)*100).ToString("0.#")+"%";}
@@ -142,6 +144,7 @@ namespace Emberfall
 
         public static ItemSlot MechanicSlot(EquipmentMechanic mechanic)
         {
+            if(mechanic==EquipmentMechanic.RelicLeech)return ItemSlot.Relic;
             if(mechanic>=EquipmentMechanic.WeaponFlow&&mechanic<=EquipmentMechanic.RelicWard)return (ItemSlot)(((int)mechanic-(int)EquipmentMechanic.WeaponFlow)/2);
             if(IsAttributeGem(mechanic))return (ItemSlot)(((int)mechanic-(int)EquipmentMechanic.WeaponPower)/3);
             return mechanic == EquipmentMechanic.CinderTrail || mechanic == EquipmentMechanic.ReturningBlade ? ItemSlot.Weapon : ItemSlot.Relic;
@@ -184,7 +187,7 @@ namespace Emberfall
 
         public static string GemName(EquipmentMechanic mechanic)
         {
-            if(IsAttributeGem(mechanic))return new[]{"赤锋","鹰眼","裂魂","赤铠","明镜","破军","赤曜","星瞳","灾星","灵汐","疾咏","涌泉","轻羽","长生","星佑"}[(int)mechanic-(int)EquipmentMechanic.WeaponPower]+"宝石";
+            if(IsAttributeGem(mechanic))return new[]{"赤锋","鹰眼","裂魂","赤铠","明镜","破军","赤曜","星瞳","灾星","灵汐","疾咏","涌泉","轻羽","长生","星佑","噬生"}[(int)mechanic-(int)EquipmentMechanic.WeaponPower]+"宝石";
             switch(mechanic)
             {
                 case EquipmentMechanic.FrostEcho:return "霜鸣宝石";
@@ -587,7 +590,7 @@ namespace Emberfall
         public float MoveSpeed;
         public float CritChance;
         public float CritDamageBonus;
-        public float DamageReduction,EnergyRecovery,CooldownReduction;
+        public float DamageReduction,EnergyRecovery,CooldownReduction,LifeSteal;
         public float GemHealthyDamage,GemLowHealthGuard,GemLowEnergyRecovery,GemLowHealthDamage,GemHealthyGuard,GemHighEnergyRecovery;
     }
 

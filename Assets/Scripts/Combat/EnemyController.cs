@@ -211,6 +211,7 @@ namespace Emberfall
             Health = Mathf.Max(0,Health-amount);
             if(Health<previousHealth)session.RecordCombatEngagement();
             if(Health<previousHealth)session.RecordOutgoingDamage(previousHealth-Health);
+            if(Health<previousHealth&&session.Player!=null)session.Player.RestoreLifeSteal(previousHealth-Health);
             if(impact&&Health<previousHealth)session.RecordComboHit(previousHealth-Health);
             if(session.PracticeActive)session.PracticeRecord.ConfirmedHealthLoss(previousHealth-Health,practiceCastId);
             if(actualHealthLoss!=null&&Health<previousHealth)actualHealthLoss(previousHealth-Health);

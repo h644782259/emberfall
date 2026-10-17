@@ -6,11 +6,58 @@ namespace Emberfall
         private int smithCategory,smithSelectedSlot;
         private string smithUpgradeNotice,smithUpgradeNoticeItem,smithUpgradeNoticeSlot;
         private ProgressionService smithUpgradeNoticeOwner;
-        private bool smithUpgradeNoticeSuccess,smithUpgradeResultOpen;
+        private bool smithUpgradeNoticeSuccess,smithUpgradeResultOpen,smithReforgeResult;
+        private string[] smithReforgeLines=System.Array.Empty<string>();
+        private float smithReforgeStarted,smithUpgradeStarted;
+        private void ShowAffixReforgeResult(bool saved,string id)
+        {
+            var p=session.Progression;var item=p.Profile.inventory.Find(v=>v!=null&&v.id==id);
+            var lines=new System.Collections.Generic.List<string>();
+            if(saved&&item!=null)
+            {
+                if(item.criticalChance>0)lines.Add("暴击率  +"+(item.criticalChance*100).ToString("0.##")+"%");
+                if(item.criticalDamageBonus>0)lines.Add("暴击伤害  +"+(item.criticalDamageBonus*100).ToString("0.##")+"%");
+                if(item.attackPercent>0)lines.Add("攻击加成  +"+(item.attackPercent*100).ToString("0.##")+"%");
+            }
+            smithReforgeLines=lines.ToArray();smithReforgeResult=true;smithReforgeStarted=Time.unscaledTime;
+            smithUpgradeNoticeOwner=p;smithUpgradeNoticeSlot=p.CurrentSlotId;
+            smithUpgradeNoticeItem=item==null?"":ItemTitle(item);smithUpgradeNotice=p.LastError;
+            smithUpgradeNoticeSuccess=saved;smithUpgradeResultOpen=true;
+            GameAudio.Play(!saved?SoundCue.UI:lines.Count>=3?SoundCue.Victory:lines.Count==2?SoundCue.LevelUp:SoundCue.Loot);
+            BlockUITransition();
+        }
+        private void DrawSmithReforgeResult(float u)
+        {
+            int count=smithReforgeLines.Length;bool success=smithUpgradeNoticeSuccess,full=success&&count>=3;
+            Color accent=!success?new Color(1f,.43f,.35f):full?gold:count==2?new Color(.78f,.55f,1f):jade;
+            Fill(new Rect(0,0,width,height),new Color(0,0,0,.76f));blockedRects.Add(new Rect(0,0,width,height));
+            float w=Mathf.Min(460*u,width-24*u),h=Mathf.Min(350*u,height-24*u);
+            Rect box=new Rect((width-w)*.5f,(height-h)*.5f,w,h);
+            Fill(box,full?new Color(.14f,.09f,.025f):card);Border(box,accent,2*u);
+            Fill(new Rect(box.x,box.y,w,6*u),accent);
+            if(full&&!EffectPreferences.ReducedEffects)
+                DrawRewardRadiance(new Rect(box.center.x-60*u,box.y,120*u,90*u),gold,Mathf.Clamp01((Time.unscaledTime-smithReforgeStarted)/1.4f));
+            string title=!success?"重铸未完成":full?"满词条！":count==2?"双词条 · 精彩重铸":"重铸成功";
+            Text(new Rect(box.x+20*u,box.y+20*u,w-40*u,36*u),title,Mathf.RoundToInt((full?28:23)*u),accent,true,false,TextAnchor.MiddleCenter);
+            Text(new Rect(box.x+20*u,box.y+60*u,w-40*u,26*u),smithUpgradeNoticeItem,Mathf.RoundToInt(13*u),pale,true,false,TextAnchor.MiddleCenter);
+            Text(new Rect(box.x+20*u,box.y+90*u,w-40*u,24*u),!success?"请检查条件后重试":full?"完美齐聚 · 所有随机词条已集齐":count==2?"获得 2 条随机词条":"获得 "+count+" 条随机词条",Mathf.RoundToInt(13*u),accent,true,false,TextAnchor.MiddleCenter);
+            float rowHeight=Mathf.Min(42*u,(h-184*u)/Mathf.Max(1,count));
+            for(int i=0;i<count;i++)
+            {
+                Rect row=new Rect(box.x+24*u,box.y+122*u+i*rowHeight,w-48*u,rowHeight-4*u);
+                Fill(row,new Color(accent.r,accent.g,accent.b,.13f));
+                DrawIcon(new Rect(row.x+8*u,row.center.y-9*u,18*u,18*u),UIIconAtlas.Utility("core"),accent);
+                Text(new Rect(row.x+34*u,row.y,row.width-42*u,row.height),smithReforgeLines[i],Mathf.RoundToInt(14*u),pale,true,false,TextAnchor.MiddleLeft);
+            }
+            if(!success)Text(new Rect(box.x+24*u,box.y+122*u,w-48*u,h-184*u),smithUpgradeNotice,Mathf.RoundToInt(13*u),pale,false,true,TextAnchor.MiddleCenter);
+            if(NavigationButton(new Rect(box.x+24*u,box.yMax-50*u,w-48*u,38*u),full?"收下好运":"知道了",accent))CloseSmithUpgradeResult();
+            if(PopupCloseButton(new Rect(box.xMax-44*u,box.y+8*u,32*u,32*u)))CloseSmithUpgradeResult();
+        }
         private void CloseSmithUpgradeResult(){smithUpgradeResultOpen=false;BlockUITransition();}
         private void DrawSmithUpgradeResult(float u)
         {
             if(!smithUpgradeResultOpen)return;
+            if(smithReforgeResult){DrawSmithReforgeResult(u);return;}
             Color accent=smithUpgradeNoticeSuccess?jade:new Color(1f,.43f,.35f);
             Fill(new Rect(0,0,width,height),new Color(0,0,0,.72f));
             blockedRects.Add(new Rect(0,0,width,height));
@@ -20,7 +67,9 @@ namespace Emberfall
             Fill(new Rect(box.x,box.y,w,7*u),accent);
             Rect badge=new Rect(box.center.x-26*u,box.y+23*u,52*u,52*u);
             Fill(badge,new Color(accent.r,accent.g,accent.b,.16f));Border(badge,accent);
-            Text(badge,smithUpgradeNoticeSuccess?"↑":"!",Mathf.RoundToInt(30*u),accent,true,false,TextAnchor.MiddleCenter);
+            if(smithUpgradeNoticeSuccess&&!EffectPreferences.ReducedEffects)
+                DrawRewardRadiance(badge,accent,Mathf.Clamp01((Time.unscaledTime-smithUpgradeStarted)/1.1f));
+            Text(badge,smithUpgradeNoticeSuccess?"↑":"×",Mathf.RoundToInt(30*u),accent,true,false,TextAnchor.MiddleCenter);
             Text(new Rect(box.x+20*u,box.y+84*u,w-40*u,32*u),smithUpgradeNoticeSuccess?"强化成功":"强化失败",Mathf.RoundToInt(24*u),accent,true,false,TextAnchor.MiddleCenter);
             Text(new Rect(box.x+20*u,box.y+122*u,w-40*u,24*u),smithUpgradeNoticeItem,Mathf.RoundToInt(14*u),pale,true,false,TextAnchor.MiddleCenter);
             Text(new Rect(box.x+20*u,box.y+152*u,w-40*u,h-214*u),smithUpgradeNotice,Mathf.RoundToInt(14*u),pale,false,true,TextAnchor.MiddleCenter);
@@ -85,8 +134,8 @@ namespace Emberfall
             var l=new SmithServiceLayout(width/u,height/u,MobileControls.IsIPad);
             blockedRects.Add(new Rect(0,0,width,height));
             Box(new Rect(8*u,4*u,width-16*u,height-8*u),jade,false);
-            float balanceWidth=Mathf.Min(100,(width/u-164)/4);
-            float balanceStart=width-64*u-4*(balanceWidth+4)*u;
+            float balanceWidth=Mathf.Min(100,(width/u-164)/5);
+            float balanceStart=width-64*u-5*(balanceWidth+4)*u;
             Text(new Rect(16*u,10*u,Mathf.Max(48*u,balanceStart-24*u),36*u),"铁匠",Mathf.RoundToInt(22*u),gold,true);
             DrawPrice(new Rect(balanceStart,12*u,balanceWidth*u,28*u),p.Profile.gold,false,u);
             DrawPrice(new Rect(balanceStart+(balanceWidth+4)*u,12*u,balanceWidth*u,28*u),p.Profile.mechanicMaterials,true,u);
@@ -94,6 +143,7 @@ namespace Emberfall
             InspectRewardItem(new Rect(balanceStart+(balanceWidth+4)*u,12*u,balanceWidth*u,28*u),ResourceItemPreview("shard",p.Profile.mechanicMaterials));
             DrawSmithResource(new Rect(balanceStart+2*(balanceWidth+4)*u,12*u,balanceWidth*u,28*u),p.Profile.refinementStones,UIIconAtlas.Utility("gem"),GameBalance.RarityColor(Rarity.Epic),u,"refinement");
             DrawSmithResource(new Rect(balanceStart+3*(balanceWidth+4)*u,12*u,balanceWidth*u,28*u),p.Profile.fashionThreads,UIIconAtlas.Reward(2),GameBalance.RarityColor(Rarity.Rare),u,"thread");
+            DrawSmithResource(new Rect(balanceStart+4*(balanceWidth+4)*u,12*u,balanceWidth*u,28*u),p.Profile.affixReforgeStones,UIIconAtlas.Utility("gem"),gold,u,"affix-reforge");
             if(PopupCloseButton(new Rect(width-56*u,10*u,42*u,36*u))){smithPreviewMechanic=EquipmentMechanic.None;GUI.enabled=prior;ClosePanel();return;}
             smithCategory=Mathf.Clamp(smithCategory,0,3);
             string[] categories={"强化","镶嵌","洗练","时装"};
@@ -143,7 +193,7 @@ namespace Emberfall
                         Rect reroll=new Rect(action.xMax+4*u,action.y,aw*u,buttonHeight*u);
                         if(SmithMaterialAction(action,reason=="数值已满"?"已满":"洗练",GameBalance.RarityColor(Rarity.Epic),u,reason.Length==0,"提升基础词条和已有随机词条数值，只升不降，不新增词条。"+(reason.Length==0?"":"\n"+reason)))
                             Feedback(p.RefineEquipment(item.id,SmithServiceActive),"洗练已保存");
-                        if(SmithMaterialAction(reroll,"词条重铸",GameBalance.RarityColor(Rarity.Rare),u,rerollReason.Length==0,"仅重铸随机词条；数值可能降低或词条消失，基础词条与强化等级不变。"+(rerollReason.Length==0?"":"\n"+rerollReason)))
+                        if(SmithMaterialAction(reroll,ProgressionService.HasFullEquipmentAffixes(item)?"满词条":"词条重铸",ProgressionService.HasFullEquipmentAffixes(item)?gold:GameBalance.RarityColor(Rarity.Rare),u,rerollReason.Length==0,"仅重铸随机词条；数值可能降低或词条消失，基础词条与强化等级不变。"+(rerollReason.Length==0?"":"\n"+rerollReason)))
                             smithAffixQuote=p.PrepareAffixReforge(item.id,SmithServiceActive);
                     }
                     if(smithCategory==0)
@@ -162,7 +212,8 @@ namespace Emberfall
                             bool paid=p.Profile.equipmentUpgradeAttempts>attempts;
                             smithUpgradeNotice=success?"强化等级  +"+oldRank+" → +"+p.SlotUpgradeRank(slot)+"\n消耗 "+cost+" 金币":paid?"强化等级保持 +"+p.SlotUpgradeRank(slot)+"\n消耗 "+cost+" 金币":(string.IsNullOrEmpty(p.LastError)?"本次未执行强化，请检查条件后重试。":p.LastError);
                             smithUpgradeNoticeOwner=p;smithUpgradeNoticeSlot=p.CurrentSlotId;smithUpgradeNoticeItem=ItemTitle(item);
-                            smithUpgradeNoticeSuccess=success;smithUpgradeResultOpen=true;
+                            smithReforgeResult=false;smithUpgradeNoticeSuccess=success;smithUpgradeResultOpen=true;smithUpgradeStarted=Time.unscaledTime;
+                            GameAudio.Play(success?SoundCue.ForgeSuccess:paid?SoundCue.ForgeFailure:SoundCue.UI);
                             BlockUITransition();
                         }
                         if(capped)DrawSmithMaxBadge(action,"已满级",u);
@@ -257,18 +308,10 @@ namespace Emberfall
             EndTouchScroll();
             GUI.EndGroup();
         }
-        private static string GemFormValueText(EquipmentMechanic gem,int variant,int rank)
-        {
-            if(rank<=0)return "未解锁";
-            if(gem==EquipmentMechanic.RelicPower)return (variant==0?8+4*rank:6+2*rank)+"点能量";
-            if(gem==EquipmentMechanic.RelicPrecision)return (variant==0?.5f+.5f*rank:1+rank).ToString("0.#")+"秒";
-            if(gem==EquipmentMechanic.RelicRuin)return ((variant==0?.4f+.3f*rank:.6f+.4f*rank)*100).ToString("0")+"%攻击";
-            return (BuildCatalog.GemAscensionValue(gem,rank)*(BuildCatalog.MechanicSlot(gem)==ItemSlot.Weapon&&variant==1?150:100)).ToString("0.#")+"%";
-        }
         private void DrawGemUpgradeComparison(ref float y,float width,float u,MechanicAttachment gem,bool ascend,bool draw)
         {
             int nextRank=Mathf.Min(9,gem.upgradeRank+1),nextAscension=Mathf.Min(3,Mathf.Max(0,gem.ascensionRank)+1);
-            GoalParagraph(ref y,width,u,ascend?"升华预览":"升阶预览",15,gold,true,draw);
+            if(!ascend)GoalParagraph(ref y,width,u,"升阶预览",15,gold,true,draw);
             if(!ascend)
             {
                 Rarity rarity=nextRank>=3&&gem.rarity<Rarity.Epic?Rarity.Epic:gem.rarity;
@@ -285,7 +328,6 @@ namespace Emberfall
                 GoalParagraph(ref y,width,u,BuildCatalog.GemFormName(gem.mechanic,variant)+(gem.variant==variant&&gem.variantUnlocked?" · 当前形态":""),13,gold,true,draw);
                 GoalParagraph(ref y,width,u,"当前："+(gem.ascensionRank>0?BuildCatalog.GemFormDescription(gem.mechanic,variant,gem.ascensionRank):"未解锁"),12,muted,false,draw);
                 GoalParagraph(ref y,width,u,"升华后："+BuildCatalog.GemFormDescription(gem.mechanic,variant,nextAscension),12,jade,false,draw);
-                GoalParagraph(ref y,width,u,GemFormValueText(gem.mechanic,variant,gem.ascensionRank)+" → "+GemFormValueText(gem.mechanic,variant,nextAscension),12,jade,true,draw);
             }
         }
         private string SmithVariantName(EquipmentMechanic mechanic,int variant)
@@ -563,7 +605,7 @@ namespace Emberfall
             Text(new Rect(box.x+16*u,box.y+60*u,w-32*u,80*u),fresh?"消耗词条重铸石 ×1\n随机词条数值可能降低或者词条消失":"装备或材料已变化，请取消后重新确认。",Mathf.RoundToInt(15*u),pale,false,true);
             if(Button(new Rect(box.x+16*u,box.yMax-54*u,(w-40*u)*.5f,44*u),"取消",muted)){smithAffixQuote=null;return;}
             if(Button(new Rect(box.center.x+4*u,box.yMax-54*u,(w-40*u)*.5f,44*u),"确认重铸",gold,fresh&&p.AffixReforgeLockReason(quote.Id,SmithServiceActive).Length==0))
-            {bool saved=p.ApplyAffixReforge(quote,SmithServiceActive);Feedback(saved,"词条已重铸");if(saved)smithAffixQuote=null;}
+            {bool saved=p.ApplyAffixReforge(quote,SmithServiceActive);if(saved)smithAffixQuote=null;ShowAffixReforgeResult(saved,quote.Id);}
         }
 
     }

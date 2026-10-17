@@ -203,9 +203,10 @@ namespace Emberfall
                 }
                 bool active=p.HasMasteryCore(mastery);
                 Text(new Rect(tile.x+(compact?8:12)*u,tile.y+(compact?120:150)*u,tile.width-(compact?16:24)*u,coreHeight*u),MasteryCoreText(mastery),Mathf.RoundToInt((compact?11:12)*u),active?gold:pale,false,true);
-                string coreAction=active?"✓ 核心已启用":rank<MasteryCoreRules.InitialInvestment?"投入 "+MasteryCoreRules.InitialInvestment+" 点解锁":"启用核心";
-                if(Button(new Rect(tile.x+10*u,tile.yMax-(compact?40:44)*u,tile.width-20*u,36*u),coreAction,active?gold:jade,session.IsInCamp&&rank>=MasteryCoreRules.InitialInvestment&&!active))
-                {bool saved=p.SelectMasteryCore(mastery,true);masteryChangeNotice=saved?"已启用 "+BuildCatalog.MasteryName(mastery)+"核心":p.LastError;}
+                bool canChooseCore=session.IsInCamp||p.Profile.masteryCore<0;
+                string coreAction=active?"✓ 核心已启用":rank<MasteryCoreRules.InitialInvestment?"投入 "+MasteryCoreRules.InitialInvestment+" 点解锁":canChooseCore?"启用核心":"回营地切换";
+                if(Button(new Rect(tile.x+10*u,tile.yMax-(compact?40:44)*u,tile.width-20*u,36*u),coreAction,active?gold:jade,canChooseCore&&rank>=MasteryCoreRules.InitialInvestment&&!active))
+                {bool saved=p.SelectMasteryCore(mastery,session.IsInCamp);masteryChangeNotice=saved?"已启用 "+BuildCatalog.MasteryName(mastery)+"核心":p.LastError;}
             }
             y+=((4+columns-1)/columns)*(tileHeight+10);
             string notice=string.IsNullOrEmpty(masteryChangeNotice)?"":masteryChangeNotice;

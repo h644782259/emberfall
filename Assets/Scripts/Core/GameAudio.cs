@@ -21,12 +21,12 @@ namespace Emberfall
             var voice=instance.playerHurtVoice;voice.Stop();voice.pitch=heavy?.60f:.78f;voice.volume=masterVolume*.65f;voice.Play();
         }
         private const int VoiceCount = 8;
-        private const int CueCount = 11;
+        private const int CueCount = 13;
         private const int SampleRate = 22050;
         private const float DefaultVolume = .5f;
         private const float BackgroundVolume = .14f;
         private const double Tau = Math.PI * 2.0;
-        private static readonly float[] Durations = { .16f, .34f, .13f, .22f, .38f, .64f, .95f, .65f, .09f, .17f, .42f };
+        private static readonly float[] Durations = { .16f, .34f, .13f, .22f, .38f, .64f, .95f, .65f, .09f, .17f, .42f, .90f, .62f };
         private static readonly float[] MinimumIntervals = { .075f, .12f, .075f, .15f, .16f, .25f, .5f, .5f, .055f, .085f, .12f };
         private static GameAudio instance;
         private static bool muted;
@@ -315,6 +315,18 @@ namespace Emberfall
             return result;
         }
 
+        private static double ForgeStrike(double time,double frequency,double noise,bool damped)
+        {
+            if(time<0)return 0;
+            // Inharmonic anvil partials with a short hammer impact; a failed
+            // strike loses its ring quickly and ends with a low metal rattle.
+            double decay=damped?24:7;
+            double ring=(Math.Sin(Tau*frequency*time)+.48*Math.Sin(Tau*frequency*2.71*time)+
+                .22*Math.Sin(Tau*frequency*4.13*time))*Math.Exp(-time*decay);
+            double impact=noise*.7*Math.Exp(-time*110)+Math.Sin(Tau*105*time)*.5*Math.Exp(-time*35);
+            return (ring*.5+impact)*Math.Min(1,time/.0015);
+        }
+
         private static AudioClip Synthesize(SoundCue cue)
         {
             float duration = Durations[(int)cue];
@@ -380,6 +392,12 @@ namespace Emberfall
                     case SoundCue.Victory:
                         value = Bell(time, 523.25) * .65 + Bell(time - .10, 659.25) * .65 + Bell(time - .20, 783.99) * .65;
                         value += Bell(time - .34, 523.25) + Bell(time - .34, 659.25) * .7 + Bell(time - .34, 1046.5) * .7;
+                        break;
+                    case SoundCue.ForgeSuccess:
+                        value = ForgeStrike(time,920,noise,false)+ForgeStrike(time-.16,1160,noise,false)*.75;
+                        break;
+                    case SoundCue.ForgeFailure:
+                        value = ForgeStrike(time,260,noise,true)+ForgeStrike(time-.12,175,noise,true)*.45;
                         break;
                     case SoundCue.UI:
                         value = Bell(time, 880) * .7 + Bell(time - .022, 1320) * .35;

@@ -179,6 +179,13 @@ namespace Emberfall
             SummonedCompanion.RefreshBuild(this);
         }
 
+        internal void RestoreLifeSteal(float actualDamage)
+        {
+            if(IsDead||session==null||session.Player!=this||!session.HasStarted||session.CombatEnded||
+                actualDamage<=0||float.IsNaN(actualDamage)||float.IsInfinity(actualDamage)||stats.LifeSteal<=0)return;
+            Heal(actualDamage*stats.LifeSteal);
+        }
+
         public void Heal(float amount)
         {
             if (IsDead || amount <= 0) return;

@@ -166,7 +166,7 @@ namespace Emberfall
                     Fill(header,stage==rank?new Color(.028f,.10f,.088f):new Color(.018f,.036f,.054f));
                     if(stage==rank){Border(header,gold);Fill(new Rect(header.x,header.y,3*TouchRatio,header.height),gold);}
                     Text(TouchRect(14,y,48,30),GameBalance.SkillRankName(stage),TouchFont(14),stage<=rank?jade:pale,true);
-                    SkillStateTag(TouchRect(66,y+4,52,22),"Lv."+GameBalance.SkillRankRequiredLevel(skill,stage),muted,TouchFont(10));
+                    SkillStageLevelTag(TouchRect(66,y+4,52,22),skill,stage,p.level,TouchFont(10));
                     if(stage==rank)DrawIcon(TouchRect(width-42,y+4,22,22),UIIconAtlas.Utility("confirm"),gold);
                 }
                 y+=38;
@@ -177,6 +177,16 @@ namespace Emberfall
                 MobileSkillParagraph(ref y, width, evolution, 14, pale, false, draw);
             }
             return y;
+        }
+
+        private void SkillStageLevelTag(Rect rect,int skill,int stage,int level,int size)
+        {
+            int required=GameBalance.SkillRankRequiredLevel(skill,stage);
+            bool reached=level>=required;
+            Color accent=stage==1?jade:stage==2?new Color(.48f,.74f,1f):gold;
+            Surface(rect,new Color(accent.r,accent.g,accent.b,reached?.28f:.07f));
+            SurfaceFrame(rect,new Color(accent.r,accent.g,accent.b,reached?.95f:.3f));
+            Text(rect,"Lv."+required,size,reached?Color.Lerp(accent,Color.white,.65f):accent,true,false,TextAnchor.MiddleCenter);
         }
 
         private void SkillStateTag(Rect rect,string label,Color accent,int size)

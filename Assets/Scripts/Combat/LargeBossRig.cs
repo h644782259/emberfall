@@ -42,6 +42,17 @@ namespace Emberfall
             }
             BuildPowerChannels(material);
         }
+        internal void ApplyParalysisPose(float weight)
+        {
+            if(shuttingDown)return;
+            body.localPosition+=Vector3.down*(.55f*weight);
+            body.localRotation*=Quaternion.Euler(12*weight,0,8*weight);
+            for(int i=0;i<4;i++)
+            {
+                legs[i].localRotation*=Quaternion.Euler(-24*weight,0,0);
+                petals[i].localRotation*=Quaternion.Euler(-38*weight,0,0);
+            }
+        }
         public void Animate(float speed,float attack)
         {
             float dt=Time.deltaTime;if(dt<=0)return;age+=dt;

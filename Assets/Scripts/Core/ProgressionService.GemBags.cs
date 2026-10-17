@@ -5,7 +5,7 @@ namespace Emberfall
     public partial class ProgressionService
     {
         public static EquipmentMechanic[] GemBagPool(HeroClass hero,ItemSlot slot)
-        {var pool=new List<EquipmentMechanic>();foreach(var kind in BuildCatalog.GemsFor(hero))if(BuildCatalog.MechanicSlot(kind)==slot)pool.Add(kind);return pool.ToArray();}
+        {var pool=new List<EquipmentMechanic>();foreach(var kind in BuildCatalog.DroppableGemsFor(hero))if(BuildCatalog.MechanicSlot(kind)==slot)pool.Add(kind);return pool.ToArray();}
         public const int GemBagPrice=100;
         public static Rarity GemBagRarity(int roll)
         {return roll<45?Rarity.Common:roll<75?Rarity.Rare:roll<95?Rarity.Epic:Rarity.Legendary;}

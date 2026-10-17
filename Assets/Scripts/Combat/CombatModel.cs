@@ -1249,7 +1249,7 @@ namespace Emberfall
             RestoreKnockdownBase();
             // Rebuild the authored pose each frame; recoil is an additive layer, never its replacement.
             if (body != null) body.localRotation = bodyRestRotation;
-            if (largeBossRig != null) { transform.localPosition = Vector3.zero; largeBossRig.Animate(speed, attack); ApplyRecoil(); return; }
+            if (largeBossRig != null) { transform.localPosition = Vector3.zero; largeBossRig.Animate(speed, attack); ApplyRecoil(); ApplyBossParalysisPose(Time.deltaTime); return; }
             float dt = Time.deltaTime;
             smoothedSpeed = Mathf.Lerp(smoothedSpeed, Mathf.Clamp01(speed), 1f-Mathf.Exp(-dt*10f));
             if (articulatedEnemy) { gaitPhase=locomotion.Phase;smoothedSpeed=locomotion.Speed; }
@@ -1325,6 +1325,7 @@ namespace Emberfall
             ApplyRecoil();
             ApplyCompanionMatterPose(attack);
             ApplyCompanionPose();
+            ApplyBossParalysisPose(dt);
             if (enemyOwner != null && enemyOwner.StatusEffects != null)
                 transform.localPosition += Vector3.up * enemyOwner.StatusEffects.AirborneHeight;
         }

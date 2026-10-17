@@ -91,14 +91,17 @@ namespace Emberfall
         private void PrepareInventoryPopupInput()
         {
             if(!inventoryComparisonOpen)return;
+            var e=Event.current;
+            Vector2 point=e.mousePosition;
+            if(e.type==EventType.MouseDown&&e.button==0&&!inventoryPopupRect.Contains(point))
+            {DismissEquippedItemDetails();e.Use();return;}
             if(!MobileControls.Active)
             {
                 if(!inventoryPopupRect.Contains(Mouse)&&!inventoryPopupAnchor.Contains(Mouse))inventoryComparisonOpen=false;
                 return;
             }
-            var e=Event.current;
-            if(e.type==EventType.ScrollWheel || e.type==EventType.MouseDown&&!inventoryPopupRect.Contains(Mouse))
-            {inventoryComparisonOpen=false;inventoryPopupDismissed=Time.frameCount;CancelMobileScroll();BlockUITransition();e.Use();}
+            if(e.type==EventType.ScrollWheel&&!inventoryPopupRect.Contains(point))
+            {DismissEquippedItemDetails();e.Use();}
         }
         private void OpenInventoryPopup(string id,Rect anchor)
         {
@@ -217,6 +220,7 @@ namespace Emberfall
             float sheetWidth=Mathf.Min(IsEquipped(item)?340:compactCompare?620:600,(width/u)-40),sheetHeight=Mathf.Min(480,(height/u)-32);
             Rect r=inventoryPopupRect=MobileControls.Active?new Rect((width-sheetWidth*u)*.5f,(height-sheetHeight*u)*.5f,sheetWidth*u,sheetHeight*u):DesktopInventorySheet(sheetWidth,sheetHeight);
 
+            Fill(r,ink);Border(r,GameBalance.RarityColor(item.rarity),2*u);
             bool prior=GUI.enabled;GUI.enabled=prior&&Time.frameCount!=inventoryPopupOpened;
 
             float bodyY=r.y,rowHeight=(sheetHeight<360?22:28)*u;
@@ -244,7 +248,7 @@ namespace Emberfall
             Rect r=inventoryPopupRect=new Rect(area.X*u,area.Y*u,area.Width*u,area.Height*u);
             if(potion){r.height=178*u;r.y=Mathf.Clamp(r.y,12*u,Mathf.Max(12*u,height-r.height-12*u));inventoryPopupRect=r;}
             if(fashion){float fw=Mathf.Min(620*u,width-24*u),fh=Mathf.Min(320*u,height-24*u);r=inventoryPopupRect=MobileControls.Active?new Rect((width-fw)*.5f,(height-fh)*.5f,fw,fh):DesktopInventorySheet(fw,fh);}
-            if(!fashion){Fill(r,ink);Border(r,potion?GameBalance.RarityColor(Rarity.Common):jade);}
+            Fill(r,ink);Border(r,fashion?GameBalance.RarityColor(appearance.rarity):potion?GameBalance.RarityColor(Rarity.Common):jade,2*u);
             bool prior=GUI.enabled;GUI.enabled=prior&&Time.frameCount!=inventoryPopupOpened;
             if(potion)
             {

@@ -52,7 +52,7 @@ namespace Emberfall
                 if(DrawButton(BuildPlanRect(l.Action,u),"一键出售",ButtonRole.Primary,bulk!=null&&Time.unscaledTime>=merchantActionUntil,fontSize:Mathf.RoundToInt(15*u))&&StartMerchantAction())
                 {bool sold=p.SellAtMerchant(bulk,MerchantServiceActive);MerchantFeedback(sold,"已出售 "+bulk.Count+" 件 · +"+bulk.Gold+" 金币");if(sold){RebuildBagItems();ResolveSelectedItem();}}
             }
-            var mechanics=BuildCatalog.GemsFor(p.Profile.heroClass);
+            var mechanics=BuildCatalog.DroppableGemsFor(p.Profile.heroClass);
             var saleItems=new List<ItemData>();
             if(merchantMode==2)foreach(var gear in p.Profile.inventory)if(gear!=null)saleItems.Add(gear);
             var saleGems=new List<MechanicAttachment>();

@@ -1,11 +1,11 @@
 namespace Emberfall
 {
-    public enum SoundCue { Attack, Cast, Hit, Dodge, Loot, LevelUp, Victory, Death, UI, CriticalHit, Judgment }
+    public enum SoundCue { Attack, Cast, Hit, Dodge, Loot, LevelUp, Victory, Death, UI, CriticalHit, Judgment, ForgeSuccess, ForgeFailure }
     public static class AudioVoicePolicy
     {
         public const int Voices = 8, OrdinaryVoices = 6;
         public static bool IsCritical(SoundCue cue)
-        { return cue == SoundCue.Cast || cue == SoundCue.Dodge || cue == SoundCue.LevelUp || cue == SoundCue.Victory || cue == SoundCue.Death || cue == SoundCue.Judgment; }
+        { return cue == SoundCue.Cast || cue == SoundCue.Dodge || cue == SoundCue.LevelUp || cue == SoundCue.Victory || cue == SoundCue.Death || cue == SoundCue.Judgment || cue == SoundCue.ForgeSuccess || cue == SoundCue.ForgeFailure; }
         public static bool IsImpact(SoundCue cue) { return cue == SoundCue.Hit || cue == SoundCue.CriticalHit; }
         public static int Select(SoundCue cue, int busyMask, int cursor)
         {
