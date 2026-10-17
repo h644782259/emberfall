@@ -41,7 +41,7 @@ namespace Emberfall
             at.y=grounded?parent.InverseTransformPoint(support).y+dimensions.y*.5f:0;
             root.transform.localPosition=at;root.transform.localScale=dimensions;
             root.AddComponent<MeshFilter>().sharedMesh=shape;
-            surface=root.AddComponent<MeshRenderer>();surface.sharedMaterial=shared;
+            surface=root.AddComponent<MeshRenderer>();surface.sharedMaterial=shared;MobileSceneDepth.Track(surface);
             surface.shadowCastingMode=ShadowCastingMode.Off;surface.receiveShadows=false;
             properties.SetFloat("_Kind",(float)kind);properties.SetColor("_Tint",tint);
             // Large impact fields must reveal the floor and actors through the flame.
@@ -50,7 +50,7 @@ namespace Emberfall
             properties.SetFloat("_Sparsity",airy?.9f:0);
             properties.SetFloat("_Steps",EffectPreferences.ReducedEffects||Application.isMobilePlatform?6:10);
             Draw(0,0);
-            if(Camera.main!=null)Camera.main.depthTextureMode|=DepthTextureMode.Depth;
+            if(!Application.isMobilePlatform&&Camera.main!=null)Camera.main.depthTextureMode|=DepthTextureMode.Depth;
         }
         internal void Draw(float age,float opacity)
         {

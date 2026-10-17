@@ -92,6 +92,7 @@ namespace Emberfall
                 companionMatterColors.Add(new CompanionMatterColor { Material = material, Tint = tint });
             }
             renderer.sharedMaterial = material;
+            MobileSceneDepth.Track(renderer);
             renderer.shadowCastingMode = flame ? UnityEngine.Rendering.ShadowCastingMode.Off : UnityEngine.Rendering.ShadowCastingMode.On;
             renderer.receiveShadows = !flame;
             companionMatterRenderers.Add(renderer);

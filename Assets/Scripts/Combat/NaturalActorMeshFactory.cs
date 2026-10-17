@@ -78,9 +78,11 @@ namespace Emberfall
             return Loft(name, new[] { Ring(-.5f, .34f, .32f), Ring(-.44f, .45f, .45f), Ring(-.35f, .49f, .48f), Ring(-.17f, .50f, .47f), Ring(.18f, .48f, .42f, -.035f), Ring(.35f, .39f, .34f, -.04f), Ring(.43f, .25f, .23f, -.03f), Ring(.46f, .07f, .09f, -.03f) }, 28, .006f);
         }
 
-        internal static Mesh FrontShell(string name, bool drape = false)
+        internal static Mesh FrontShell(string name, bool drape = false, bool? mobileDetail = null)
         {
-            const int rows = 19, columns = 19; int plane = rows * columns;
+            // Keep draped cloth density; compact only the rigid armor and clasp shells.
+            int rows = !drape && (mobileDetail ?? Application.isMobilePlatform) ? 13 : 19;
+            int columns = rows, plane = rows * columns;
             var v = new Vector3[plane * 2]; var uv = new Vector2[v.Length]; var tri = new List<int>();
             for (int r = 0; r < rows; r++) for (int c = 0; c < columns; c++)
             {
@@ -106,9 +108,9 @@ namespace Emberfall
             return Finish(name, v, uv, tri);
         }
 
-        internal static Mesh Band(string name, bool bore = false)
+        internal static Mesh Band(string name, bool bore = false, bool? mobileDetail = null)
         {
-            const int sides = 36, width = sides + 1;
+            int sides = (mobileDetail ?? Application.isMobilePlatform) ? 24 : 36, width = sides + 1;
             var vertices = new Vector3[width * 4]; var uv = new Vector2[vertices.Length]; var triangles = new List<int>();
             for (int ring = 0; ring < 4; ring++) for (int c = 0; c <= sides; c++)
             {

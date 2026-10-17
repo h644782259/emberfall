@@ -107,6 +107,12 @@ namespace Emberfall.Editor
             importer.maxTextureSize = source.width;
             importer.wrapMode = TextureWrapMode.Clamp;
             importer.filterMode = FilterMode.Bilinear;
+            // The shader consumes only RG. Preserve both 8-bit channels without
+            // carrying an unused blue channel on iPhone and iPad.
+            var mobile = importer.GetPlatformTextureSettings("iPhone");
+            mobile.overridden = true;
+            mobile.format = TextureImporterFormat.RG16;
+            importer.SetPlatformTextureSettings(mobile);
             importer.SaveAndReimport();
             Debug.Log("Baked actor relief atlas " + source.width + "x" + source.height);
         }

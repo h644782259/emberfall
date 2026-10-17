@@ -159,7 +159,7 @@ namespace Emberfall
         }
         private static void EnsureAssets()
         {
-            if(Camera.main!=null)Camera.main.depthTextureMode|=DepthTextureMode.Depth;
+            if(!Application.isMobilePlatform&&Camera.main!=null)Camera.main.depthTextureMode|=DepthTextureMode.Depth;
             if(assetsReady)return;
             if(identityBlade==null)identityBlade=AuthoredSpellBases.Load("Sword");
             if(identityFork==null)identityFork=AuthoredSpellBases.Identity("ForkPulse");
@@ -545,7 +545,7 @@ namespace Emberfall
             }
             Piece piece=pieces[count];
             if(piece==null){var obj=new GameObject();obj.transform.SetParent(transform,false);piece=new Piece{Transform=obj.transform,Filter=obj.AddComponent<MeshFilter>(),Renderer=obj.AddComponent<MeshRenderer>()};pieces[count]=piece;allocated=Mathf.Max(allocated,count+1);}
-            var renderer=piece.Renderer;piece.Transform.gameObject.name="Filled spell surface / "+label;piece.Filter.sharedMesh=mesh;renderer.sharedMaterial=bodySurface>=0?bodyMaterial:sharedMaterial;renderer.enabled=true;
+            var renderer=piece.Renderer;piece.Transform.gameObject.name="Filled spell surface / "+label;piece.Filter.sharedMesh=mesh;renderer.sharedMaterial=bodySurface>=0?bodyMaterial:sharedMaterial;MobileSceneDepth.Track(renderer);renderer.enabled=true;
             renderer.shadowCastingMode=bodySurface>=0&&!EffectPreferences.ReducedEffects?UnityEngine.Rendering.ShadowCastingMode.On:UnityEngine.Rendering.ShadowCastingMode.Off;renderer.receiveShadows=bodySurface>=0;renderer.sortingOrder=10;
             piece.BodySurface=bodySurface;piece.SimulatedAge=0;piece.WorldPosition=transform.TransformPoint(at);
             Vector3 radial=new Vector3(Mathf.Cos(phase),0,Mathf.Sin(phase));piece.Velocity=transform.TransformDirection(radial*(1.1f+(phase%3)*.35f)+Vector3.up*(2.1f+(phase%2)*.5f));piece.Spin=new Vector3(73+phase*13,91+phase*11,59);

@@ -48,7 +48,7 @@ namespace Emberfall
                 part.localScale=i==0?new Vector3(1.15f,.22f,1.8f):new Vector3(.42f,.7f,.6f);
                 if(i==0)part.GetComponent<MeshFilter>().sharedMesh=HeroSkillBodyAssets.Rock;
                 if(i>0&&tongueMesh!=null){part.GetComponent<MeshFilter>().sharedMesh=tongueMesh;part.localRotation=Quaternion.Euler(55,0,0);}
-                var renderer=part.GetComponent<Renderer>();
+                var renderer=part.GetComponent<Renderer>();MobileSceneDepth.Track(renderer);
                 renderer.shadowCastingMode=i==0?UnityEngine.Rendering.ShadowCastingMode.On:UnityEngine.Rendering.ShadowCastingMode.Off;
                 renderer.receiveShadows=i==0;
             }

@@ -48,7 +48,7 @@ namespace Emberfall
             wave.transform.SetPositionAndRotation(hero.transform.position,Quaternion.LookRotation(wave.forward));
             wave.transform.localScale=new Vector3(wave.width,1,1);
             wave.gameObject.AddComponent<MeshFilter>().sharedMesh=mesh;wave.surface=wave.gameObject.AddComponent<MeshRenderer>();
-            wave.surface.sharedMaterial=material;wave.surface.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;wave.surface.receiveShadows=false;
+            wave.surface.sharedMaterial=material;MobileSceneDepth.Track(wave.surface);wave.surface.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;wave.surface.receiveShadows=false;
             wave.block=new MaterialPropertyBlock();wave.Draw();
         }
         private void Update()

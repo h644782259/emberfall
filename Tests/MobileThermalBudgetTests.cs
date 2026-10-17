@@ -10,12 +10,15 @@ public static class MobileThermalBudgetTests
         p.Observe(1,0);c(!p.Limited && p.ReducedRendering && p.FrameRate(60)==60,"fair reduces rendering before sacrificing input cadence");
         c(p.ShadowDistance(24)==18 && p.DetailDistance(72)==48 && p.DecorationLimit==6,"fair heat removes actual Balanced rendering work");
         c(p.ShadowDistance(12)==12 && p.DetailDistance(32)==32,"thermal adaptation never increases a smaller budget");
+        c(p.MaximumRenderDimension(1600)==1280 && p.MaximumRenderDimension(2560)==1280,"fair caps tablet pixels before emergency frame cap");
+        c(p.MaximumRenderDimension(960)==960 && p.MaximumRenderDimension(1280)==1280,"never increase smaller render budgets");
         p.Observe(2,2);c(p.FrameRate(60)==30,"serious heat limits combat");
         c(p.FrameRate(15)==15&&p.FrameRate(30)==30,"thermal limit never raises background/menu budget");
         p.Observe(0,4);p.Observe(0,63);c(p.Limited,"no early recovery");
         p.Observe(1,64);p.Observe(0,66);p.Observe(0,124);c(p.Limited,"fair heat resets cooling window");
         p.Observe(-1,0);p.Observe(0,200);c(p.Limited,"background or unknown state cannot count as cooling");
-        p.Observe(0,260);c(!p.Limited&&p.FrameRate(60)==60,"sustained nominal temperature restores combat");
+        c(p.MaximumRenderDimension(1600)==1280,"unknown/background state cannot restore pixel load");
+        p.Observe(0,260);c(p.MaximumRenderDimension(1600)==1600,"sustained cooling restores selected resolution");c(!p.Limited&&p.FrameRate(60)==60,"sustained nominal temperature restores combat");
         p.Observe(3,262);c(p.Limited && p.FrameRate(60)==15,"critical state immediately caps at 15");
         p.Observe(1,264);c(p.FrameRate(60)==15,"falling heat cannot prematurely restore load");
         p.Observe(0,266);p.Observe(0,326);c(!p.ReducedRendering,"sustained cooling restores lighting as well as cadence");

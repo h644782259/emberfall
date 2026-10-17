@@ -11,7 +11,9 @@ namespace Emberfall
         {
             switch (GraphicsQualityRuntime.Current.Mode)
             {
-                case GraphicsQualityMode.Smooth: return "优先流畅操作，减少远处草叶、碎石与装饰特效。";
+                case GraphicsQualityMode.Smooth: return GraphicsQualityRuntime.Current.Mobile
+                    ? "降低画面精细度、关闭实时投影，减少持续运行负载，保留操作响应与战斗提示。"
+                    : "优先流畅操作，减少远处草叶、碎石与装饰特效。";
                 case GraphicsQualityMode.High: return "更清晰的材质边缘、柔和阴影与丰富场景细节。";
                 default: return "兼顾清晰度与持续流畅，保留近处场景和打击细节。";
             }

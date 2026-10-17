@@ -30,6 +30,7 @@ fixture = fixture.replace('public void RecalculateTangents(){}public void Recalc
   }''')
 fixture += r'''
 namespace UnityEngine{
+ public static class Application{public static bool isMobilePlatform;}
  public struct Vector3Int{public int x,y,z;public Vector3Int(int a,int b,int c){x=a;y=b;z=c;}}
  public struct Bounds{public Vector3 center,size;public Bounds(Vector3 c,Vector3 s){center=c;size=s;}}
  public struct Quaternion{public static Quaternion FromToRotation(Vector3 a,Vector3 b)=>new Quaternion();public static Quaternion Euler(float x,float y,float z)=>new Quaternion();public static Vector3 operator*(Quaternion q,Vector3 v)=>v;}
@@ -64,7 +65,8 @@ static class ShellChecks{
  static void Main(){
   Check(Mathf.Sin(Mathf.PI)<0,"fixture retains actual single precision negative PI sine");
   Check(float.IsNaN(Mathf.Pow(Mathf.Sin(Mathf.PI),.45f)),"fixture reproduces original fractional power NaN");
-  foreach(bool drape in new[]{false,true}){
+  foreach(bool mobile in new[]{false,true}) foreach(bool drape in new[]{false,true}){
+   Application.isMobilePlatform=mobile;
    var shell=NaturalActorMeshFactory.FrontShell("production shell",drape);Solid(shell);
    foreach(var envelope in new[]{new Bounds(Vector3.zero,new Vector3(1,1,1)),new Bounds(new Vector3(.07f,-.15f,.09f),new Vector3(.98f,2,.42f))}){
     shell=NaturalActorMeshFactory.FrontShell("fitted production shell",drape);NaturalActorMeshFactory.FitEnvelope(shell,envelope);Solid(shell);

@@ -28,6 +28,9 @@ namespace Emberfall
             if(texture==null||!material.HasProperty("_ColorTexture"))return;
             material.mainTexture=texture;material.SetFloat("_ColorTexture",.85f);material.SetFloat("_GrainScale",.4f);
             if(material.HasProperty("_AtlasRegion"))material.SetVector("_AtlasRegion",new Vector4(1,1,0,0));
+            // Keep texture and lighting; skip subpixel grain and relief on mobile.
+            if(GraphicsQualityRuntime.Current.Mobile)material.EnableKeyword("EMBER_MEADOW_SIMPLE");
+            else material.DisableKeyword("EMBER_MEADOW_SIMPLE");
         }
         private sealed class GroundSubdivision { public List<Vector3> Vertices; public List<int> Triangles; }
         private static readonly Dictionary<string,GroundSubdivision> groundSubdivisions=new Dictionary<string,GroundSubdivision>();

@@ -17,7 +17,8 @@ namespace Emberfall
             public BoundingSphere Sphere;
             public int Band, TriangleCount;
             public float Alpha = 1;
-            public bool Updating;
+            public bool Updating, UsingFade;
+            public Material[] OpaqueMaterials, FadeMaterials;
             public readonly MaterialPropertyBlock Properties = new MaterialPropertyBlock();
         }
         private sealed class ChunkGeometry
@@ -28,6 +29,20 @@ namespace Emberfall
             public readonly List<Vector2> UV = new List<Vector2>();
             public readonly List<Color> Colors = new List<Color>();
             public readonly List<int> Indices = new List<int>();
+        }
+        internal static bool ForceFadeVariant { get; private set; }
+        internal static void SetForceFadeVariant(bool value)
+        {
+            ForceFadeVariant = value;
+            foreach (var world in worlds)
+                foreach (var chunk in world.chunks) ApplyMaterialVariant(chunk);
+        }
+        private static void ApplyMaterialVariant(Chunk chunk)
+        {
+            bool fade = ForceFadeVariant || chunk.Alpha < 1f;
+            if (chunk.Renderer == null || chunk.UsingFade == fade) return;
+            chunk.Renderer.sharedMaterials = fade ? chunk.FadeMaterials : chunk.OpaqueMaterials;
+            chunk.UsingFade = fade;
         }
         private static readonly HashSet<PreparedWorldDetailBudget> worlds = new HashSet<PreparedWorldDetailBudget>();
         private static readonly int fadeProperty = Shader.PropertyToID("_OcclusionFade");
@@ -42,6 +57,7 @@ namespace Emberfall
         public bool IsPrepared => prepared;
         public int PreparedRendererCount => chunks.Count;
         public int SourceTriangleCount { get; private set; }
+        internal int PreparedTerrainVertexCount { get; private set; }
         public int PreparedTriangleCount
         { get { int total = 0; foreach (var chunk in chunks) total += chunk.TriangleCount; return total; } }
         public float RenderDetailDistance => detailDistance;
@@ -51,7 +67,7 @@ namespace Emberfall
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void Reset() { worlds.Clear(); }
+        private static void Reset() { worlds.Clear(); ForceFadeVariant = false; }
         public static void ApplyToExistingWorlds(GraphicsQualityProfile profile)
         { foreach (var world in worlds) if (world != null && world.prepared) world.SetProfile(profile); }
 
@@ -153,7 +169,8 @@ namespace Emberfall
                 child.transform.SetParent(source.transform, false);
                 child.AddComponent<MeshFilter>().sharedMesh = result;
                 var renderer = child.AddComponent<MeshRenderer>();
-                var materials=source.sharedMaterials;
+                var opaqueMaterials=source.sharedMaterials;
+                var materials=(Material[])opaqueMaterials.Clone();
                 for(int slot=0;slot<materials.Length;slot++)
                 {
                     var original=materials[slot];
@@ -165,7 +182,7 @@ namespace Emberfall
                     }
                     materials[slot]=fading;
                 }
-                renderer.sharedMaterials = materials;
+                renderer.sharedMaterials = ForceFadeVariant ? materials : opaqueMaterials;
                 renderer.shadowCastingMode = source.shadowCastingMode; renderer.receiveShadows = source.receiveShadows;
                 renderer.lightProbeUsage = source.lightProbeUsage; renderer.reflectionProbeUsage = source.reflectionProbeUsage;
                 // Match the original allowance for shader terrain height and wind.
@@ -174,8 +191,10 @@ namespace Emberfall
                 bounds.Expand(new Vector3(3 / sx, 8 / Mathf.Max(.01f, Mathf.Abs(scale.y)), 3 / sz));
                 renderer.localBounds = bounds;
                 var worldBounds = renderer.bounds;
-                chunks.Add(new Chunk { Renderer = renderer, Sphere = new BoundingSphere(worldBounds.center, worldBounds.extents.magnitude), TriangleCount = geometry.Indices.Count / 3 });
+                chunks.Add(new Chunk { Renderer = renderer, OpaqueMaterials = opaqueMaterials, FadeMaterials = materials, UsingFade = ForceFadeVariant, Sphere = new BoundingSphere(worldBounds.center, worldBounds.extents.magnitude), TriangleCount = geometry.Indices.Count / 3 });
                 // Upload occurs only while the scene loader blocks action.
+                if(PreparedTerrainVertexData.Enabled && PreparedTerrainVertexData.TryBake(result,child.transform,opaqueMaterials))
+                    PreparedTerrainVertexCount+=result.vertexCount;
                 result.UploadMeshData(true);
                 yield return null;
             }
@@ -245,6 +264,9 @@ namespace Emberfall
                 chunk.Alpha = Mathf.MoveTowards(chunk.Alpha, target, Time.unscaledDeltaTime * 4);
                 bool visible = chunk.Alpha > .002f;
                 chunk.Renderer.enabled = visible;
+                // Opaque chunks have no discard instruction; use the dither variant
+                // only while fading. Switch once at each boundary, not every frame.
+                ApplyMaterialVariant(chunk);
                 if (visible)
                 { chunk.Properties.SetFloat(fadeProperty, chunk.Alpha); chunk.Renderer.SetPropertyBlock(chunk.Properties); }
                 if (chunk.Band != 1 && Mathf.Abs(chunk.Alpha - target) < .001f)

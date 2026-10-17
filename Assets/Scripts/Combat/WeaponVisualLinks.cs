@@ -81,7 +81,7 @@ namespace Emberfall
             obj.AddComponent<MeshFilter>().sharedMesh=ribbon.mesh;
             ribbon.material=new Material(Resources.Load<Shader>("FilledSpell")??Shader.Find("Sprites/Default"));ribbon.material.color=color;ribbon.alpha=color.a;ribbon.material.renderQueue=3070;
             ribbon.material.SetFloat("_Ribbon",1);
-            var renderer=obj.AddComponent<MeshRenderer>();renderer.sharedMaterial=ribbon.material;renderer.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;renderer.receiveShadows=false;
+            var renderer=obj.AddComponent<MeshRenderer>();renderer.sharedMaterial=ribbon.material;MobileSceneDepth.Track(renderer);renderer.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;renderer.receiveShadows=false;
             ribbon.registered=true;active++;
             // PlayAction commits the contact pose immediately. Reconstruct its
             // short incoming sweep so the first frame is not a zero-area strip.

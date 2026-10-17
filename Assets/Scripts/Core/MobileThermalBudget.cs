@@ -19,6 +19,9 @@ namespace Emberfall
         // one light and hard shadows. These affect ornaments only, not gameplay.
         public float ShadowDistance(float requested) => ReducedRendering ? System.Math.Min(requested, 18f) : requested;
         public float DetailDistance(float requested) => ReducedRendering ? System.Math.Min(requested, 48f) : requested;
+        // A14 tablet Balanced drops from 1600 to 1280: 36% fewer pixels.
+        // Keep smaller presets intact and restore only after sustained cooling.
+        public int MaximumRenderDimension(int requested) => ReducedRendering ? System.Math.Min(requested, 1280) : requested;
         public int DecorationLimit => ReducedRendering ? 6 : int.MaxValue;
         private double coolSince = -1;
         public void Observe(int thermalState, double now)

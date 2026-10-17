@@ -328,6 +328,7 @@ namespace Emberfall
             else SkillBodyMaterialLibrary.Apply(surface,SkillBodyMaterialLibrary.Matter.Ice,.25f);
             GameObject obj = new GameObject("Projectile simulation root");
             GameObject body = ProceduralVisuals.Create(arrow ? "Spectral Arrow" : "Arcane Bolt",arrow ? PrimitiveType.Capsule : PrimitiveType.Sphere,surface);
+            MobileSceneDepth.Track(body.GetComponent<Renderer>());
             Mesh authored=AuthoredProjectileMeshes.Load(identity);
             if(authored!=null)body.GetComponent<MeshFilter>().sharedMesh=authored;
             body.transform.SetParent(obj.transform,false);

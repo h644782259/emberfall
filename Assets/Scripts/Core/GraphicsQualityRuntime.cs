@@ -21,7 +21,8 @@ namespace Emberfall
         }
         internal static GraphicsDeviceCapabilities CaptureDevice()
         { return new GraphicsDeviceCapabilities(Application.isMobilePlatform, SystemInfo.systemMemorySize, SystemInfo.graphicsMemorySize, SystemInfo.processorCount, SystemInfo.graphicsShaderLevel,
-            SystemInfo.graphicsDeviceName.IndexOf("simulator", System.StringComparison.OrdinalIgnoreCase) >= 0); }
+            SystemInfo.graphicsDeviceName.IndexOf("simulator", System.StringComparison.OrdinalIgnoreCase) >= 0,
+            GraphicsQualityPolicy.ClassifyDisplay(SystemInfo.deviceModel, Display.main.systemWidth, Display.main.systemHeight, Screen.dpi)); }
         internal static void Configure(GraphicsQualityMode selection)
         { current = GraphicsQualityPolicy.Resolve(selection, CaptureDevice()); CombatVisualBudget.ConfiguredLimit = current.CombatVisualLimit; }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]

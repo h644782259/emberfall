@@ -9,6 +9,9 @@ namespace Emberfall
     // Bounded ten-second summaries, written off the main thread. No gameplay/save changes.
     internal sealed class PerformanceDiagnostics : MonoBehaviour
     {
+        private static bool collecting;
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetCollection() { collecting=false; }
         internal enum Section { Interface, InterfaceUpdate, Player, Enemies, Models, Camera, Session, Text, Hotbar, HudQueries, Wander, Movement, Animation, TextSetup, TextDraw, EnemySpawn, EnemyMesh, CombatEffects, SurfaceBuild, FlameRide, FlameTrailBuild, ActorSlide }
         private static readonly double[] sectionTicks = new double[Enum.GetValues(typeof(Section)).Length], sectionMaxTicks = new double[sectionTicks.Length];
         internal readonly struct Scope : IDisposable
@@ -18,12 +21,13 @@ namespace Emberfall
             internal Scope(Section value) { section = (int)value; began = System.Diagnostics.Stopwatch.GetTimestamp(); }
             public void Dispose()
             {
+                if (began == 0) return;
                 long ticks = System.Diagnostics.Stopwatch.GetTimestamp() - began;
                 sectionTicks[section] += ticks;
                 sectionMaxTicks[section] = Math.Max(sectionMaxTicks[section], ticks);
             }
         }
-        internal static Scope Measure(Section section) { return new Scope(section); }
+        internal static Scope Measure(Section section) { return collecting ? new Scope(section) : default; }
         private static void ResetSections() { Array.Clear(sectionTicks, 0, sectionTicks.Length); Array.Clear(sectionMaxTicks, 0, sectionMaxTicks.Length); }
 
         [Serializable] private sealed class Sample
@@ -51,6 +55,11 @@ namespace Emberfall
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void EnableDiagnostics()
         {
+            // Release gameplay must not continuously profile and write diagnostic files.
+            // Explicit frame reviews retain the same instrumentation as prior comparisons.
+            collecting = Debug.isDebugBuild || Environment.GetEnvironmentVariable("EMBERFALL_PERF_DIAGNOSTICS") == "1" ||
+                !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("EMBERFALL_PERF_REVIEW"));
+            if (!collecting) return;
             var host = new GameObject("Local performance diagnostics");
             DontDestroyOnLoad(host);
             host.AddComponent<PerformanceDiagnostics>();

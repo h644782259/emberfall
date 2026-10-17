@@ -18,7 +18,7 @@ namespace Emberfall
         public string GraphicsQualitySummary => "当前：" + GraphicsQualityPolicy.Name(GraphicsQualityRuntime.Current.Mode) +
             (graphicsPending ? " · 下次进入场景生效" : graphicsSelection == GraphicsQualityMode.Automatic ? " · 按设备配置" : "") +
             (mobileThermalBudget.Limited ? " · 设备温度较高，已保护帧率" :
-             mobileThermalBudget.ReducedRendering ? " · 设备升温，已减少装饰与阴影负载" : "");
+             mobileThermalBudget.ReducedRendering ? " · 设备升温，已降低渲染精度与装饰负载" : "");
 
         public void SetGraphicsQuality(GraphicsQualityMode selection)
         {
@@ -49,6 +49,15 @@ namespace Emberfall
         private void ConfigureMobileRendering()
         {
             graphicsSelection = GraphicsQualityPolicy.Sanitize(PlayerPrefs.GetInt(GraphicsQualityPreferenceKey, 0));
+            // Explicit soak comparisons select the complete preset before world
+            // creation, without writing the player's saved graphics preference.
+            string review = System.Environment.GetEnvironmentVariable("EMBERFALL_PERF_REVIEW");
+            if (!string.IsNullOrEmpty(review) && review.StartsWith("performance-soak-", System.StringComparison.Ordinal))
+            {
+                string quality = System.Environment.GetEnvironmentVariable("EMBERFALL_REVIEW_QUALITY");
+                if (quality == "Smooth") graphicsSelection = GraphicsQualityMode.Smooth;
+                else if (quality == "Balanced") graphicsSelection = GraphicsQualityMode.Balanced;
+            }
             nativeRenderWidth = Display.main.systemWidth > 0 ? Display.main.systemWidth : Screen.width;
             nativeRenderHeight = Display.main.systemHeight > 0 ? Display.main.systemHeight : Screen.height;
             // Display dimensions may have their native portrait orientation while
@@ -74,6 +83,10 @@ namespace Emberfall
             QualitySettings.anisotropicFiltering = AnisotropicFiltering.Enable;
             graphicsPending = false;
             PreparedWorldDetailBudget.ApplyToExistingWorlds(profile);
+        }
+
+        private void ApplyMobileRenderSize(GraphicsQualityProfile profile)
+        {
             if (!profile.Mobile) return;
             int width, height;
             // Always derive from the saved native size, so increasing quality can
@@ -81,7 +94,7 @@ namespace Emberfall
             int sourceWidth = nativeRenderWidth, sourceHeight = nativeRenderHeight;
             if ((sourceWidth > sourceHeight) != (Screen.width > Screen.height))
             { int swap = sourceWidth; sourceWidth = sourceHeight; sourceHeight = swap; }
-            GraphicsQualityPolicy.RenderSize(sourceWidth, sourceHeight, profile.MaximumRenderDimension, out width, out height);
+            GraphicsQualityPolicy.RenderSize(sourceWidth, sourceHeight, mobileThermalBudget.MaximumRenderDimension(profile.MaximumRenderDimension), out width, out height);
             if (width != Screen.width || height != Screen.height)
                 Screen.SetResolution(width, height, Screen.fullScreenMode);
         }
@@ -96,12 +109,13 @@ namespace Emberfall
             if (graphicsPending) ApplyGraphicsQuality();
             return PreparedWorldDetailBudget.PrepareAsync(world, GraphicsQualityRuntime.Current, progress);
         }
-        // Runtime lighting and existing decorative culling change as heat rises. Resolution,
-        // world preparation and the saved quality selection remain stable.
+        // Reduce pixel work at Fair while keeping the requested cadence. The saved
+        // preset stays intact; sustained cooling restores its native-clamped size.
         private void ApplyThermalRendering(GraphicsQualityProfile profile)
         {
             bool warm = profile.Mobile && mobileThermalBudget.ReducedRendering;
-            QualitySettings.shadows = profile.SoftShadows && !warm ? ShadowQuality.All : ShadowQuality.HardOnly;
+            QualitySettings.shadows = !profile.RealtimeShadows ? ShadowQuality.Disable :
+                profile.SoftShadows && !warm ? ShadowQuality.All : ShadowQuality.HardOnly;
             QualitySettings.shadowDistance = warm ? mobileThermalBudget.ShadowDistance(profile.ShadowDistance) : profile.ShadowDistance;
             QualitySettings.shadowResolution = !profile.Mobile && profile.Mode == GraphicsQualityMode.High
                 ? ShadowResolution.High : ShadowResolution.Medium;
@@ -109,6 +123,7 @@ namespace Emberfall
             GraphicsQualityRuntime.SetThermalDetailLimit(warm ? mobileThermalBudget.DetailDistance(profile.DetailDistance) : float.MaxValue);
             PreparedWorldDetailBudget.RefreshDetailDistances();
             CombatVisualLease.SetDecorationLimit(warm ? mobileThermalBudget.DecorationLimit : int.MaxValue);
+            ApplyMobileRenderSize(profile);
             appliedThermalLevel = mobileThermalBudget.ProtectionLevel;
         }
 

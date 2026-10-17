@@ -52,9 +52,9 @@ namespace Emberfall
             material=new Material(Resources.Load<Shader>("GroundFlameTrail"));
             material.SetTexture("_FlowNoise",SkillFlowVolume.FlowNoise);
             material.SetFloat("_Steps",EffectPreferences.ReducedEffects||Application.isMobilePlatform?8:12);
-            var renderer=root.AddComponent<MeshRenderer>();renderer.sharedMaterial=material;
+            var renderer=root.AddComponent<MeshRenderer>();renderer.sharedMaterial=material;MobileSceneDepth.Track(renderer);
             renderer.shadowCastingMode=ShadowCastingMode.Off;renderer.receiveShadows=false;
-            if(Camera.main!=null)Camera.main.depthTextureMode|=DepthTextureMode.Depth;
+            if(!Application.isMobilePlatform&&Camera.main!=null)Camera.main.depthTextureMode|=DepthTextureMode.Depth;
         }
 
         internal void Draw(Vector3[] points,float[] ages,int count,int cursor,float now,float life)

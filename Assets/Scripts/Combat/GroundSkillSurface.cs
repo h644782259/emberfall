@@ -77,7 +77,7 @@ namespace Emberfall
                 if(layer!=null&&!layer.retired&&(!independentLifetime||layer.transform.parent==parent)&&layer.gameObject.activeInHierarchy&&layer.owner==player&&layer.epoch==player.CombatEpoch&&layer.kind==deposit&&
                     CombatFx.Flat(layer.center-point).sqrMagnitude<.0225f&&Mathf.Abs(layer.radius-extent)<.08f)return layer;
             if(shared==null){shared=new Material(Resources.Load<Shader>("GroundSkillSurface"));SkillBodyMaterialLibrary.Bind(shared);}
-            if(Camera.main!=null)Camera.main.depthTextureMode|=DepthTextureMode.Depth;
+            if(!Application.isMobilePlatform&&Camera.main!=null)Camera.main.depthTextureMode|=DepthTextureMode.Depth;
             var root=new GameObject(deposit==Deposit.WetPoison?"Wet poisonous soil / scattered puddles":"Fire contact / scattered ash deposits");
             root.transform.SetParent(parent,false);root.transform.SetPositionAndRotation(new Vector3(point.x,WorldTraversal.SurfaceHeight(point,.015f),point.z),Quaternion.identity);
             var fx=root.AddComponent<GroundSkillSurface>();fx.owner=player;fx.session=GameSession.Instance;fx.epoch=player.CombatEpoch;

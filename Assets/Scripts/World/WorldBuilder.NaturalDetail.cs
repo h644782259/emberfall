@@ -13,28 +13,7 @@ namespace Emberfall
             int variant=(seed%3+3)%3;Mesh[] meshes;
             if(!naturalTrees.TryGetValue(variant,out meshes))
             {
-                var bark=new DetailBatch();var leaf=new DetailBatch();var random=new System.Random(18943+variant);
-                bark.Branch(Vector3.zero,new Vector3(.06f,1.6f,0),.18f,.12f);
-                bark.Branch(new Vector3(.06f,1.6f,0),new Vector3(.10f,2.9f,.05f),.12f,.035f);
-                for(int i=0;i<5;i++)
-                {
-                    float a=i*2.39996f+variant*.3f;Vector3 direction=new Vector3(Mathf.Cos(a),0,Mathf.Sin(a));
-                    float height=1.65f+i*.28f;Vector3 fork=direction*(.72f+i%2*.12f)+Vector3.up*height;
-                    bark.Branch(new Vector3(.06f,height-.55f,0),fork,.065f,.025f);
-                    for(int branch=0;branch<3;branch++)
-                    {
-                        float turn=a+(branch-1)*.8f;Vector3 spread=new Vector3(Mathf.Cos(turn),0,Mathf.Sin(turn));
-                        Vector3 tip=fork+spread*.46f+Vector3.up*.26f;bark.Branch(fork,tip,.023f,.009f);
-                        for(int j=0;j<9;j++)
-                        {
-                            Vector3 at=tip+new Vector3(Next(random,-.42f,.42f),Next(random,-.12f,.20f),Next(random,-.34f,.34f));
-                            float shade=Next(random,.80f,1.15f);
-                            leaf.Leaf(at,Next(random,0,6.28f),Next(random,.23f,.36f),new Color(shade,shade,shade,.8f));
-                        }
-                    }
-                    Vector3 rootTip=direction*.56f;bark.Branch(rootTip+Vector3.up*.025f,Vector3.up*.32f,.045f,.10f);
-                }
-                meshes=new[]{bark.Mesh("Shared tapered tree wood"),leaf.Mesh("Shared individual canopy leaves")};naturalTrees.Add(variant,meshes);
+                meshes=CreateNaturalTreeMeshes(variant,Application.isMobilePlatform && System.Environment.GetEnvironmentVariable("EMBERFALL_PERF_REVIEW")!="performance-tree-geometry-ab");naturalTrees.Add(variant,meshes);
             }
             Transform root=Region(parent,"Natural branching woodland tree");root.localPosition=p;root.localScale=Vector3.one*size;root.localRotation=Quaternion.Euler(0,seed*31,0);
             for(int i=0;i<2;i++)
@@ -45,6 +24,31 @@ namespace Emberfall
                 if(i==1&&renderer.sharedMaterial.HasProperty("_VertexTint")){NaturalWorldMaterial.LivingLeaf(renderer.sharedMaterial);renderer.sharedMaterial.SetFloat("_VertexTint",1);renderer.sharedMaterial.SetFloat("_Wind",1);}
             }
             CameraOcclusionSurface.MarkHierarchy(root.gameObject);return true;
+        }
+        internal static Mesh[] CreateNaturalTreeMeshes(int variant,bool compact)
+        {
+            var bark=new DetailBatch(compact);var leaf=new DetailBatch(compact);var random=new System.Random(18943+variant);
+            bark.Branch(Vector3.zero,new Vector3(.06f,1.6f,0),.18f,.12f,true);
+            bark.Branch(new Vector3(.06f,1.6f,0),new Vector3(.10f,2.9f,.05f),.12f,.035f,true);
+            for(int i=0;i<5;i++)
+            {
+                float a=i*2.39996f+variant*.3f;Vector3 direction=new Vector3(Mathf.Cos(a),0,Mathf.Sin(a));
+                float height=1.65f+i*.28f;Vector3 fork=direction*(.72f+i%2*.12f)+Vector3.up*height;
+                bark.Branch(new Vector3(.06f,height-.55f,0),fork,.065f,.025f);
+                for(int branch=0;branch<3;branch++)
+                {
+                    float turn=a+(branch-1)*.8f;Vector3 spread=new Vector3(Mathf.Cos(turn),0,Mathf.Sin(turn));
+                    Vector3 tip=fork+spread*.46f+Vector3.up*.26f;bark.Branch(fork,tip,.023f,.009f);
+                    for(int j=0;j<9;j++)
+                    {
+                        Vector3 at=tip+new Vector3(Next(random,-.42f,.42f),Next(random,-.12f,.20f),Next(random,-.34f,.34f));
+                        float shade=Next(random,.80f,1.15f);
+                        leaf.Leaf(at,Next(random,0,6.28f),Next(random,.23f,.36f),new Color(shade,shade,shade,.8f),compact);
+                    }
+                }
+                Vector3 rootTip=direction*.56f;bark.Branch(rootTip+Vector3.up*.025f,Vector3.up*.32f,.045f,.10f);
+            }
+            return new[]{bark.Mesh("Shared tapered tree wood"),leaf.Mesh("Shared individual canopy leaves")};
         }
         // Fixed seeded decoration, merged into three renderers. Traversal remains authored.
         static void BuildNaturalGroundDetail(Transform parent,WorldResources r,bool dungeon,int hub)
@@ -91,8 +95,8 @@ namespace Emberfall
         static float Next(System.Random random,float min,float max){return min+(float)random.NextDouble()*(max-min);}
         sealed class DetailBatch
         {
-            // Only small ground ornaments opt in. Tree wood/canopies and all
-            // gameplay geometry retain their original tessellation on every platform.
+            // Compact geometry is opt-in. Main tree trunks retain the original
+            // topology so collision bounds remain identical.
             readonly bool compact;
             internal DetailBatch(bool compact=false) { this.compact=compact; }
             readonly List<Vector3> vertices=new List<Vector3>();readonly List<int> triangles=new List<int>();readonly List<Color> colors=new List<Color>();readonly List<Vector2> uv=new List<Vector2>();
@@ -106,10 +110,10 @@ namespace Emberfall
                 Vertex(vertices[a],colors[a],uv[a]);Vertex(vertices[b],colors[b],uv[b]);Vertex(vertices[c],colors[c],uv[c]);Vertex(vertices[d],colors[d],uv[d]);
                 Face(n,n+1,n+2);Face(n+2,n+1,n+3);
             }
-            internal void Branch(Vector3 from,Vector3 to,float radius,float tipRadius)
+            internal void Branch(Vector3 from,Vector3 to,float radius,float tipRadius,bool preserveTrunk=false)
             {
                 Vector3 axis=(to-from).normalized;Vector3 tangent=Vector3.Cross(axis,Mathf.Abs(axis.y)>.95f?Vector3.forward:Vector3.up).normalized;Vector3 bitangent=Vector3.Cross(axis,tangent);
-                int n=vertices.Count;const int sides=12,rings=7;
+                int n=vertices.Count;int sides=compact&&!preserveTrunk?6:12,rings=compact&&!preserveTrunk?4:7;
                 float phase=from.x*17+from.z*9+to.y*3;
                 Vector3 bend=tangent*Mathf.Sin(phase)*radius*.42f+bitangent*Mathf.Cos(phase*1.7f)*radius*.3f;
                 for(int ring=0;ring<rings;ring++)for(int i=0;i<sides;i++)
@@ -129,11 +133,11 @@ namespace Emberfall
                 var mesh=new Mesh{name=name};if(vertices.Count>65535)mesh.indexFormat=UnityEngine.Rendering.IndexFormat.UInt32;mesh.SetVertices(vertices);mesh.SetTriangles(triangles,0);mesh.SetColors(colors);mesh.SetUVs(0,uv);mesh.RecalculateNormals();mesh.RecalculateTangents();mesh.RecalculateBounds();
                 return mesh;
             }
-            internal void Leaf(Vector3 p,float angle,float length,Color color)
+            internal void Leaf(Vector3 p,float angle,float length,Color color,bool preserveOutline=false)
             {
                 // Closed curved blade: narrow stem, rounded shoulders, pointed
                 // tip, a raised midrib and thin solid edge. Each leaf owns UVs.
-                int n=vertices.Count;int rows=compact?3:5;const int cols=3;int layer=rows*cols;
+                int n=vertices.Count;int rows=compact&&!preserveOutline?3:5;const int cols=3;int layer=rows*cols;
                 float tilt=Mathf.Sin(angle*3+p.x*7+p.z*11)*.48f;
                 Vector3 forward=new Vector3(Mathf.Cos(angle),tilt,Mathf.Sin(angle)).normalized*length;
                 Vector3 side=Vector3.Cross(Vector3.up,forward).normalized;
@@ -146,13 +150,25 @@ namespace Emberfall
                     Vector3 at=p+forward*t+side*(s*width)+normal*(arch+(skin==0?1:-1)*length*.009f);
                     Vertex(at,color,new Vector2((s+1)*.5f,t));
                 }
-                for(int row=0;row<rows-1;row++)for(int col=0;col<cols-1;col++)
+                if(preserveOutline)
+                {
+                    // Keep every perimeter point and the central rib endpoints/midpoint.
+                    // Omit only the two redundant inner samples on each skin.
+                    for(int row=0;row<rows-1;row+=2)for(int sideIndex=0;sideIndex<2;sideIndex++)
+                    {
+                        int column=sideIndex*2,a=n+row*cols+1,b=n+row*cols+column,c=b+cols,d=b+cols*2,e=a+cols*2;
+                        if(sideIndex==0){LeafFace(a,b,c,layer);LeafFace(a,c,e,layer);LeafFace(e,c,d,layer);}
+                        else{LeafFace(a,c,b,layer);LeafFace(a,e,c,layer);LeafFace(e,d,c,layer);}
+                    }
+                }
+                else for(int row=0;row<rows-1;row++)for(int col=0;col<cols-1;col++)
                 {int a=n+row*cols+col,b=a+1,c=a+cols,d=c+1;Face(a,c,b);Face(b,c,d);Face(a+layer,b+layer,c+layer);Face(b+layer,d+layer,c+layer);}
                 for(int row=0;row<rows-1;row++)
                 {int a=n+row*cols,b=a+cols;EdgeQuad(a,a+layer,b,b+layer);a+=cols-1;b+=cols-1;EdgeQuad(a,b,a+layer,b+layer);}
                 for(int col=0;col<cols-1;col++)
                 {int a=n+col,b=a+1;EdgeQuad(a,b,a+layer,b+layer);a+=layer-cols;b+=layer-cols;EdgeQuad(a,a+layer,b,b+layer);}
             }
+            void LeafFace(int a,int b,int c,int layer){Face(a,b,c);Face(a+layer,c+layer,b+layer);}
             internal void Pebble(Vector3 p,Vector3 scale,float angle)
             {
                 int n=vertices.Count;int rings=compact?3:5,sides=compact?8:12;

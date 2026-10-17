@@ -47,7 +47,7 @@ namespace Emberfall
         private Transform Surface(Transform parent, Mesh mesh, string name, out Renderer renderer)
         {
             var part = new GameObject(name); part.transform.SetParent(parent, false);
-            part.AddComponent<MeshFilter>().sharedMesh = mesh; renderer = part.AddComponent<MeshRenderer>(); renderer.sharedMaterial = flame;
+            part.AddComponent<MeshFilter>().sharedMesh = mesh; renderer = part.AddComponent<MeshRenderer>(); renderer.sharedMaterial = flame; MobileSceneDepth.Track(renderer);
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; renderer.receiveShadows = true;
             return part.transform;
         }

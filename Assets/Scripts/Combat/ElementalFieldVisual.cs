@@ -50,7 +50,7 @@ namespace Emberfall
 
         private void Initialize(ElementalCombatVfx.Element type, float size, bool body,CombatVisualPriority priority=CombatVisualPriority.SustainedBackground)
         {
-            if(Camera.main!=null)Camera.main.depthTextureMode|=DepthTextureMode.Depth;
+            if(!Application.isMobilePlatform&&Camera.main!=null)Camera.main.depthTextureMode|=DepthTextureMode.Depth;
             activeCount++;counted=true;
             element = type;
             radius = size;
@@ -81,7 +81,7 @@ namespace Emberfall
                 {
                     var piece=new GameObject(type==ElementalCombatVfx.Element.Fire?"Filled field flame":"Filled field lightning");
                     piece.transform.SetParent(transform,false);piece.AddComponent<MeshFilter>().sharedMesh=bodyMesh;
-                    var renderer=piece.AddComponent<MeshRenderer>();renderer.sharedMaterial=material;
+                    var renderer=piece.AddComponent<MeshRenderer>();renderer.sharedMaterial=material;MobileSceneDepth.Track(renderer);
                     bool solid=type==ElementalCombatVfx.Element.Ice||type==ElementalCombatVfx.Element.Poison;
                     renderer.shadowCastingMode=solid&&!EffectPreferences.ReducedEffects?UnityEngine.Rendering.ShadowCastingMode.On:UnityEngine.Rendering.ShadowCastingMode.Off;renderer.receiveShadows=solid;
                     bodies[i]=piece.transform;bodyRenderers[i]=renderer;
