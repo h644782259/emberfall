@@ -28,8 +28,8 @@ namespace Emberfall
         }
         private void Part(string label,PrimitiveType shape,Vector3 position,Vector3 size,Material material)
         {
-            var part=GameObject.CreatePrimitive(shape);part.name=label;part.transform.SetParent(transform,false);part.transform.localPosition=position;part.transform.localScale=size;
-            var collider=part.GetComponent<Collider>();collider.enabled=false;Destroy(collider);part.GetComponent<Renderer>().sharedMaterial=material;
+            // Visual-only geometry must not request collider types stripped from player builds.
+            var part=ProceduralVisuals.Create(label,shape,material);part.transform.SetParent(transform,false);part.transform.localPosition=position;part.transform.localScale=size;
         }
         public void SetState(Color color){if(fabric==null)return;color.a=1;fabric.color=color;if(fabric.HasProperty("_EmissionColor"))fabric.SetColor("_EmissionColor",color*.35f);}
         private void LateUpdate(){UpdateCloth();}
