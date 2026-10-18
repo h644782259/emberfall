@@ -159,6 +159,7 @@ namespace Emberfall
         private float speed, radius, age, lifetime, explosionRadius;
         private CombatDamage damage, explosionDamage;
         private bool hostile, pierce, basicAttack, energyAwarded, arrowShape;
+        private BasicAttackHitBudget basicHitBudget;
         private EnemyController homingTarget;
         private EnemyController basicAimTarget;
         private EnemyController impactMarkTarget;
@@ -242,7 +243,7 @@ namespace Emberfall
 
         // Ordinary shots keep their original range. A mage locks only the target
         // chosen at cast time; an arrow gets a very short, bounded correction.
-        public static void BasicShot(PlayerController player,GameSession game,Vector3 muzzle,Vector3 target,CombatDamage amount,Color tint,bool arrow,EnemyController selected)
+        public static void BasicShot(PlayerController player,GameSession game,Vector3 muzzle,Vector3 target,CombatDamage amount,Color tint,bool arrow,EnemyController selected,BasicAttackHitBudget hitBudget=null)
         {
             int attackId=player.NewCastId();
             if (!CanLaunchFromMuzzle(player,muzzle,amount,attackId))
@@ -264,6 +265,7 @@ namespace Emberfall
             projectile.lifetime=1.15f;
             projectile.radius=.22f;
             projectile.basicAttack=true;
+            projectile.basicHitBudget=hitBudget??new BasicAttackHitBudget();
             projectile.castId=attackId;projectile.castReceipt=player.RetainCastReceipt(attackId);
             projectile.arrowShape=arrow;
             projectile.basicAimTarget=selected;
@@ -472,6 +474,7 @@ namespace Emberfall
                     hitTargets.Add(enemy);
                     Vector3 hitPosition = enemy.transform.position;
                     CombatDamage impact=volley==null?damage:volley.Apply(enemy,damage,false);
+                    if(basicAttack&&basicHitBudget!=null)impact*=basicHitBudget.ClaimDamageScale(enemy);
                     float healthBefore = enemy.Health;
                     if (LockedImpactMarkPolicy.ShouldApply(impactMarkTarget, enemy, !enemy.IsDead, impact.Amount, impactMarkStrength) && enemy.StatusEffects != null)
                         enemy.StatusEffects.Mark(4f, impactMarkStrength);
@@ -484,7 +487,8 @@ namespace Emberfall
                     if (basicAttack && !energyAwarded)
                     {
                         energyAwarded = true;
-                        owner.OnBasicAttackHitTarget(hitPosition, enemy, true);
+                        if(impact.Amount>0&&(basicHitBudget==null||basicHitBudget.TryClaim()))
+                            owner.OnBasicAttackHitTarget(hitPosition, enemy, true);
                     }
                     if(explosionDamage.Amount>0)
                     {

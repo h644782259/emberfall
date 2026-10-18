@@ -238,7 +238,6 @@ namespace Emberfall
             bool legendary=HasLegendaryChestReward(reward);
             if(legendary&&progress>=.60f&&chestReceiptId==reward.Id&&!rewardSoundPlayed)
             {rewardSoundPlayed=true;GameAudio.Play(SoundCue.Victory);}
-            if(stage.height>=100*u)Text(new Rect(stage.x,stage.y,stage.width,24*u),"宝箱已开启",Mathf.RoundToInt((legendary?18:15)*u),legendary?new Color(1f,.82f,.38f):gold,true,false,TextAnchor.MiddleCenter);
             for(int choice=0;choice<3;choice++)
             {
                 Rect art=SettlementChestArt(stage,choice,u);
@@ -322,7 +321,7 @@ namespace Emberfall
             }
             if(content.kind==4&&content.gemMechanic!=EquipmentMechanic.None)
                 return new EntryRewardPreview{Key="gem:"+content.gemMechanic,Name=BuildCatalog.GemName(content.gemMechanic),Rarity=content.gemRarity,Icon=UIIconAtlas.Utility("gem"),Description=GemRewardDescription(content.gemMechanic,content.gemRarity)};
-            string key=content.kind==3?"shard":content.kind==5?"refinement":content.kind==6?"thread":content.kind==7?"affix-reforge":null;
+            string key=content.kind==3?"shard":content.kind==5?"refinement":content.kind==6?"thread":content.kind==7?"affix-reforge":content.kind==8?"basic-attack":null;
             return key==null?null:ResourceItemPreview(key,content.count);
         }
         private List<EntryRewardPreview> GrantedChestItems(ChestReward reward)
@@ -338,6 +337,7 @@ namespace Emberfall
             int[] counts={reward.materialsDelta+(reward.rulesRevision>=3||snapshot==null?0:snapshot.RewardMaterials),reward.rulesRevision>=3?reward.refinementStonesDelta:snapshot==null?0:snapshot.RewardRefinementStones,reward.threadsDelta};
             string[] keys={"shard","refinement","thread"},names={"星烬碎片","装备洗练石","星纹"};
             for(int n=0;n<counts.Length;n++)if(counts[n]>0)icons.Add(new EntryRewardPreview{Key=keys[n],Name=names[n],Quantity=counts[n],Description=names[n]+"\n数量  "+counts[n],Icon=n==1?UIIconAtlas.Utility("gem"):UIIconAtlas.Reward(n==0?1:2),Rarity=n==1?Rarity.Epic:Rarity.Rare,Tint=n==1?GameBalance.RarityColor(Rarity.Epic):jade});
+            if(reward.basicAttackMaterialsDelta>0)icons.Add(ResourceItemPreview("basic-attack",reward.basicAttackMaterialsDelta));
             if(reward.affixReforgeStonesDelta>0)icons.Add(ResourceItemPreview("affix-reforge",reward.affixReforgeStonesDelta));
             return icons;
         }

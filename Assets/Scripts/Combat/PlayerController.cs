@@ -801,13 +801,14 @@ namespace Emberfall
                     }
                     AdvancedSkillVfx.Beam(this,transform.position+Vector3.up,transform.position+Vector3.up+transform.forward*2.8f,color,.18f,.12f);
                 }
-                else CombatFx.WeaponSlash(this,model,transform.position,transform.forward,2.3f,color);
+                else CombatFx.WeaponSlash(this,model,transform.position,transform.forward,BasicAttackGrowth.Range(BasicAttackGrowth.Tier(session.Progression.Profile,HeroClass))-.5f,color);
                 float previousCounter = counterTime;
                 bool wasCounter = previousCounter > 0;
                 bool wasDodgeCounter = perfectDodgeCounterTime > 0;
                 float power = (wasCounter ? 1.75f : SkillDamageBudgets.BasicCoefficient(HeroClass)) * (HasMechanic(EquipmentMechanic.ReturningBlade) && !ReturningCounterVariant ? .92f : 1f);
                 counterTime = 0; // Consume only the captured bonus; on-hit procs may grant a NEW one.
-                bool hit = Melee(2.8f, 110f, Damage(power,true), .3f, .12f, basic: true, counterThrust: thrust);
+                int basicTier=BasicAttackGrowth.Tier(session.Progression.Profile,HeroClass);
+                bool hit = Melee(BasicAttackGrowth.Range(basicTier), BasicAttackGrowth.Angle(basicTier), Damage(power,true), .3f, .12f, basic: true, counterThrust: thrust);
                 counterTime = PlayerUpgradeRules.CounterAfterAttack(previousCounter, counterTime, hit);
                 if (hit && wasCounter)
                 {
@@ -825,11 +826,33 @@ namespace Emberfall
                 // The projectile and its collision sweep start at the same physical point.
                 Vector3 muzzle=BasicAttackMuzzle(ranger);
                 Vector3 target=ValidAimTarget(AimTarget)?EnemyBodyPoint(AimTarget):new Vector3(aimPoint.x,muzzle.y,aimPoint.z);
-                CombatProjectile.BasicShot(this,session,muzzle,target,Damage(SkillDamageBudgets.BasicCoefficient(HeroClass)*(mobilityTime>0?1f+.12f*mobilityRank:1f),true),color,ranger,AimTarget);
+                int tier=BasicAttackGrowth.Tier(session.Progression.Profile,HeroClass);
+                var damage=Damage(SkillDamageBudgets.BasicCoefficient(HeroClass)*(mobilityTime>0?1f+.12f*mobilityRank:1f),true)*BasicAttackGrowth.ProjectileMultiplier(tier);
+                var hitBudget=new BasicAttackHitBudget(tier);
+                Vector3 direction=CombatFx.Flat(target-muzzle);if(direction.sqrMagnitude<.001f)direction=transform.forward;
+                if(tier<=2)
+                {
+                    CombatProjectile.BasicShot(this,session,muzzle,target,damage,color,ranger,AimTarget,hitBudget);
+                    if(tier==2)StartCoroutine(BasicAttackSecondShot(direction.normalized,damage,color,ranger,CombatEpoch,HeroClass,hitBudget));
+                }
+                else for(int shot=0;shot<BasicAttackGrowth.Shots(tier);shot++)
+                {
+                    float angle=-30f+60f*shot/(BasicAttackGrowth.Shots(tier)-1);
+                    Vector3 spread=Quaternion.AngleAxis(angle,Vector3.up)*direction.normalized;
+                    CombatProjectile.BasicShot(this,session,muzzle,muzzle+spread*18f,damage,color,ranger,null,hitBudget);
+                }
             }
 
             }
             finally { CombatImpactBatch.EndAction(); }
+        }
+
+        private System.Collections.IEnumerator BasicAttackSecondShot(Vector3 direction,CombatDamage damage,Color color,bool ranger,int epoch,HeroClass hero,BasicAttackHitBudget hitBudget)
+        {
+            yield return new WaitForSeconds(.12f);
+            if(IsDead||session==null||session.Player!=this||!session.HasStarted||session.CombatEffectsEnded||session.InputBlocked||CombatEpoch!=epoch||HeroClass!=hero)yield break;
+            Vector3 muzzle=BasicAttackMuzzle(ranger);
+            CombatProjectile.BasicShot(this,session,muzzle,muzzle+direction*18f,damage,color,ranger,null,hitBudget);
         }
 
         private Vector3 BasicAttackMuzzle(bool arrow)

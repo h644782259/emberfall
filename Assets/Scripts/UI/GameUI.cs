@@ -1457,7 +1457,7 @@ namespace Emberfall
 
         private void SelectSkill(int skill)
         {
-            blinkFollowupSelected=false;
+            basicAttackSelected=false;blinkFollowupSelected=false;
             selectedSkill = Mathf.Clamp(skill, 0, GameBalance.SkillCount - 1);
             skillScroll.y = Mathf.Clamp(GameBalance.SkillTreeRow(selectedSkill) * 102 - 150, 0, 738 - 468);
         }
@@ -1668,10 +1668,11 @@ namespace Emberfall
             if (PopupCloseButton(new Rect(w.xMax - 69, w.y + 20, 44, 32))) ClosePanel();
             Text(new Rect(w.x + 763, w.y + 28, 296, 32), "精通点 " + p.skillPoints + "   /   角色 Lv." + p.level, 18, gold, true, false, TextAnchor.MiddleRight);
             DrawSkillTabs(new Rect(w.x+330,w.y+20,264,36));
-            Rect branchHeading = new Rect(w.x + 24, w.y + 112, 267, 24);
+            DrawBasicAttackNode(new Rect(w.x+24,w.y+112,506,54),1);
+            Rect branchHeading = new Rect(w.x + 24, w.y + 178, 267, 24);
             Text(branchHeading, "职业分支", 15, jade, true);
             if (branchHeading.Contains(Mouse)) tooltip = "达到对应等级自动习得与进阶。";
-            Rect viewport = new Rect(w.x + 24, w.y + 147, 506, 468);
+            Rect viewport = new Rect(w.x + 24, w.y + 211, 506, 404);
             Fill(viewport, new Color(.025f, .05f, .075f));
             Rect content = new Rect(0, 0, 490, 530);
             GUIStyle priorThumb = GUI.skin.verticalScrollbarThumb;
@@ -1707,19 +1708,20 @@ namespace Emberfall
                 bool canLearn = string.IsNullOrEmpty(session.Progression.SkillLockReason(i));
                 Rect node = SkillNodeRect(i);
                 Color accent = rank > 0 ? jade : canLearn ? gold : muted;
-                Surface(node, !blinkFollowupSelected && selectedSkill == i ? new Color(.12f, .20f, .23f) : rank > 0 ? new Color(.06f, .145f, .15f) : card);
-                SurfaceFrame(node, !blinkFollowupSelected && selectedSkill == i ? gold : new Color(accent.r, accent.g, accent.b, rank > 0 || canLearn ? .7f : .25f));
+                Surface(node, !basicAttackSelected && !blinkFollowupSelected && selectedSkill == i ? new Color(.12f, .20f, .23f) : rank > 0 ? new Color(.06f, .145f, .15f) : card);
+                SurfaceFrame(node, !basicAttackSelected && !blinkFollowupSelected && selectedSkill == i ? gold : new Color(accent.r, accent.g, accent.b, rank > 0 || canLearn ? .7f : .25f));
                 DrawSkillIdentity(new Rect(node.x+5,node.y+7,24,24),p.heroClass,i,rank,rank>0||canLearn,24);
                 Text(new Rect(node.x + 32, node.y + 7, 107, 24), GameBalance.SkillName(p.heroClass, i), 14, rank > 0 || canLearn ? pale : muted, true, false, TextAnchor.MiddleCenter);
                 Text(new Rect(node.x + 5, node.y + 35, 134, 18), "Lv." + required + " · " + (rank>0?GameBalance.SkillRankName(rank):"未解锁"), 11, passive ? new Color(.82f, .74f, .98f) : muted, false, false, TextAnchor.MiddleCenter);
                 string state = rank > 0 ? GameBalance.SkillRankName(rank) + (canLearn ? " · 可进阶" : " · 已学习") : canLearn ? "可学习" : p.level < required ? "等级未达" : "自动习得";
                 if(node.Contains(Mouse))tooltip=state;
                 Badge(node,Attention.LearnableSkills.Contains(i));
-                if (GUI.Button(node, GUIContent.none, invisibleButton)) {selectedSkill = i;blinkFollowupSelected=false;}
+                if (GUI.Button(node, GUIContent.none, invisibleButton)) {selectedSkill = i;basicAttackSelected=false;blinkFollowupSelected=false;}
             }
             EndTouchScroll();
             GUI.skin.verticalScrollbarThumb = priorThumb;
-            if(blinkFollowupSelected)DrawBlinkFollowupDetail(new Rect(w.x+550,w.y+112,586,393),1);
+            if(basicAttackSelected)DrawBasicAttackDetail(new Rect(w.x+550,w.y+112,586,510),1);
+            else if(blinkFollowupSelected)DrawBlinkFollowupDetail(new Rect(w.x+550,w.y+112,586,393),1);
             else DrawSkillDetail(new Rect(w.x + 550, w.y + 112, 586, GameBalance.IsPassive(selectedSkill) ? 393 : 510), selectedSkill);
         }
 

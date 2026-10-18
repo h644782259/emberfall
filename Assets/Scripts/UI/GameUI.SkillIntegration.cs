@@ -3,6 +3,78 @@ namespace Emberfall
 {
     public sealed partial class GameUI
     {
+        private bool basicAttackSelected;
+        private Vector2 basicAttackDetailScroll;
+        private void DrawBasicAttackNode(Rect r,float u)
+        {
+            int tier=BasicAttackGrowth.Tier(session.Progression.Profile,session.Player.HeroClass);
+            Surface(r,new Color(.12f,.095f,.045f,.96f));SurfaceFrame(r,basicAttackSelected?gold:new Color(.46f,.35f,.16f));
+            Fill(new Rect(r.x,r.y,3*u,r.height),gold);
+            DrawIcon(new Rect(r.x+12*u,r.center.y-16*u,32*u,32*u),UIIconAtlas.Utility("attack"),gold);
+            Text(new Rect(r.x+54*u,r.y+4*u,r.width-160*u,24*u),"普通攻击",Mathf.RoundToInt(16*u),pale,true);
+            Text(new Rect(r.x+54*u,r.y+29*u,r.width-160*u,18*u),"基础攻击",Mathf.RoundToInt(10*u),gold);
+            SkillStateTag(new Rect(r.xMax-88*u,r.center.y-13*u,76*u,26*u),tier+" / 4 档",gold,Mathf.RoundToInt(12*u));
+            if(MobileControls.Active?MobileSkillRowClicked(r):GUI.Button(r,GUIContent.none,invisibleButton))
+            {basicAttackSelected=true;blinkFollowupSelected=false;CancelMobileScroll();}
+        }
+        private void DrawBasicAttackShape(Rect r,int tier,HeroClass hero,Color tint,float u)
+        {
+            Vector2 origin=new Vector2(r.center.x,r.yMax-6*u);
+            bool melee=hero==HeroClass.Vanguard;
+            int count=melee?7:BasicAttackGrowth.Shots(tier);
+            for(int i=0;i<count;i++)
+            {
+                float degrees=melee?Mathf.Lerp(-BasicAttackGrowth.Angle(tier)*.5f,BasicAttackGrowth.Angle(tier)*.5f,i/6f):tier<3?0:Mathf.Lerp(-30,30,i/(float)(count-1));
+                float distance=melee?(22+5*tier)*u:tier==2?(i==0?24:43)*u:40*u;
+                Vector2 end=origin+new Vector2(Mathf.Sin(degrees*Mathf.Deg2Rad),-Mathf.Cos(degrees*Mathf.Deg2Rad))*distance;
+                if(!melee)
+                {
+                    Matrix4x4 old=GUI.matrix;
+                    GUIUtility.RotateAroundPivot(degrees,origin);
+                    Fill(new Rect(origin.x-u,origin.y-distance+8*u,2*u,Mathf.Max(4*u,distance-14*u)),new Color(tint.r,tint.g,tint.b,.3f));GUI.matrix=old;
+                }
+                DrawIcon(new Rect(end.x-5*u,end.y-5*u,10*u,10*u),UIIconAtlas.Utility(melee?"attack":hero==HeroClass.Ranger?"attack":"gem"),tint);
+            }
+        }
+        private void DrawBasicAttackDetail(Rect r,float u)
+        {
+            var p=session.Progression;int tier=BasicAttackGrowth.Tier(p.Profile,p.Profile.heroClass),cost=BasicAttackGrowth.Cost(tier);
+            Surface(r,new Color(.012f,.024f,.038f,.99f));SurfaceFrame(r,gold*.4f);
+            Text(new Rect(r.x+12*u,r.y+7*u,r.width-120*u,30*u),"普通攻击",Mathf.RoundToInt(18*u),pale,true);
+            SkillStateTag(new Rect(r.xMax-96*u,r.y+10*u,84*u,24*u),"基础攻击",gold,Mathf.RoundToInt(11*u));
+            Rect area=new Rect(r.x+10*u,r.y+46*u,r.width-20*u,Mathf.Max(20*u,r.height-112*u));
+            float w=area.width-16*u;int columns=w>=480*u?4:2;
+            float gap=8*u,tileWidth=(w-gap*(columns-1))/columns,tileHeight=134*u;
+            float contentHeight=(4/columns)*(tileHeight+gap)+56*u;
+            basicAttackDetailScroll=BeginTouchScroll("basic-attack-detail",area,basicAttackDetailScroll,new Rect(0,0,w,contentHeight));
+            for(int i=1;i<=4;i++)
+            {
+                bool current=i==tier;Color accent=current?gold:i<tier?jade:muted;
+                Rect tile=new Rect(((i-1)%columns)*(tileWidth+gap),((i-1)/columns)*(tileHeight+gap),tileWidth,tileHeight);
+                Fill(tile,current?new Color(.18f,.135f,.055f):card);Border(tile,accent,current?2*u:u);
+                Text(new Rect(tile.x+8*u,tile.y+5*u,tile.width-16*u,22*u),i+"档",Mathf.RoundToInt(13*u),accent,true);
+                Text(new Rect(tile.xMax-60*u,tile.y+5*u,52*u,22*u),current?"当前":i<tier?"已解锁":"",Mathf.RoundToInt(10*u),accent,false,false,TextAnchor.MiddleRight);
+                DrawBasicAttackShape(new Rect(tile.x+6*u,tile.y+30*u,tile.width-12*u,50*u),i,p.Profile.heroClass,accent,u);
+                bool melee=p.Profile.heroClass==HeroClass.Vanguard;
+                string title=melee?BasicAttackGrowth.Range(i).ToString("0.0")+"米":i==1?"单发":i==2?"二连发":"扇形 "+BasicAttackGrowth.Shots(i)+" 发";
+                Text(new Rect(tile.x+5*u,tile.y+84*u,tile.width-10*u,24*u),title,Mathf.RoundToInt(15*u),current?pale:accent,true,false,TextAnchor.MiddleCenter);
+                Text(new Rect(tile.x+5*u,tile.y+110*u,tile.width-10*u,18*u),melee?BasicAttackGrowth.Angle(i).ToString("0")+"°挥斩":i==2?"间隔 0.12秒":i>2?"展开 60°":"单体攻击",Mathf.RoundToInt(10*u),muted,false,false,TextAnchor.MiddleCenter);
+            }
+            float statsY=(4/columns)*(tileHeight+gap);
+            bool ranged=p.Profile.heroClass!=HeroClass.Vanguard;
+            float perShot=SkillDamageBudgets.BasicCoefficient(p.Profile.heroClass)*(ranged?BasicAttackGrowth.ProjectileMultiplier(tier):1f);
+            Text(new Rect(0,statsY,w,48*u),(ranged?"每发 ":"伤害 ")+(perShot*100).ToString("0.#")+"% · "+(ranged?"单体上限 "+(SkillDamageBudgets.BasicCoefficient(p.Profile.heroClass)*BasicAttackGrowth.TargetMultiplier(tier)*100).ToString("0.#")+"%":"")+"\n回能 "+SkillDamageBudgets.BasicEnergyOnHit.ToString("0")+"（每次攻击一次）",Mathf.RoundToInt(11*u),jade);
+            EndTouchScroll();
+            float footerY=r.yMax-54*u;
+            Text(new Rect(r.x+12*u,footerY,r.width-174*u,20*u),tier>=4?"已达最高档":"消耗 "+cost+"   /   持有 "+p.Profile.basicAttackMaterials,Mathf.RoundToInt(12*u),p.Profile.basicAttackMaterials>=cost?gold:muted,true);
+            string reason=p.BasicAttackUpgradeLockReason();
+            Text(new Rect(r.x+12*u,footerY+23*u,r.width-174*u,18*u),tier>=4?"":reason.Length>0?reason:"下一档  "+(tier+1)+"档",Mathf.RoundToInt(10*u),muted);
+            Rect button=new Rect(r.xMax-150*u,footerY,138*u,42*u);
+            bool clicked=PrimaryButton(button,"",gold,reason.Length==0);
+            DrawIcon(new Rect(button.x+23*u,button.y+9*u,24*u,24*u),UIIconAtlas.Utility("gem"),gold);
+            Text(new Rect(button.x+55*u,button.y,70*u,button.height),tier>=4?"满档":"升级",Mathf.RoundToInt(15*u),reason.Length==0?pale:muted,true,false,TextAnchor.MiddleLeft);
+            if(clicked){bool saved=p.UpgradeBasicAttack();session.Notify(saved?"普通攻击已升至 "+(tier+1)+"档":p.LastError);}
+        }
         private bool blinkFollowupSelected;
         private Vector2 blinkFollowupDetailScroll;
         private void DrawBlinkFollowupNode(Rect r,float u)
@@ -34,7 +106,7 @@ namespace Emberfall
                 Text(new Rect(r.x+5,r.y+35,134,18),"Lv.5 · "+(learned?"已习得":"未解锁"),11,muted,false,false,TextAnchor.MiddleCenter);
             }
             if(MobileControls.Active?MobileSkillRowClicked(r):GUI.Button(r,GUIContent.none,invisibleButton))
-            {blinkFollowupSelected=true;CancelMobileScroll();}
+            {basicAttackSelected=false;blinkFollowupSelected=true;CancelMobileScroll();}
         }
         private void DrawBlinkFollowupDetail(Rect r,float u)
         {

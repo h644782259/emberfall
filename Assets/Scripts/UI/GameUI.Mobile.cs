@@ -289,8 +289,11 @@ namespace Emberfall
         }
         private void DrawMobileSaveSelection()
         {
-            var l=MobileControls.Layout;float panelWidth=MobileControls.IsIPad?Mathf.Min(900,l.Width-32):520;float x=(l.Width-panelWidth)/2,y=12;
-            // Title backdrop covers the full viewport before safe-area content.
+            var l=MobileControls.Layout;float panelWidth=Mathf.Min(MobileControls.IsIPad?900:520,l.Width-32);float x=(l.Width-panelWidth)/2,y=12;
+            // Saves can be opened over a live scene, not only over the title backdrop.
+            Fill(new Rect(0,0,width,height),new Color(.035f,.055f,.08f,1f));
+            Rect frame=TouchRect(x-10,6,panelWidth+20,l.Height-12);
+            Fill(frame,new Color(.045f,.07f,.095f,1f));Border(frame,jade*.65f);
             Text(TouchRect(x,y,panelWidth,30),"角色存档  ·  "+saveSlots.Count,TouchFont(21),pale,true);
             Rect viewport=TouchRect(x,y+42,panelWidth,l.Height-135);float ratio=TouchRatio;
             if(mobileSaveSelectionIssue!=saveSelectionError)

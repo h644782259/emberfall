@@ -35,11 +35,12 @@ namespace Emberfall
 
             DrawSkillTabs(TouchRect(layout.Close.X-276,8,264,44));
             if(skillSection!=0)return;
-            float u=TouchRatio,bodyHeight=RouteSkillReturnAvailable?layout.Body.Height:layout.Height-layout.Body.Y-12;
+            float u=TouchRatio,bodyHeight=(RouteSkillReturnAvailable?layout.Body.Height:layout.Height-layout.Body.Y-12)-64;
+            DrawBasicAttackNode(TouchRect(layout.Body.X,layout.Body.Y,layout.Body.Width,54),u);
             bool stacked=!MobileControls.IsIPad||layout.Body.Width<700;
             float leftWidth=stacked?layout.Body.Width:layout.Body.Width*.44f;
             float treeHeight=stacked?bodyHeight*.46f:bodyHeight;
-            var listArea=new MobilePanelLayout.Area(layout.Body.X,layout.Body.Y,leftWidth,treeHeight);
+            var listArea=new MobilePanelLayout.Area(layout.Body.X,layout.Body.Y+64,leftWidth,treeHeight);
             float listWidth=listArea.Width-16;
             mobileSkillTreeStep=stacked?52:Mathf.Clamp((bodyHeight-8)/7,44,108);
             float listHeight=DrawMobileSkillTree(listWidth,false);
@@ -48,6 +49,7 @@ namespace Emberfall
             if(RouteSkillReturnAvailable&&NavigationButton(MobilePanelRect(layout.FooterButton(0,1)),"返回职业路线",jade)){ClosePanel();BlockUITransition();return;}
             Rect r=stacked?TouchRect(listArea.X,listArea.YMax+12,layout.Body.Width,bodyHeight-treeHeight-12):TouchRect(listArea.XMax+12,listArea.Y,layout.Body.Width-leftWidth-12,bodyHeight);
             Surface(r,new Color(.012f,.024f,.038f,.99f));SurfaceFrame(r,new Color(jade.r,jade.g,jade.b,.28f));
+            if(basicAttackSelected){DrawBasicAttackDetail(r,u);return;}
             if(blinkFollowupSelected){DrawBlinkFollowupDetail(r,u);return;}
             float tagsWidth=132*u;
             Text(new Rect(r.x+10*u,r.y+4*u,r.width-tagsWidth-26*u,36*u),GameBalance.SkillName(profile.heroClass,selectedSkill),TouchFont(16),pale,true,false,TextAnchor.MiddleLeft);
@@ -90,12 +92,12 @@ namespace Emberfall
             for(int skill=0;skill<GameBalance.SkillCount;skill++)
             {
                 int rank=p.skillRanks[skill];bool canLearn=Attention.LearnableSkills.Contains(skill);
-                Rect node=MobileSkillTreeNode(skill,width);Color accent=!blinkFollowupSelected&&selectedSkill==skill?gold:rank>0?jade:muted;
+                Rect node=MobileSkillTreeNode(skill,width);Color accent=!basicAttackSelected&&!blinkFollowupSelected&&selectedSkill==skill?gold:rank>0?jade:muted;
                 // Branch positions and connectors use the shared skill prerequisite graph.
                 if(CompactSkillTree)
                 {
                     Surface(node,new Color(accent.r*.025f,accent.g*.035f,accent.b*.045f,.98f));
-                    SurfaceFrame(node,new Color(accent.r,accent.g,accent.b,!blinkFollowupSelected&&selectedSkill==skill?.8f:.22f));
+                    SurfaceFrame(node,new Color(accent.r,accent.g,accent.b,!basicAttackSelected&&!blinkFollowupSelected&&selectedSkill==skill?.8f:.22f));
                     Rect compactIcon=new Rect(node.x+3*TouchRatio,node.y+2*TouchRatio,24*TouchRatio,24*TouchRatio);
                     DrawSkillIdentity(compactIcon,p.heroClass,skill,rank,rank>0||canLearn,48);
                     string compactName=GameBalance.SkillName(p.heroClass,skill);int compactFont=9;
@@ -104,18 +106,18 @@ namespace Emberfall
                     Text(compactNameRect,compactName,TouchFont(compactFont),rank>0?pale:muted,true,false,TextAnchor.MiddleLeft);
                     Text(new Rect(node.x+4*TouchRatio,node.y+22*TouchRatio,node.width-8*TouchRatio,16*TouchRatio),"Lv."+GameBalance.SkillRequiredLevels[skill]+" · "+(rank>0?GameBalance.SkillRankName(rank):"锁定"),TouchFont(8),accent,false,false,TextAnchor.MiddleCenter);
                     Badge(compactIcon,canLearn);
-                    if(MobileSkillRowClicked(new Rect(node.x,node.y-2*TouchRatio,node.width,44*TouchRatio))&&(blinkFollowupSelected||selectedSkill!=skill)){blinkFollowupSelected=false;selectedSkill=skill;mobileSkillDetailScroll=Vector2.zero;mobileSkillStatus=null;CancelMobileScroll();}
+                    if(MobileSkillRowClicked(new Rect(node.x,node.y-2*TouchRatio,node.width,44*TouchRatio))&&(basicAttackSelected||blinkFollowupSelected||selectedSkill!=skill)){basicAttackSelected=false;blinkFollowupSelected=false;selectedSkill=skill;mobileSkillDetailScroll=Vector2.zero;mobileSkillStatus=null;CancelMobileScroll();}
                     continue;
                 }
                 Rect icon=new Rect(node.center.x-18*TouchRatio,node.y+5*TouchRatio,36*TouchRatio,36*TouchRatio);
                 DrawSkillIdentity(icon,p.heroClass,skill,rank,rank>0||canLearn,48);
-                if(!blinkFollowupSelected&&selectedSkill==skill)DrawIcon(new Rect(node.center.x+20*TouchRatio,node.y+2*TouchRatio,12*TouchRatio,12*TouchRatio),UIIconAtlas.Utility("confirm"),gold);
+                if(!basicAttackSelected&&!blinkFollowupSelected&&selectedSkill==skill)DrawIcon(new Rect(node.center.x+20*TouchRatio,node.y+2*TouchRatio,12*TouchRatio,12*TouchRatio),UIIconAtlas.Utility("confirm"),gold);
                 Text(new Rect(node.x+4*TouchRatio,node.y+44*TouchRatio,node.width-8*TouchRatio,22*TouchRatio),GameBalance.SkillName(p.heroClass,skill),TouchFont(10),rank>0||canLearn?pale:muted,true,false,TextAnchor.MiddleCenter);
                 SkillStateTag(new Rect(node.x+3*TouchRatio,node.y+64*TouchRatio,(node.width-10*TouchRatio)*.45f,18*TouchRatio),"Lv."+GameBalance.SkillRequiredLevels[skill],muted,TouchFont(9));
                 SkillStateTag(new Rect(node.x+node.width*.46f,node.y+64*TouchRatio,node.width*.54f-3*TouchRatio,18*TouchRatio),rank>0?GameBalance.SkillRankName(rank):"未解锁",accent,TouchFont(9));
                 Badge(icon,canLearn);
-                if(MobileSkillRowClicked(node)&&(blinkFollowupSelected||selectedSkill!=skill))
-                {blinkFollowupSelected=false;selectedSkill=skill;mobileSkillDetailScroll=Vector2.zero;mobileSkillStatus=null;CancelMobileScroll();}
+                if(MobileSkillRowClicked(node)&&(basicAttackSelected||blinkFollowupSelected||selectedSkill!=skill))
+                {basicAttackSelected=false;blinkFollowupSelected=false;selectedSkill=skill;mobileSkillDetailScroll=Vector2.zero;mobileSkillStatus=null;CancelMobileScroll();}
             }
             return 7*mobileSkillTreeStep+70;
         }

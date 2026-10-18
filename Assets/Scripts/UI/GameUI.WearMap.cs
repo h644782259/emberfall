@@ -178,6 +178,7 @@ namespace Emberfall
 
         private string ResourceDescription(string key)
         {
+            if(key=="basic-attack")return "传说材料，用于战技中的普通攻击升级；林庭复明通关宝箱固定产出1个。";
             if(key=="revival")return "副本中倒下时消耗1个，原地恢复生命并获得3秒保护。";
             if(key.Contains("affix-reforge"))return "重新生成装备随机词条的种类、数量和数值。";
             if(key.Contains("refinement"))return "用于铁匠处洗练装备属性。";
@@ -189,8 +190,8 @@ namespace Emberfall
         }
         private EntryRewardPreview ResourceItemPreview(string key,int count)
         {
-            string name=key=="revival"?"复活石":key=="affix-reforge"?"词条重铸石":key=="thread"?"星纹":key=="shard"?"星烬碎片":key=="refinement"?"装备洗练石":"金币";
-            Rarity rarity=key=="affix-reforge"?Rarity.Legendary:key=="revival"||key=="refinement"?Rarity.Epic:key=="gold"?Rarity.Common:Rarity.Rare;
+            string name=key=="basic-attack"?BasicAttackGrowth.MaterialName:key=="revival"?"复活石":key=="affix-reforge"?"词条重铸石":key=="thread"?"星纹":key=="shard"?"星烬碎片":key=="refinement"?"装备洗练石":"金币";
+            Rarity rarity=key=="basic-attack"||key=="affix-reforge"?Rarity.Legendary:key=="revival"||key=="refinement"?Rarity.Epic:key=="gold"?Rarity.Common:Rarity.Rare;
             return new EntryRewardPreview{Key=key,Name=name,Quantity=count,Rarity=rarity,
                 Icon=key=="thread"?UIIconAtlas.Reward(2):UIIconAtlas.Utility(key=="revival"?"core":key=="refinement"||key=="affix-reforge"?"gem":key=="gold"?"coin":"shard"),
                 Description=name+"\n数量  "+count};
@@ -210,16 +211,16 @@ namespace Emberfall
                 DesktopInventoryGesture(tile,tile,"@potion");
                 if(GUI.Button(tile,GUIContent.none,invisibleButton)){if(MobileControls.Active)OpenInventoryPopup("@potion",tile);else DesktopInventoryClick("@potion");}
             }
-            string[] keys={"refinement","shard","thread","affix-reforge","revival"};
-            int[] quantities={session.Progression.Profile.refinementStones,session.Progression.Profile.mechanicMaterials,session.Progression.Profile.fashionThreads,session.Progression.Profile.affixReforgeStones,session.Progression.Profile.revivalStones};
-            for(int i=0;i<8;i++)
+            string[] keys={"refinement","shard","thread","affix-reforge","revival","basic-attack"};
+            int[] quantities={session.Progression.Profile.refinementStones,session.Progression.Profile.mechanicMaterials,session.Progression.Profile.fashionThreads,session.Progression.Profile.affixReforgeStones,session.Progression.Profile.revivalStones,session.Progression.Profile.basicAttackMaterials};
+            for(int i=0;i<9;i++)
             {
-                int quantity=i<5?quantities[i]:session.Progression.Profile.gemBags[i-5];if(quantity<=0)continue;
+                int quantity=i<6?quantities[i]:session.Progression.Profile.gemBags[i-6];if(quantity<=0)continue;
                 var cell=grid.Tile(position++);Rect hit=new Rect(bounds.x+cell.X*u,bounds.y+cell.Y*u,cell.Width*u,cell.Height*u);
-                var item=i<5?ResourceItemPreview(keys[i],quantity):GemBagPreview((ItemSlot)(i-5),true);
+                var item=i<6?ResourceItemPreview(keys[i],quantity):GemBagPreview((ItemSlot)(i-6),true);
                 DrawEntryRewardIcon(hit,item,u);
                 Text(new Rect(hit.x+2*u,hit.yMax-16*u,hit.width-5*u,16*u),quantity.ToString(),Mathf.RoundToInt(10*u),pale,true,false,TextAnchor.MiddleRight);
-                InspectRewardItem(hit,item,i>=5);
+                InspectRewardItem(hit,item,i>=6);
             }
             GUI.enabled=prior;DrawInventoryPopup(bounds,u);
         }

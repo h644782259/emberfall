@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -297,7 +297,7 @@ namespace Emberfall
     public class ChestReward
     {
         public ChestContentPreview[] contents;
-        public int primaryKind,primaryCount,primarySlot,refinementStonesDelta,affixReforgeStonesDelta;
+        public int primaryKind,primaryCount,primarySlot,refinementStonesDelta,affixReforgeStonesDelta,basicAttackMaterialsDelta;
         public Rarity primaryRarity;
         public string[] equipmentIds;
         public EquipmentMechanic gemMechanic;
@@ -547,6 +547,8 @@ namespace Emberfall
         [System.NonSerialized] internal bool enhancementMigrationPending;
         public int mechanicMaterials;
         public int affixReforgeStones,affixReforgeCount;
+        public int basicAttackMaterials;
+        public int[] basicAttackTiers = new int[4];
         public int refinementStones,refinementCount,refinementMaxCount;
         public bool pendingChestGemSource;
         public bool pendingChestChapterSource;
@@ -828,5 +830,46 @@ namespace Emberfall
             return new[] { new Color(.76f,.8f,.84f), new Color(.35f,.65f,1f), new Color(.77f,.43f,1f), new Color(1f,.72f,.26f) }[(int)rarity];
         }
         public static int XpToNext(int level) { return 4 * (240 + (Math.Max(1,Math.Min(100,level)) - 1) * 120); }
+    }
+}
+
+namespace Emberfall
+{
+    // Shared by every projectile from one attack, including the delayed second shot.
+    public sealed class BasicAttackHitBudget
+    {
+        private bool claimed;
+        private readonly int tier;
+        private readonly System.Collections.Generic.Dictionary<object,float> targetDamage;
+        public BasicAttackHitBudget(int attackTier=1)
+        {
+            tier=System.Math.Max(1,System.Math.Min(4,attackTier));
+            if(tier>=3)targetDamage=new System.Collections.Generic.Dictionary<object,float>();
+        }
+        // Normalize against one base attack so critical and damage modifiers scale together.
+        public float ClaimDamageScale(object target)
+        {
+            if(tier<3)return 1f;
+            if(target==null)return 0f;
+            float used;targetDamage.TryGetValue(target,out used);
+            float allowed=System.Math.Min(BasicAttackGrowth.ProjectileMultiplier(tier),System.Math.Max(0f,BasicAttackGrowth.TargetMultiplier(tier)-used));
+            targetDamage[target]=used+allowed;
+            return allowed/BasicAttackGrowth.ProjectileMultiplier(tier);
+        }
+        public bool TryClaim(){if(claimed)return false;claimed=true;return true;}
+    }
+    public static class BasicAttackGrowth
+    {
+        public const string MaterialName="战技源晶";
+        public static int Tier(GameProfile p,HeroClass hero)
+        {int i=(int)hero;return p.basicAttackTiers==null||i<0||i>=p.basicAttackTiers.Length?1:System.Math.Max(1,System.Math.Min(4,p.basicAttackTiers[i]));}
+        public static int Cost(int tier){return tier>=4?0:1<<(System.Math.Max(1,tier)-1);}
+        public static int Shots(int tier){return tier<=1?1:tier==2?2:tier==3?4:8;}
+        public static float ProjectileMultiplier(int tier){return tier<=1?1f:tier==2?.6f:tier==3?1.2f:1.4f;}
+        public static float TargetMultiplier(int tier){return tier<=1?1f:tier==2?1.2f:tier==3?1.4f:1.6f;}
+        public static float Range(int tier){return 2.8f+(System.Math.Max(1,System.Math.Min(4,tier))-1)*.6f;}
+        public static float Angle(int tier){return 110f+(System.Math.Max(1,System.Math.Min(4,tier))-1)*20f;}
+        public static string Description(HeroClass hero,int tier)
+        {return hero==HeroClass.Vanguard?"前方 "+Range(tier).ToString("0.0")+" 米、"+Angle(tier).ToString("0")+"°扇形挥斩":tier==1?"单体单发攻击":tier==2?"向前连续发射两次，间隔0.12秒":"向前方60°扇形发射 "+Shots(tier)+" 枚"+(hero==HeroClass.Ranger?"箭矢":"法球");}
     }
 }
