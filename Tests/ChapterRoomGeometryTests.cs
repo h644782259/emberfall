@@ -78,6 +78,7 @@ public static class ChapterRoomGeometryTests
             foreach(float radius in new[]{.45f,.65f,.9f,1.3f})
             {
                 var previous=p.Entrance;
+                foreach(var capture in p.Objectives)Check(Vector3.Distance(capture,p.Exit)>7.2f,"chapter capture stays clear of automatic exit");
                 foreach(var target in new List<Vector3>(p.Objectives){p.Exit})
                 {
                     Check(WorldTraversal.IsWalkable(target,radius)&&WorldTraversal.CanReach(previous,target,radius),node+" room "+room+" target "+target.x+","+target.z+" radius "+radius);

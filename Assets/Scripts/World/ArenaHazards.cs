@@ -7,7 +7,7 @@ namespace Emberfall
   private GameSession session;private int mode;private float age;private Material material;
   private readonly LineRenderer[] rings=new LineRenderer[3],clocks=new LineRenderer[2],glyphs=new LineRenderer[2],holdSegments=new LineRenderer[24];
   private readonly Vector3[] centers=new Vector3[3],outline=new Vector3[48];private readonly int[] hitCycle={-1,-1};
-  private LineRenderer holdFlag;
+  private CaptureFlagVisual holdFlag;
   public void Initialize(GameSession owner,int selectedMode)
   {
    session=owner;mode=selectedMode;material=ThreatVisualStyle.Material();
@@ -34,8 +34,7 @@ namespace Emberfall
      for(int p=0;p<4;p++){float a=(i+(p/3f)*.72f)*Mathf.PI*2/24;holdSegments[i].SetPosition(p,new Vector3(Mathf.Cos(a)*(ExpeditionModeState.HoldPointRadius-.22f),.16f,Mathf.Sin(a)*(ExpeditionModeState.HoldPointRadius-.22f)));}
      holdSegments[i].enabled=false;
     }
-    holdFlag=Line("Hold point flag",false,.07f);holdFlag.positionCount=5;holdFlag.startColor=holdFlag.endColor=new Color(.3f,1,.62f,.6f);
-    holdFlag.SetPositions(new[]{new Vector3(0,.12f,0),new Vector3(0,1.35f,0),new Vector3(.55f,1.2f,0),new Vector3(0,1.05f,0),new Vector3(0,1.35f,0)});
+    holdFlag=CaptureFlagVisual.Create(transform,Vector3.zero);
    }
   }
   private LineRenderer Line(string name,bool loop,float width)
@@ -54,7 +53,7 @@ namespace Emberfall
    {
     HoldPointState state=session.ModeRun.HoldState;
     Color objective=state==HoldPointState.Contested?new Color(1,.65f,.15f,.9f):state==HoldPointState.Capturing?new Color(.2f,1,.82f,.85f):new Color(.3f,1,.62f,.6f);
-    rings[2].startColor=rings[2].endColor=objective;holdFlag.startColor=holdFlag.endColor=objective;
+    rings[2].startColor=rings[2].endColor=objective;holdFlag.SetState(objective);
     int complete=ArenaPulseRules.HoldSegments(session.ModeRun.ObjectiveProgress);
     for(int i=0;i<holdSegments.Length;i++){holdSegments[i].enabled=i<complete;holdSegments[i].startColor=holdSegments[i].endColor=objective;}
    }

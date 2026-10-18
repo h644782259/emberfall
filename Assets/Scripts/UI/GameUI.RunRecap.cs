@@ -242,9 +242,9 @@ namespace Emberfall
             for(int choice=0;choice<3;choice++)
             {
                 Rect art=SettlementChestArt(stage,choice,u);
-                DrawRewardChest(art,true,1,progress);
-                if(progress<.42f)continue;
                 bool selected=choice==Mathf.Clamp(reward.selectedChest,0,2);
+                DrawRewardChest(art,selected,1,selected?progress:0);
+                if(!selected||progress<.42f)continue;
                 var icons=new List<EntryRewardPreview>();
                 if(reward.contents!=null&&reward.contents.Length==3&&reward.contents[choice]!=null)
                 {
@@ -284,7 +284,6 @@ namespace Emberfall
                     Rect hit=MobileControls.Active?new Rect(icon.center.x-Mathf.Max(icon.width,44*u)*.5f,icon.center.y-Mathf.Max(icon.height,44*u)*.5f,Mathf.Max(icon.width,44*u),Mathf.Max(icon.height,44*u)):icon;
                     InspectRewardItem(hit,item,false,inspectionKey);
                 }
-                if(side>=80*u)Text(new Rect(square.x,square.yMax-18*u,square.width,18*u),selected?"已获得":"未选中",Mathf.RoundToInt(11*u),selected?gold:muted,true,false,TextAnchor.MiddleCenter);
             }
         }
         private void DrawChestItemGrounding(Rect icon,Color rarity,float opacity,bool selected,float pulse)

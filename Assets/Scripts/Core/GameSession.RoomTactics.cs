@@ -43,7 +43,7 @@ namespace Emberfall
         {
             get
             {
-                if(RoomChainRun.Room.Objective==RoomObjective.Escape)return new Vector3(0,0,11);
+                if(RoomChainRun.Room.Objective==RoomObjective.Escape)return TacticalRoomGeometry.ExitCapturePoint;
                 return RoomNextObjectivePoint;
             }
         }

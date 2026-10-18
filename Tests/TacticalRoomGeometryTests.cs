@@ -22,7 +22,8 @@ public static class TacticalRoomGeometryTests
             var entrance=TacticalRoomGeometry.Entrance;var exit=new Vector3(0,0,14);
             foreach(float radius in new[]{.45f,.65f,1.3f})
             {
-                foreach(var target in new[]{exit,new Vector3(-mirror*8,0,-6),new Vector3(mirror*8,0,9),new Vector3(0,0,11),new Vector3(-mirror*12,0,-6)})
+                Check(Vector3.Distance(exit,TacticalRoomGeometry.ExitCapturePoint)>7.2f,"capture radius stays clear of auto portal trigger");
+                foreach(var target in new[]{exit,new Vector3(-mirror*8,0,-6),new Vector3(mirror*8,0,9),TacticalRoomGeometry.ExitCapturePoint,new Vector3(-mirror*12,0,-6)})
                 {
                     Check(WorldTraversal.CanReach(entrance,target,radius),"layout "+layout+" reachable objective/exit/event radius "+radius);
                     var route=WorldTraversal.FindPath(entrance,target,radius);

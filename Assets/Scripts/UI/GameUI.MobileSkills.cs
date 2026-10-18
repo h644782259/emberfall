@@ -165,7 +165,7 @@ namespace Emberfall
                     Rect header=TouchRect(8,y,width-16,30);
                     Fill(header,stage==rank?new Color(.028f,.10f,.088f):new Color(.018f,.036f,.054f));
                     if(stage==rank){Border(header,gold);Fill(new Rect(header.x,header.y,3*TouchRatio,header.height),gold);}
-                    Text(TouchRect(14,y,48,30),GameBalance.SkillRankName(stage),TouchFont(14),stage<=rank?jade:pale,true);
+                    Text(TouchRect(14,y,48,30),GameBalance.SkillRankName(stage),TouchFont(14),stage<=rank?jade:pale,true,false,TextAnchor.MiddleLeft);
                     SkillStageLevelTag(TouchRect(66,y+4,52,22),skill,stage,p.level,TouchFont(10));
                     if(stage==rank)DrawIcon(TouchRect(width-42,y+4,22,22),UIIconAtlas.Utility("confirm"),gold);
                 }

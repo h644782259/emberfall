@@ -62,6 +62,17 @@ namespace Emberfall
    bool wasOpen=RoomChainRun.DoorUnlocked;roomEnemies.Remove(enemy);RoomChainRun.Defeat(receipt.Plan,receipt.Index);
    if(!wasOpen&&RoomChainRun.DoorUnlocked)OpenRoomGate();
   }
+  private bool autoRoomPortalLatched;
+  private bool TryAutoAdvanceRoomPortal()
+  {
+   bool chapter=NearChapterExit,room=NearRoomExit;
+   if(!chapter&&!room){autoRoomPortalLatched=false;return false;}
+   if(autoRoomPortalLatched||Player==null||IsDead||!HasStarted||!InDungeon||InputBlocked||SceneLoading)return false;
+   // One attempt per approach: save errors or a cancelled branch choice cannot spam/reopen.
+   autoRoomPortalLatched=true;
+   if(chapter)EnterNextChapterRoom();else EnterNextRoom();
+   return true;
+  }
   public bool EnterNextRoom()
   {
    if(RoomChainRun==null||!NearRoomExit||InputBlocked||pendingRoomChoice.Pending)return false;

@@ -4,6 +4,7 @@ namespace Emberfall
     public sealed class TacticalCaptureVisual:MonoBehaviour
     {
         private LineRenderer completedRing;
+        private CaptureFlagVisual plantedFlag;
         private enum OwnerMode { Generic, ChapterSeal, RoomSeal }
         private OwnerMode ownerMode;
         private PlayerController roomOwner;private RoomChainState roomRun;private object roomIdentity;
@@ -38,6 +39,7 @@ namespace Emberfall
                 for(int i=0;i<glyph.Length;i++)visual.SetGroundPosition(visual.identity,i,glyph[i]);
                 visual.identity.startColor=visual.identity.endColor=new Color(.8f,.9f,.85f);
             }
+            visual.plantedFlag=CaptureFlagVisual.Create(root.transform,objective.transform.position);
             visual.Refresh();
         }
         private LineRenderer Line(string name,int points,float width)
@@ -59,6 +61,7 @@ namespace Emberfall
             bool active=valid&&(ownerMode==OwnerMode.RoomSeal?session.TryGetRoomSeal(sealIndex,out fraction,out contested,out complete):ownerMode==OwnerMode.ChapterSeal?session.TryGetChapterSeal(sealIndex,out fraction,out contested,out complete):session.TryGetTacticalCapture(out fraction,out contested));
             if(valid&&ownerMode==OwnerMode.Generic&&(session.RoomChainRun!=null&&session.RoomChainRun.DoorUnlocked||session.ChapterActive&&session.ChapterRun.DoorUnlocked)){active=true;complete=true;}
             if(!active){Hide();return;}
+            if(plantedFlag!=null){plantedFlag.gameObject.SetActive(true);plantedFlag.SetState(complete?new Color(.3f,1,.65f):contested?new Color(1,.45f,.18f):new Color(.2f,.85f,.8f));}
             if(identity!=null)identity.enabled=true;
             completedRing.enabled=complete;
             for(int i=0;i<segments.Length;i++)
@@ -79,7 +82,7 @@ namespace Emberfall
                 direction.startColor=direction.endColor=new Color(.35f,.7f,.75f);
             }
         }
-        private void Hide(){if(completedRing!=null)completedRing.enabled=false;if(identity!=null)identity.enabled=false;if(segments!=null)foreach(var line in segments)if(line!=null)line.enabled=false;if(contestedFlag!=null)contestedFlag.enabled=false;if(direction!=null)direction.enabled=false;}
+        private void Hide(){if(plantedFlag!=null)plantedFlag.gameObject.SetActive(false);if(completedRing!=null)completedRing.enabled=false;if(identity!=null)identity.enabled=false;if(segments!=null)foreach(var line in segments)if(line!=null)line.enabled=false;if(contestedFlag!=null)contestedFlag.enabled=false;if(direction!=null)direction.enabled=false;}
         private void OnDisable(){Hide();}
         private void OnDestroy(){if(material!=null)Destroy(material);}
     }

@@ -113,7 +113,7 @@ namespace Emberfall
                 }
             Vector3[] objectives=node==ChapterNode.ForestCourt&&room==0?new[]{new Vector3(-mirror*8,0,1),new Vector3(mirror*8,0,1)}:
                 node==ChapterNode.Redrock&&room==0?new[]{new Vector3(mirror*8,0,7)}:
-                node==ChapterNode.StarPlatform?new[]{new Vector3(0,0,1)}:new[]{new Vector3(0,0,11)};
+                node==ChapterNode.StarPlatform?new[]{new Vector3(0,0,1)}:new[]{TacticalRoomGeometry.ExitCapturePoint};
             Vector3[] spawns={node==ChapterNode.StarPlatform?new Vector3(0,0,1):node==ChapterNode.Redrock&&room==0?objectives[0]:new Vector3(0,0,8),
                 new Vector3(-mirror*8,0,-1),new Vector3(mirror*8,0,2),new Vector3(-mirror*7,0,9),new Vector3(mirror*10,0,7),new Vector3(mirror*5,0,-4)};
             if(node==ChapterNode.ForestCourt&&room==0)

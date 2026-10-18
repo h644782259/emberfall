@@ -62,17 +62,10 @@ namespace Emberfall
             }
             EndTouchScroll();
         }
-        private string wornLastClick;
-        private float wornLastClickAt=-10;
-        private void WornSlotClick(string id,ItemSlot? equipment,FashionSlot? fashion)
+        private void WornSlotClick(string id,Rect anchor)
         {
-            bool twice=wornLastClick==id&&Time.unscaledTime-wornLastClickAt<.4f;
-            wornLastClick=id;wornLastClickAt=Time.unscaledTime;
-            if(!twice)return;
-            wornLastClick=null;
-            bool saved=equipment.HasValue?session.Progression.Unequip(equipment.Value):session.Progression.UnequipFashion(fashion.Value);
-            if(fashion.HasValue)MobileFashionResult(saved,"时装已脱下");else MobileInventoryResult(saved,"装备已脱下");
-            if(saved){inventoryComparisonOpen=false;inventoryPopupItem=null;RebuildBagItems();CancelMobileScroll();}
+            OpenInventoryPopup(id,anchor);
+            inventoryPopupCompare=false;
         }
 
         private void DrawCurrentWear(Rect area,float u)
@@ -101,17 +94,22 @@ namespace Emberfall
                 if(item!=null){Fill(r,new Color(.035f,.095f,.11f));Border(r,GameBalance.RarityColor(item.rarity),2*u);DrawIcon(new Rect(r.x+4*u,r.y+2*u,r.width-8*u,r.height-16*u),UIIconAtlas.EquipmentCardIcon(item,p.Profile.heroClass),GameBalance.RarityColor(item.rarity));Text(new Rect(r.x,r.yMax-15*u,r.width,14*u),GameBalance.SlotName(item.slot),Mathf.RoundToInt(10*u),pale,true,false,TextAnchor.MiddleCenter);if(item.rarity==Rarity.Legendary)DrawFashionSlotFlow(r,GameBalance.RarityColor(item.rarity),u);}
                 else
                 {
-                    Fill(r,card);Border(r,new Color(jade.r,jade.g,jade.b,.35f));
-                    DrawIcon(new Rect(r.x+9*u,r.y+6*u,r.width-18*u,r.height-22*u),UIIconAtlas.EquipmentCardIcon((ItemSlot)slot,1,Rarity.Common,p.Profile.heroClass),muted);
-                    Text(new Rect(r.x,r.yMax-14*u,r.width,14*u),GameBalance.SlotName((ItemSlot)slot),Mathf.RoundToInt(9*u),muted,false,false,TextAnchor.MiddleCenter);
+                    DrawEmptyWearSlot(r,GameBalance.SlotName((ItemSlot)slot),u);
                 }
                 bool slotUpgrade=false;
                 foreach(var candidate in p.Profile.inventory)if(candidate.slot==(ItemSlot)slot&&UnreviewedEquipmentUpgrade(candidate)){slotUpgrade=true;break;}
                 if(slotUpgrade)DrawIcon(new Rect(r.xMax-18*u,r.yMax-31*u,18*u,18*u),UIIconAtlas.EquipmentUpgradeArrow(),new Color(.25f,1f,.4f));
                 if(item!=null)DesktopInventoryGesture(r,r,item.id);
                 if(QuietAction(r,"",item!=null&&(!MobileControls.Active||!inventoryComparisonOpen),""))
-                    WornSlotClick(item.id,item.slot,null);
+                    WornSlotClick(item.id,r);
             }
+        }
+        private void DrawEmptyWearSlot(Rect r,string slot,float u)
+        {
+            Fill(r,new Color(.025f,.04f,.055f,.65f));
+            Border(r,new Color(muted.r,muted.g,muted.b,.35f),Mathf.Max(1,u));
+            Text(new Rect(r.x+2*u,r.y+8*u,r.width-4*u,r.height-26*u),"未穿戴",Mathf.RoundToInt(11*u),muted,false,false,TextAnchor.MiddleCenter);
+            Text(new Rect(r.x,r.yMax-15*u,r.width,14*u),slot,Mathf.RoundToInt(10*u),muted,false,false,TextAnchor.MiddleCenter);
         }
         private void DrawFashionWearSlots(Rect area,float u)
         {
@@ -121,16 +119,17 @@ namespace Emberfall
                 var item=session.Progression.EquippedFashion(slot);
                 float cell=MobileControls.Active?Mathf.Min(InventoryGridGeometry.MobileCellSize,(area.width/u-8)/3):InventoryGridGeometry.DesktopCellSize;
                 Rect r=new Rect(area.center.x-(cell*2+4)*u*.5f+i*(cell+4)*u,area.yMax-cell*u,cell*u,cell*u);
-                Color tint=item==null?muted:GameBalance.RarityColor(item.rarity);
+                if(item==null){DrawEmptyWearSlot(r,slot==FashionSlot.Weapon?"兵装":"羽翼",u);continue;}
+                Color tint=GameBalance.RarityColor(item.rarity);
                 Fill(r,card);Border(r,tint,(item==null?1:2)*u);
-                DrawIcon(new Rect(r.x+3*u,r.y+2*u,r.width-6*u,r.height-17*u),item!=null?UIIconAtlas.FashionCardIcon(item,session.Progression.Profile.heroClass,session.Progression.Equipped(ItemSlot.Weapon)):UIIconAtlas.FashionCardIcon(slot,3,session.Progression.Profile.heroClass),tint);
+                DrawIcon(new Rect(r.x+3*u,r.y+2*u,r.width-6*u,r.height-17*u),UIIconAtlas.FashionCardIcon(item,session.Progression.Profile.heroClass,session.Progression.Equipped(ItemSlot.Weapon)),tint);
                 Text(new Rect(r.x,r.yMax-15*u,r.width,14*u),slot==FashionSlot.Weapon?"兵装":"羽翼",Mathf.RoundToInt(10*u),item==null?muted:pale,true,false,TextAnchor.MiddleCenter);
                 if(item!=null)DrawFashionSlotFlow(r,tint,u);
                 if(item!=null)
                 {
                     Text(new Rect(r.xMax-18*u,r.y+2*u,16*u,16*u),"✓",Mathf.RoundToInt(11*u),jade,true);
                     DesktopInventoryGesture(r,r,"@fashion:"+item.id);
-                    if(QuietAction(r,"",!MobileControls.Active||!inventoryComparisonOpen,""))WornSlotClick(item.id,null,item.slot);
+                    if(QuietAction(r,"",!MobileControls.Active||!inventoryComparisonOpen,""))WornSlotClick("@fashion:"+item.id,r);
                 }
             }
         }

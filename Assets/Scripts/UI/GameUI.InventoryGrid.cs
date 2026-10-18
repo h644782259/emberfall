@@ -226,7 +226,7 @@ namespace Emberfall
             float bodyY=r.y,rowHeight=(sheetHeight<360?22:28)*u;
             string[] labels={"评分","攻击","防御","生命","暴击率","暴击伤害","攻击加成"};
             float inner=r.width-24*u,statsWidth=compactCompare?(inner-12*u)*.52f:inner,labelWidth=96*u,valueWidth=(statsWidth-labelWidth)*.5f;
-            var detail=ActualEquipmentPreview(next);detail.AllowActions=MobileControls.Active;
+            var detail=ActualEquipmentPreview(next);detail.AllowActions=MobileControls.Active||IsEquipped(item);
             inventoryDetailScroll=BeginTouchScroll("equipment-detail",new Rect(r.x+12*u,bodyY,inner,r.yMax-bodyY-12*u),inventoryDetailScroll,new Rect(0,0,inner-8*u,DrawRewardDetailRows(detail,inner/u-8,u,false)*u));
             DrawRewardDetailRows(detail,inner/u-8,u,true);
             EndTouchScroll();
@@ -247,7 +247,7 @@ namespace Emberfall
             var area=InventoryGridGeometry.Popup(new MobilePanelLayout.Area(bounds.x/u,bounds.y/u,bounds.width/u,bounds.height/u),new MobilePanelLayout.Area(inventoryPopupAnchor.x/u,inventoryPopupAnchor.y/u,inventoryPopupAnchor.width/u,inventoryPopupAnchor.height/u),inventoryPopupCompare||item!=null);
             Rect r=inventoryPopupRect=new Rect(area.X*u,area.Y*u,area.Width*u,area.Height*u);
             if(potion){r.height=178*u;r.y=Mathf.Clamp(r.y,12*u,Mathf.Max(12*u,height-r.height-12*u));inventoryPopupRect=r;}
-            if(fashion){float fw=Mathf.Min(620*u,width-24*u),fh=Mathf.Min(320*u,height-24*u);r=inventoryPopupRect=MobileControls.Active?new Rect((width-fw)*.5f,(height-fh)*.5f,fw,fh):DesktopInventorySheet(fw,fh);}
+            if(fashion){bool worn=session.Progression.EquippedFashion(appearance.slot)?.id==appearance.id;float fw=Mathf.Min((worn?340:620)*u,width-24*u),fh=Mathf.Min(320*u,height-24*u);r=inventoryPopupRect=MobileControls.Active?new Rect((width-fw)*.5f,(height-fh)*.5f,fw,fh):DesktopInventorySheet(fw,fh);}
             if(!fashion){Fill(r,ink);Border(r,potion?GameBalance.RarityColor(Rarity.Common):jade,2*u);}
             bool prior=GUI.enabled;GUI.enabled=prior&&Time.frameCount!=inventoryPopupOpened;
             if(potion)
@@ -278,7 +278,7 @@ namespace Emberfall
             if(fashion)
             {
                 float statsTop=0;
-                var detail=new EntryRewardPreview{AllowActions=MobileControls.Active,Key="fashion:"+appearance.id,Name=ProgressionService.FashionName(appearance.slot,appearance.AppearanceRarity,session.Progression.Profile.heroClass),Icon=UIIconAtlas.FashionCardIcon(appearance,session.Progression.Profile.heroClass,session.Progression.Equipped(ItemSlot.Weapon)),Rarity=appearance.rarity,AppearanceSlot=appearance.slot,Description=ProgressionService.FashionBonus(appearance)};
+                var detail=new EntryRewardPreview{AllowActions=MobileControls.Active||session.Progression.EquippedFashion(appearance.slot)?.id==appearance.id,Key="fashion:"+appearance.id,Name=ProgressionService.FashionName(appearance.slot,appearance.AppearanceRarity,session.Progression.Profile.heroClass),Icon=UIIconAtlas.FashionCardIcon(appearance,session.Progression.Profile.heroClass,session.Progression.Equipped(ItemSlot.Weapon)),Rarity=appearance.rarity,AppearanceSlot=appearance.slot,Description=ProgressionService.FashionBonus(appearance)};
                 inventoryDetailScroll=BeginTouchScroll("fashion-detail",new Rect(r.x+12*u,r.y+statsTop*u,r.width-24*u,r.height-(statsTop+8)*u),inventoryDetailScroll,new Rect(0,0,r.width-32*u,DrawRewardDetailRows(detail,r.width/u-32,u,false)*u));
                 DrawRewardDetailRows(detail,r.width/u-32,u,true);
                 EndTouchScroll();

@@ -20,7 +20,7 @@ namespace Emberfall
             }
             var marker=new GameObject("Unlocked forward travel medium");marker.transform.SetParent(world,false);marker.transform.position=position;
             marker.AddComponent<WorldPortalUnlockVisual>().Bind(gate);
-            Label(marker.transform,"Continue through doorway","前往下一间\n靠近传送口交互",position+Vector3.up*4.7f,.065f,new Color(.54f,.76f,.65f),false);
+            Label(marker.transform,"Continue through doorway","前往下一间\n靠近自动前往下一间",position+Vector3.up*4.7f,.065f,new Color(.54f,.76f,.65f),false);
             return marker;
         }
     }

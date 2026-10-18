@@ -170,8 +170,6 @@ namespace Emberfall
         private void DrawExpeditionHUD()
         {
             if(session.NearDungeonReturn){Rect exit=new Rect((width-240)*.5f,height-225,240,48);blockedRects.Add(exit);if(Button(exit,"传送点 [E]",gold))OpenDungeonExit();}
-            else if(session.NearChapterExit){Rect next=new Rect((width-300)*.5f,height-225,300,48);blockedRects.Add(next);if(Button(next,"沿星路前进 [E]",gold))session.EnterNextChapterRoom();}
-            else if(session.NearRoomExit){Rect next=new Rect((width-300)*.5f,height-225,300,48);blockedRects.Add(next);if(Button(next,"进入下一间 [E]",gold))session.EnterNextRoom();}
             else if(!session.InDungeon&&(session.IsNearDungeonEntrance||session.IsNearChapterEntrance)&&!session.InputBlocked&&!session.DungeonSelectionOpen)
             {Rect entrance=new Rect((width-300)*.5f,height-225,300,48);blockedRects.Add(entrance);if(Button(entrance,session.IsNearChapterEntrance?"进入星路章节 [E]":"进入普通副本 [E]",gold))session.EnterDungeon();}
             if(session.SideEventAvailable)

@@ -301,6 +301,7 @@ namespace Emberfall
             if(ModeRun!=null){TickArenaRun();if(InputBlocked)return;}
             if(RoomChainRun!=null)TickRoomTactics();
             if(ChapterActive)TickChapterRun();
+            if(!InputBlocked&&TryAutoAdvanceRoomPortal())return;
             if (!InputBlocked)
             {
                 if(Input.GetKeyDown(KeyCode.E))

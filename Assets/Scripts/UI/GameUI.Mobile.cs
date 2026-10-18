@@ -65,8 +65,8 @@ namespace Emberfall
                 return layout.Interact;
             }
         }
-        public bool MobileInteractionVisible {get{return session!=null&&!session.PracticeActive&&(session.NearDungeonReturn||session.NearChapterExit||session.NearRoomExit||session.SideEventAvailable||MobileDungeonEntranceVisible);}}
-        private bool CanMobileInteract {get{return session!=null&&!session.PracticeActive&&!session.InputBlocked&&!session.DungeonSelectionOpen&&(session.NearDungeonReturn||session.NearChapterExit||session.NearRoomExit||session.SideEventAvailable||session.InDungeon||(session.IsNearDungeonEntrance||session.IsNearChapterEntrance));}}
+        public bool MobileInteractionVisible {get{return session!=null&&!session.PracticeActive&&(session.NearDungeonReturn||session.SideEventAvailable||MobileDungeonEntranceVisible);}}
+        private bool CanMobileInteract {get{return session!=null&&!session.PracticeActive&&!session.InputBlocked&&!session.DungeonSelectionOpen&&(session.NearDungeonReturn||session.SideEventAvailable||session.InDungeon||(session.IsNearDungeonEntrance||session.IsNearChapterEntrance));}}
         public void ActivateMobileInteraction(int triggeringFinger=TouchReleaseLatch.AnyPointer)
         {
             if(!CanMobileInteract||UITransitionBlocked)return;

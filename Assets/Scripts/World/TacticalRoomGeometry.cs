@@ -4,6 +4,7 @@ namespace Emberfall
     // Render and navigation consume the same authored wall/bridge geometry.
     public static class TacticalRoomGeometry
     {
+        public static Vector3 ExitCapturePoint {get{return new Vector3(4,0,7);}}
         public static Vector3 Entrance {get{return new Vector3(0,0,-12);}}
         public struct Wall
         {
