@@ -111,7 +111,7 @@ namespace Emberfall
                     float angle=(30+spoke*120)*(Mathf.PI/180f),distance=9+step*3;
                     obstacles.Add(new ChapterObstacle(new Vector3(Mathf.Sin(angle)*distance,0,Mathf.Cos(angle)*distance),1.05f,1.6f+step*.4f));
                 }
-            Vector3[] objectives=node==ChapterNode.ForestCourt&&room==0?new[]{new Vector3(-mirror*8,0,1),new Vector3(mirror*8,0,1)}:
+            Vector3[] objectives=node==ChapterNode.ForestCourt&&room==0?new[]{TacticalRoomGeometry.ExitCapturePoint}:
                 node==ChapterNode.Redrock&&room==0?new[]{new Vector3(mirror*8,0,7)}:
                 node==ChapterNode.StarPlatform?new[]{new Vector3(0,0,1)}:new[]{TacticalRoomGeometry.ExitCapturePoint};
             Vector3[] spawns={node==ChapterNode.StarPlatform?new Vector3(0,0,1):node==ChapterNode.Redrock&&room==0?objectives[0]:new Vector3(0,0,8),

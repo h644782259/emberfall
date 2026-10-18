@@ -28,11 +28,11 @@ namespace Emberfall
         public bool RewardClaimed {get;private set;}
         public int Seals {get;private set;}
         private float progress;
-        private readonly float[] sealProgress=new float[2];
-        public float Progress {get{return Room!=null&&Room.Objective==RoomObjective.Purify?SealProgress(SealComplete(0)?1:0):progress;}}
-        public float SealProgress(int index){return index>=0&&index<2?sealProgress[index]:0;}
-        public bool SealComplete(int index){return index>=0&&index<2&&sealProgress[index]>=2f;}
-        public float CaptureFraction {get{return Room!=null&&Room.Objective==RoomObjective.Purify?(sealProgress[0]+sealProgress[1])/4f:progress/2.5f;}}
+        private readonly float[] sealProgress=new float[1];
+        public float Progress {get{return Room!=null&&Room.Objective==RoomObjective.Purify?SealProgress(0):progress;}}
+        public float SealProgress(int index){return index>=0&&index<1?sealProgress[index]:0;}
+        public bool SealComplete(int index){return index>=0&&index<1&&sealProgress[index]>=2f;}
+        public float CaptureFraction {get{return Room!=null&&Room.Objective==RoomObjective.Purify?sealProgress[0]/2f:progress/2.5f;}}
         private bool[] spawned, defeated;
         private int spawnedCount, kills;
         public RoomBranch SelectedBranch {get;private set;}
@@ -44,7 +44,7 @@ namespace Emberfall
         private void SetRoom(RoomChainPlan plan)
         {
             Room=plan; spawned=new bool[plan.EnemyCount]; defeated=new bool[plan.EnemyCount];
-            spawnedCount=kills=Seals=0; progress=0; Array.Clear(sealProgress,0,2); DoorUnlocked=false;
+            spawnedCount=kills=Seals=0; progress=0; Array.Clear(sealProgress,0,sealProgress.Length); DoorUnlocked=false;
         }
         public bool Register(RoomChainPlan plan,int index)
         { if(Finished||!ReferenceEquals(plan,Room)||index<0||index>=spawned.Length||spawned[index])return false;spawned[index]=true;spawnedCount++;return true; }
@@ -62,16 +62,16 @@ namespace Emberfall
         {return active&&!Finished&&!DoorUnlocked&&spawnedCount==Room.EnemyCount&&inside&&!contested&&!float.IsNaN(delta)&&!float.IsInfinity(delta)&&delta>0;}
         public void AdvanceSeal(int index,float delta,bool active,bool inside,bool contested)
         {
-            if(Room==null||Room.Objective!=RoomObjective.Purify||index<0||index>=2||SealComplete(index)||!CanCapture(delta,active,inside,contested))return;
+            if(Room==null||Room.Objective!=RoomObjective.Purify||index<0||index>=1||SealComplete(index)||!CanCapture(delta,active,inside,contested))return;
             sealProgress[index]=Math.Min(2f,sealProgress[index]+Math.Min(delta,.25f));
             if(sealProgress[index]+.00001f<2f)return;
-            sealProgress[index]=2f;Seals++;if(Seals==2)DoorUnlocked=true;
+            sealProgress[index]=2f;Seals++;if(Seals==1)DoorUnlocked=true;
         }
         public void Advance(float delta,bool active,bool inside,bool contested)
         {
             if(Room==null)return;
             // Compatibility only: the live host addresses each physical seal explicitly.
-            if(Room.Objective==RoomObjective.Purify){AdvanceSeal(SealComplete(0)?1:0,delta,active,inside,contested);return;}
+            if(Room.Objective==RoomObjective.Purify){AdvanceSeal(0,delta,active,inside,contested);return;}
             if(Room.Objective!=RoomObjective.Escape||!CanCapture(delta,active,inside,contested))return;
             progress=Math.Min(2.5f,progress+Math.Min(delta,.25f));
             if(progress<2.5f)return;

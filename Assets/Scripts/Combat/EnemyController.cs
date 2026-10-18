@@ -604,7 +604,7 @@ namespace Emberfall
         private bool CanUseBossAttack(BossAttackPolicy.Move move, Vector3 target)
         {
             if (!BossAttackPolicy.InRange(move, CombatFx.Flat(target - transform.position).magnitude/BodyScale)) return false;
-            if (move == BossAttackPolicy.Move.Fan) return WorldTraversal.HasLineOfSight(transform.position, target);
+            if (move == BossAttackPolicy.Move.Fan || move == BossAttackPolicy.Move.Strike) return WorldTraversal.HasLineOfSight(transform.position, target);
             if (!WorldTraversal.HasGroundPath(transform.position, target, .12f)) return false;
             if (move != BossAttackPolicy.Move.Charge) return true;
             Vector3 forward = CombatFx.Flat(target - transform.position).normalized;
@@ -615,6 +615,13 @@ namespace Emberfall
         private BossAttackPolicy.Move SelectBossMove(float distance, Vector3 target)
         {
             BossAttackPolicy.Move fallback = BossAttackPolicy.Select(distance/BodyScale, previousMove, repeatedMove);
+            // React to point-blank targets before arena preferences. A jump onto low
+            // cover can block ground attacks while a visible close strike remains legal.
+            if(distance/BodyScale<=BossAttackPolicy.CloseRange)
+            {
+                if(CanUseBossAttack(fallback,target))return fallback;
+                if(CanUseBossAttack(BossAttackPolicy.Move.Strike,target))return BossAttackPolicy.Move.Strike;
+            }
             BossAttackPolicy.Move preferred = ArenaBossPatternPolicy.Preferred(arenaBossPattern, distance/BodyScale, previousMove, repeatedMove);
             BossAttackPolicy.Move selected = preferred != fallback && !CanUseBossAttack(preferred, target) ? fallback : preferred;
             return BossAttackPolicy.LegalFallback(selected, distance/BodyScale,
@@ -663,8 +670,14 @@ namespace Emberfall
             if(type==AttackType.Slam)windup=Mathf.Max(windup,1.35f);
             else if(type==AttackType.Charge)windup=Mathf.Max(windup,1.5f);
             else if(Kind==EnemyKind.Slime)windup=Mathf.Max(windup,1.05f);
-            if(IsBoss)windup*=2f;
+            if(IsBoss&&type!=AttackType.Strike)windup*=2f;
             totalWindup = windup;
+            // Freeze the strike warning toward the target, not the previous smoothed facing.
+            if(type==AttackType.Strike)
+            {
+                Vector3 facing=CombatFx.Flat(target-transform.position);
+                if(facing.sqrMagnitude>.0001f)transform.rotation=Quaternion.LookRotation(facing);
+            }
             CreateWarning();
             if (IsBoss) session.SpawnMechanismText(transform.position + Vector3.up * (3.1f*BodyScale),
                 CanBeSkillInterrupted ? "青色晶核 · 可打断" : "晶核熄灭 · 霸体恢复", CanBeSkillInterrupted ? new Color(.35f, 1f, .85f) : new Color(1f, .48f, .25f));
@@ -832,7 +845,7 @@ namespace Emberfall
 
         private bool InsideImpact(Vector3 point)
         {
-            if(attackType==AttackType.Strike){Vector3 toward=CombatFx.Flat(point-transform.position);return toward.magnitude<=ImpactRadius&&Vector3.Dot(attackForward,toward.normalized)>=.25f&&WorldTraversal.HasLineOfSight(transform.position,point);}
+            if(attackType==AttackType.Strike){Vector3 toward=CombatFx.Flat(point-transform.position);return toward.magnitude<=ImpactRadius&&(toward.sqrMagnitude<=.0225f||Vector3.Dot(attackForward,toward.normalized)>=.25f)&&WorldTraversal.HasLineOfSight(transform.position,point);}
             if (attackType == AttackType.Melee && Kind == EnemyKind.Goblin)
                 return CombatFx.SegmentDistance(point, BladeStart, BladeEnd) <= BladeContactHalfWidth && WorldTraversal.HasGroundPath(attackOrigin, point, .12f);
             return EnemyImpactRegion.Contains(transform.position,targetPoint,point,ImpactRadius);

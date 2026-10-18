@@ -10,11 +10,13 @@ namespace Emberfall
         public static int ChestGoldMinimum(int tier) { return 60 + 25 * Band(ClampTier(tier)); }
         public static int BossMechanicChance(int tier) { return 25 + 3 * Band(ClampTier(tier)); }
         public static int OrdinaryMechanicChance(int tier) { return 12 + 2 * Band(ClampTier(tier)); }
-        public static Rarity DropRarity(bool boss, int tier, int roll)
+        public static Rarity DropRarity(bool boss, int tier, int roll, bool campOrdinary = false)
         {
             roll=Math.Max(0,Math.Min(99,roll));
             if(boss)return roll<80?Rarity.Rare:Rarity.Epic;
-            return roll<65?Rarity.Common:roll<90?Rarity.Rare:Rarity.Epic;
+            // Camp ordinary enemies retain 30% of their previous epic chance (10% -> 3%).
+            int epicThreshold=campOrdinary&&tier==0?97:90;
+            return roll<65?Rarity.Common:roll<epicThreshold?Rarity.Rare:Rarity.Epic;
         }
     }
 

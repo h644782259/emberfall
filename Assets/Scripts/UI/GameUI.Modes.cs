@@ -472,7 +472,7 @@ namespace Emberfall
    if(session.ChapterActive)
    {
     var first=session.ChapterSealView(0);var second=session.ChapterSealView(1);
-    DrawMobileObjectiveText(r,ref y,first!=null&&session.ChapterRun.DoorUnlocked?"双印完成 · 前往出口":AdventureMapCaption,11,gold,true,true);
+    DrawMobileObjectiveText(r,ref y,first!=null&&session.ChapterRun.DoorUnlocked?"占领完成 · 前往出口":AdventureMapCaption,11,gold,true,true);
     if(first!=null){DrawMobileSealText(r,ref y,first);DrawMobileSealText(r,ref y,second);}
     else DrawMobileObjectiveText(r,ref y,session.ChapterObjectiveCompact,10,pale);
     return;
@@ -480,7 +480,7 @@ namespace Emberfall
    if(session.RoomChainRun!=null)
    {
     var objective=session.RoomObjectiveView;var first=session.RoomSealView(0);
-    DrawMobileObjectiveText(r,ref y,first!=null&&session.RoomChainRun.DoorUnlocked?"双印完成 · 前往北门":objective.Title,11,gold,true,true);
+    DrawMobileObjectiveText(r,ref y,first!=null&&session.RoomChainRun.DoorUnlocked?"占领完成 · 前往北门":objective.Title,11,gold,true,true);
     if(first!=null){DrawMobileSealText(r,ref y,first);DrawMobileSealText(r,ref y,session.RoomSealView(1));}
     else {DrawMobileObjectiveText(r,ref y,objective.ProgressText,10,pale);DrawMobileObjectiveText(r,ref y,objective.Hint,10,session.RoomCaptureContested?gold:jade);}
     DrawMobileObjectiveText(r,ref y,objective.SupportHint,10,muted);

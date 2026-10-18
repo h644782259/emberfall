@@ -20,7 +20,7 @@ namespace Emberfall
             string task;
             switch(next.Objective)
             {
-                case RoomObjective.Purify:task="净化两印 · 留意金环护援";break;
+                case RoomObjective.Purify:task="占领封印 · 留意金环护援";break;
                 case RoomObjective.Hunt:task="击败金环魔灵开门";break;
                 case RoomObjective.Escape:task="北门站稳4秒 · 守卫争夺";break;
                 case RoomObjective.Boss:task="首领与2名护卫全灭";break;

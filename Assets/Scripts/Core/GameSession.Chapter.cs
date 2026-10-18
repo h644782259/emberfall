@@ -87,7 +87,7 @@ namespace Emberfall
 
         public bool SelectedForestLineupB {get{return SelectedChapterNode==ChapterNode.ForestCourt&&SelectedChapterDifficulty==ChapterDifficulty.Hard&&forestLineupOwner==Progression.SaveFilePath&&previousForestLineup==0;}}
         public string SelectedChapterLineupPreview {get{return SelectedChapterNode!=ChapterNode.ForestCourt||SelectedChapterDifficulty!=ChapterDifficulty.Hard?"":SelectedForestLineupB?
-            "编队 B · 双坛卫兵，护援者与两名哥布林结伴争夺；黏液游荡。先切断移动护援，再抢任一封印。":
+            "编队 B · 守坛卫兵，护援者与两名哥布林结伴争夺；黏液游荡。先切断移动护援，再占领封印。":
             "编队 A · 近侧卫兵受护援，远侧卫兵独立。先走无护援一侧，或引开/击败护援者。";}}
         private bool ForestMobileLineup {get{return ChapterActive&&ActiveChapterNode==ChapterNode.ForestCourt&&ActiveChapterDifficulty==ChapterDifficulty.Hard&&ChapterRoomIndex==0&&(ChapterSeed&2)!=0;}}
 
@@ -105,7 +105,7 @@ namespace Emberfall
                 if(ChapterRun.DoorUnlocked)return prefix+(ChapterRoomIndex+1<ChapterDefinition.RoomCount(ActiveChapterNode)?"目标完成 · 前往出口进入下一房":"目标完成 · 前往出口完成节点");
                 if(ChapterRun.Objective==RoomObjective.Hunt)return prefix+"击败金环断供目标 · 可绕开其余敌人";
                 if(ChapterRun.Objective==RoomObjective.Boss)return prefix+"击败星环执政官即可通关 · 摧毁供能锚可中止扫射";
-                return prefix+(ChapterRun.Objective==RoomObjective.Purify?"净化 "+ChapterRun.Seals+"/2":"撤离")+" · 站入光环 "+ChapterRun.Progress.ToString("0.0")+"/"+(ChapterRun.Objective==RoomObjective.Purify?"3":"4")+"秒 · 敌人入环时暂停累计";
+                return prefix+(ChapterRun.Objective==RoomObjective.Purify?"净化 "+ChapterRun.Seals+"/1":"撤离")+" · 站入光环 "+ChapterRun.Progress.ToString("0.0")+"/"+(ChapterRun.Objective==RoomObjective.Purify?"2":"2.5")+"秒 · 敌人入环时暂停累计";
             }
         }
         public string ChapterObjectiveCompact
@@ -117,7 +117,7 @@ namespace Emberfall
                 if(ChapterRun.DoorUnlocked)return ChapterRoomIndex+1<ChapterDefinition.RoomCount(ActiveChapterNode)?"目标完成\n前往出口 · 进入下一房":"目标完成\n前往出口 · 完成节点";
                 if(ChapterRun.Objective==RoomObjective.Hunt)return "猎杀金环断供目标\n可绕开其余敌人";
                 if(ChapterRun.Objective==RoomObjective.Boss)return "击败首领即可通关\n摧毁供能锚中止扫射";
-                return (ChapterRun.Objective==RoomObjective.Purify?"净化 "+ChapterRun.Seals+"/2":"撤离")+" · "+ChapterRun.Progress.ToString("0.0")+"/"+(ChapterRun.Objective==RoomObjective.Purify?"3":"4")+"秒\n敌人入环暂停累计";
+                return (ChapterRun.Objective==RoomObjective.Purify?"净化 "+ChapterRun.Seals+"/1":"撤离")+" · "+ChapterRun.Progress.ToString("0.0")+"/"+(ChapterRun.Objective==RoomObjective.Purify?"2":"2.5")+"秒\n敌人入环暂停累计";
             }
         }
         public bool ConfirmChapterEnter()
@@ -168,7 +168,7 @@ namespace Emberfall
                 foreach(var point in chapterPlan.Objectives)if(!WorldTraversal.CanReach(chapterPlan.Entrance,point,.65f)){FailChapter("房间 "+(ChapterRoomIndex+1)+"：入口至封印/撤离目标不可达");return;}
                 if(ChapterRun.Objective==RoomObjective.Purify)
                 {
-                    for(int i=0;i<2;i++){var marker=WorldBuilder.MakeRoomObjective(chapterPlan.Objectives[i],true);marker.transform.SetParent(world.transform,true);chapterObjectives[i]=marker;TacticalCaptureVisual.AttachChapter(marker,this,i);}
+                    for(int i=0;i<1;i++){var marker=WorldBuilder.MakeRoomObjective(chapterPlan.Objectives[i],true);marker.transform.SetParent(world.transform,true);chapterObjectives[i]=marker;TacticalCaptureVisual.AttachChapter(marker,this,i);}
                     chapterObjective=chapterObjectives[0];
                 }
                 else {chapterObjective=WorldBuilder.MakeRoomObjective(ChapterObjectivePoint);chapterObjective.transform.SetParent(world.transform,true);TacticalCaptureVisual.Attach(chapterObjective,this);}
@@ -227,9 +227,9 @@ namespace Emberfall
             {
                 if(ChapterRun.Objective==RoomObjective.Purify)
                 {
-                    for(int i=0;i<2;i++)ChapterRun.AdvanceSeal(i,Time.deltaTime,true,RoomTacticalRegion.ContainsPlayer(CombatFx.Flat(Player.transform.position-chapterPlan.Objectives[i]).sqrMagnitude),ChapterSealContested(i));
+                    for(int i=0;i<1;i++)ChapterRun.AdvanceSeal(i,Time.deltaTime,true,RoomTacticalRegion.ContainsPlayer(CombatFx.Flat(Player.transform.position-chapterPlan.Objectives[i]).sqrMagnitude),ChapterSealContested(i));
                     chapterFirstSealSeconds=ChapterRun.SealProgress(0);chapterSecondSealSeconds=ChapterRun.SealProgress(1);
-                    if(ChapterRoomIndex==0&&ChapterRun.Seals==2&&ChapterRun.LivingRegisteredEnemies>=2)Progression.RecordChapterMastery(chapterReceipt,1);
+                    if(ChapterRoomIndex==0&&ChapterRun.Seals==1&&ChapterRun.LivingRegisteredEnemies>=2)Progression.RecordChapterMastery(chapterReceipt,1);
                 }
                 else
                 {
@@ -245,11 +245,11 @@ namespace Emberfall
         private bool ChapterSealContested(int index)
         {foreach(var enemy in Enemies)if(IsChapterContestingPoint(enemy,index))return true;return false;}
         public bool IsChapterContestingPoint(EnemyController enemy,int index)
-        {return ChapterActive&&!ChapterFinished&&ChapterRun.Objective==RoomObjective.Purify&&index>=0&&index<2&&!ChapterRun.SealComplete(index)&&LiveRoomEnemy(enemy)&&RoomTacticalRegion.Contests(CombatFx.Flat(enemy.transform.position-chapterPlan.Objectives[index]).sqrMagnitude,enemy.NavigationRadius,true)&&WorldTraversal.HasLineOfSight(enemy.transform.position,chapterPlan.Objectives[index]);}
+        {return ChapterActive&&!ChapterFinished&&ChapterRun.Objective==RoomObjective.Purify&&index>=0&&index<1&&!ChapterRun.SealComplete(index)&&LiveRoomEnemy(enemy)&&RoomTacticalRegion.Contests(CombatFx.Flat(enemy.transform.position-chapterPlan.Objectives[index]).sqrMagnitude,enemy.NavigationRadius,true)&&WorldTraversal.HasLineOfSight(enemy.transform.position,chapterPlan.Objectives[index]);}
         public bool TryGetChapterSeal(int index,out float fraction,out bool contested,out bool complete)
         {
             fraction=0;contested=complete=false;
-            if(!ChapterActive||ChapterFinished||ChapterRun.Objective!=RoomObjective.Purify||index<0||index>=2)return false;
+            if(!ChapterActive||ChapterFinished||ChapterRun.Objective!=RoomObjective.Purify||index<0||index>=1)return false;
             complete=ChapterRun.SealComplete(index);fraction=complete?1:ChapterRun.SealProgress(index)/2f;contested=!complete&&ChapterSealContested(index);return true;
         }
         public Vector3 ChapterNextObjectivePoint
@@ -260,7 +260,7 @@ namespace Emberfall
                 if(ChapterRun.DoorUnlocked)return chapterPlan.Exit;
                 if(ChapterRun.Objective!=RoomObjective.Purify)return ChapterObjectivePoint;
                 int best=-1;float distance=float.MaxValue;
-                for(int i=0;i<2;i++)if(!ChapterRun.SealComplete(i)){float d=Player==null?i:(Player.transform.position-chapterPlan.Objectives[i]).sqrMagnitude;if(d<distance){distance=d;best=i;}}
+                for(int i=0;i<1;i++)if(!ChapterRun.SealComplete(i)){float d=Player==null?i:(Player.transform.position-chapterPlan.Objectives[i]).sqrMagnitude;if(d<distance){distance=d;best=i;}}
                 return best<0?chapterPlan.Exit:chapterPlan.Objectives[best];
             }
         }
@@ -297,7 +297,7 @@ namespace Emberfall
         }
         private void FinalizeChapterBoss(){if(ChapterActive&&(ChapterRun.FinishBoss()||ChapterRun.FinishClearedFinalRoom()))FinalizeChapter();}
         private ChapterResultSnapshot CaptureChapterResult(bool failed,string reason)
-        {return new ChapterResultSnapshot(ActiveChapterNode,ActiveChapterDifficulty,chapterReceipt==null?DungeonTier:chapterReceipt.Tier,chapterEntryPotions,ChallengeRun,ChapterRoomIndex,(chapterFirstSealSeconds>=3?1:0)+(chapterSecondSealSeconds>=3?1:0),chapterFirstSealSeconds,chapterSecondSealSeconds,failed,reason,lastDamageSource,lastDamageAmount,Progression.ChapterKillExperienceEarned,MechanismEvidence.Snapshot());}
+        {return new ChapterResultSnapshot(ActiveChapterNode,ActiveChapterDifficulty,chapterReceipt==null?DungeonTier:chapterReceipt.Tier,chapterEntryPotions,ChallengeRun,ChapterRoomIndex,(chapterFirstSealSeconds>=2?1:0),chapterFirstSealSeconds,chapterSecondSealSeconds,failed,reason,lastDamageSource,lastDamageAmount,Progression.ChapterKillExperienceEarned,MechanismEvidence.Snapshot());}
         private void FailChapter(string reason)
         {if(!ChapterActive||ChapterFinished)return;ChapterResult=CaptureChapterResult(true,reason);ChapterRun.Fail();RunChoices.Reset();Progression.CancelChapterRun();if(!Progression.FinishDungeonRewards())Notify(Progression.LastError);Notify(reason);SuspendInputs();UpdateTimeScale();}
         private void FinalizeChapter()

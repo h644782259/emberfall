@@ -671,7 +671,7 @@ namespace Emberfall
             if(!InDungeon)LogSystem("+"+gold+" 金币 · +"+experience+" 经验");
             if (Random.Range(0,100)<AdventureRewardRules.EnemyEquipmentChance(boss,enemy.Tier!=EnemyController.ThreatTier.Normal))
             {
-                ItemData loot = Progression.RollLoot(InDungeon&&!ChapterActive?DungeonEntryLevel:Progression.Profile.level, boss, InDungeon ? DungeonTier : 0);
+                ItemData loot = Progression.RollLoot(InDungeon&&!ChapterActive?DungeonEntryLevel:Progression.Profile.level, boss, InDungeon ? DungeonTier : 0, !InDungeon&&enemy.Tier==EnemyController.ThreatTier.Normal);
                 DeliverEnemyLoot(loot, position);
             }
             enemy.BeginDeath();

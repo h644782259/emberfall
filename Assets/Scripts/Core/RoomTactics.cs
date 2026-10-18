@@ -24,6 +24,6 @@ namespace Emberfall
         public static int Mirror(int seed) { return Positive(seed) / 9 % 2 == 0 ? 1 : -1; }
         public static int EventRoom(int seed) { return Positive(seed) / 18 % 3; }
         public static string Name(RoomObjective objective)
-        { return new[] { "双印净化", "截断供能", "北门突围", "星泉休憩", "王座封印" }[(int)objective]; }
+        { return new[] { "封印占领", "截断供能", "北门突围", "星泉休憩", "王座封印" }[(int)objective]; }
     }
 }

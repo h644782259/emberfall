@@ -27,11 +27,11 @@ namespace Emberfall
         {
             if(profile==null||difficulty==ChapterDifficulty.Normal||(profile.chapterCompletedMask&(1<<(int)node))==0)return "";
             int mask=profile.chapterMasteryMask,required=node==ChapterNode.ForestCourt?1:node==ChapterNode.Redrock?2:12;
-            string goal=node==ChapterNode.ForestCourt?"首房至少2敌仍存活时完成双封印":node==ChapterNode.Redrock?"首房其余5敌仍存活时击败断供目标，再成功撤离":
+            string goal=node==ChapterNode.ForestCourt?"首房至少2敌仍存活时完成封印占领":node==ChapterNode.Redrock?"首房其余5敌仍存活时击败断供目标，再成功撤离":
                 "真实打断首领 "+((mask&4)!=0?"✓":"○")+" / 亲自破锚制造暴露 "+((mask&8)!=0?"✓":"○")+"（可分局）";
             bool earned=(mask&required)==required;int tier=int.MaxValue;
             for(int i=0;i<4;i++)if((required&(1<<i))!=0)tier=System.Math.Min(tier,profile.chapterMasteryTiers!=null&&profile.chapterMasteryTiers.Length>i?profile.chapterMasteryTiers[i]:0);
-            string badge=node==ChapterNode.ForestCourt?"双印行者":node==ChapterNode.Redrock?"断供猎手":"星台破局者";
+            string badge=node==ChapterNode.ForestCourt?"守印行者":node==ChapterNode.Redrock?"断供猎手":"星台破局者";
             return "\n可选精通 · "+goal+"。本次节点成功保存才记录；无战斗加成，不影响节点通关。"+
                 (earned?"\n徽记 / 称号「"+badge+"」 · 记录第 "+tier+" 阶":"\n徽记 / 称号「"+badge+"」尚未取得");
         }
@@ -68,7 +68,7 @@ namespace Emberfall
             string text=ChapterDefinition.Get(result.Node).Name+" · 第 "+result.Tier+" 阶"+"\n"+
                 "携带药剂 "+result.EntryPotions+"\n\n";
             if(result.Failed)return text+"止步房间 "+(result.Room+1)+" / "+ChapterDefinition.RoomCount(result.Node)+"\n"+
-                (result.Node==ChapterNode.ForestCourt?"封印 "+result.Seals+"/2 · 一 "+result.FirstSealSeconds.ToString("0.0")+"s · 二 "+result.SecondSealSeconds.ToString("0.0")+"s\n":"")+
+                (result.Node==ChapterNode.ForestCourt?"封印 "+result.Seals+"/1 · "+result.FirstSealSeconds.ToString("0.0")+"s\n":"")+
                 "最后受击："+(string.IsNullOrEmpty(result.LastHit)?"未记录":result.LastHit)+" · "+result.LastHitAmount.ToString("0.#")+"\n"+
                 (string.IsNullOrEmpty(result.Failure)?"本次挑战未完成。":result.Failure)+"\n本次击杀经验 +"+result.KillExperience+"；未发通关经验。\n节点与阶数未解锁；回营重试。"+MechanismReport(result);
             if(!result.Saved)return text+"节点完成 · 结算尚未保存\n奖励与解锁尚未提交，重试保存后再继续。"+MechanismReport(result);

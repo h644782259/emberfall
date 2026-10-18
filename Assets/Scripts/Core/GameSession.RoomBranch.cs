@@ -8,7 +8,7 @@ namespace Emberfall
   private RoomBranch roomRetryBranch;
   public bool RoomBranchChoiceOpen {get{return RoomChainRun!=null&&!RoomChainRun.Finished&&RoomChainRun.BranchChoiceOpen;}}
   public static string RoomBranchDescription(RoomBranch branch)
-  {return branch==RoomBranch.Seal?"守印侧廊\n目标：双印净化\n敌人：4名近战守点者，可引离印记\n地形：中央石墙、左右两印\n第四房星泉汇合 · 原基础奖励不变":"断供侧廊\n目标：猎杀金环供能者\n敌人：前排守卫与后排魔灵，共6名\n地形：交错隔墙、侧路绕后\n第四房星泉汇合 · 原基础奖励不变";}
+  {return branch==RoomBranch.Seal?"守印侧廊\n目标：封印占领\n敌人：4名近战守点者，可引离印记\n地形：中央石墙、出口附近单个占领区\n第四房星泉汇合 · 原基础奖励不变":"断供侧廊\n目标：猎杀金环供能者\n敌人：前排守卫与后排魔灵，共6名\n地形：交错隔墙、侧路绕后\n第四房星泉汇合 · 原基础奖励不变";}
   public void CancelRoomBranchChoice(){if(SceneLoading)return;if(RoomChainRun!=null)RoomChainRun.CancelBranchChoice();SuspendInputs();UpdateTimeScale();}
   public bool ConfirmRoomBranch(RoomBranch branch)
   {

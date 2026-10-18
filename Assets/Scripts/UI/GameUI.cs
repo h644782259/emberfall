@@ -997,8 +997,8 @@ namespace Emberfall
             bool showObjective=session.InDungeon||session.ChapterActive||session.SpecialAdventure||hasGrowth||p.level<2||p.skillRanks[0]==0;
             var chapterFirstSeal=session.ChapterSealView(0);
             var roomFirstSeal=session.ChapterActive?null:session.RoomSealView(0);
-            if(chapterFirstSeal!=null&&session.ChapterRun.DoorUnlocked)objectiveText="双印完成 · 前往出口";
-            if(roomFirstSeal!=null&&session.RoomChainRun.DoorUnlocked)objectiveText="双印完成 · 前往北门";
+            if(chapterFirstSeal!=null&&session.ChapterRun.DoorUnlocked)objectiveText="占领完成 · 前往出口";
+            if(roomFirstSeal!=null&&session.RoomChainRun.DoorUnlocked)objectiveText="占领完成 · 前往北门";
             float bodyHeight=Mathf.Max(24,Style(15,true,true).CalcHeight(new GUIContent(objectiveText),255));
             string progressText=PlatformText(objectiveProgress);
             float progressHeight=Mathf.Max(18,Style(13,false,true).CalcHeight(new GUIContent(progressText),255));

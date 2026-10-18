@@ -2340,11 +2340,11 @@ namespace Emberfall
         }
 
         /// <summary>Generate an identified drop without putting it into the bag or saving.</summary>
-        public ItemData RollLoot(int level, bool boss, int dungeonTier = 0)
+        public ItemData RollLoot(int level, bool boss, int dungeonTier = 0, bool campOrdinary = false)
         {
             level = EquipmentGenerationLevel(level);
             int roll = random.Next(100);
-            Rarity rarity = TierRewardRules.DropRarity(boss, dungeonTier, roll);
+            Rarity rarity = TierRewardRules.DropRarity(boss, dungeonTier, roll, campOrdinary);
             ItemSlot slot = (ItemSlot)random.Next(3);
             var item = new ItemData
             {
