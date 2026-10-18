@@ -24,9 +24,14 @@ def reset_license_clients(command):
     rows = subprocess.check_output(['ps', '-axo', 'pid=,args='], text=True).splitlines()
     processes = [row.strip().split(None, 1) for row in rows if row.strip()]
     # Match executable paths, never shell commands containing Unity paths.
-    if any(len(row) == 2 and row[1].startswith('/Applications/Unity/')
-           and '/Unity.app/Contents/MacOS/Unity ' in row[1] for row in processes):
-        print('检测到其他 Unity 编辑器，跳过自动重启授权服务。请关闭编辑器后重新运行。', flush=True)
+    editors = [row[0] for row in processes if len(row) == 2
+               and (row[1].startswith(command[0] + ' ') or row[1] == command[0]
+                    or row[1].startswith('/Applications/Unity/')
+                    and ('/Unity.app/Contents/MacOS/Unity ' in row[1]
+                         or row[1].endswith('/Unity.app/Contents/MacOS/Unity')))]
+    if editors:
+        print('构建尚未开始：Unity 编辑器仍在运行（PID ' + ', '.join(editors) +
+              '）。请保存工作并退出 Unity 编辑器后重试；仅停止 Play 或关闭 Game 标签页不够。', flush=True)
         return False
     for row in processes:
         if len(row) == 2 and row[1].startswith('/Applications/Unity/') and '/MacOS/Unity.Licensing.Client ' in row[1]:
@@ -64,11 +69,23 @@ def reset_license_clients(command):
 
 
 def run(log, command, startup_timeout=120):
+    # Clear stale output before preflight: a rejected launch must never show an old build.
+    log.parent.mkdir(parents=True, exist_ok=True)
+    if log.exists():
+        shutil.copyfile(log, log.with_suffix('.previous.log'))
+    log.write_text('本次构建：启动前检查中，尚未启动 Unity 导出。\n')
     # Restart an idle licensing service before the editor launch.
     # Existing editors prevent any shared-service mutation.
     if '-logFile' in command:
         print('检查并预启动 Unity 授权服务…', flush=True)
-        if not reset_license_clients(command):
+        try:
+            ready = reset_license_clients(command)
+        except (OSError, subprocess.SubprocessError) as error:
+            log.write_text('构建尚未开始：授权服务启动前检查失败：' + str(error) + '\n')
+            print(log.read_text(), flush=True)
+            return 1
+        if not ready:
+            log.write_text('构建尚未开始：启动前检查未通过，请查看上方 Unity 进程或授权服务提示。现有 Xcode 工程未替换。\n')
             return 1
     for attempt in range(2):
         log.write_text('')

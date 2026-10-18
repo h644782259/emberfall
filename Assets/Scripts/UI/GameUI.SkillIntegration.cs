@@ -27,12 +27,6 @@ namespace Emberfall
                 float degrees=melee?Mathf.Lerp(-BasicAttackGrowth.Angle(tier)*.5f,BasicAttackGrowth.Angle(tier)*.5f,i/6f):tier<3?0:Mathf.Lerp(-30,30,i/(float)(count-1));
                 float distance=melee?(22+5*tier)*u:tier==2?(i==0?24:43)*u:40*u;
                 Vector2 end=origin+new Vector2(Mathf.Sin(degrees*Mathf.Deg2Rad),-Mathf.Cos(degrees*Mathf.Deg2Rad))*distance;
-                if(!melee)
-                {
-                    Matrix4x4 old=GUI.matrix;
-                    GUIUtility.RotateAroundPivot(degrees,origin);
-                    Fill(new Rect(origin.x-u,origin.y-distance+8*u,2*u,Mathf.Max(4*u,distance-14*u)),new Color(tint.r,tint.g,tint.b,.3f));GUI.matrix=old;
-                }
                 DrawIcon(new Rect(end.x-5*u,end.y-5*u,10*u,10*u),UIIconAtlas.Utility(melee?"attack":hero==HeroClass.Ranger?"attack":"gem"),tint);
             }
         }
@@ -45,7 +39,7 @@ namespace Emberfall
             Rect area=new Rect(r.x+10*u,r.y+46*u,r.width-20*u,Mathf.Max(20*u,r.height-112*u));
             float w=area.width-16*u;int columns=w>=480*u?4:2;
             float gap=8*u,tileWidth=(w-gap*(columns-1))/columns,tileHeight=134*u;
-            float contentHeight=(4/columns)*(tileHeight+gap)+56*u;
+            float contentHeight=(4/columns)*(tileHeight+gap)+32*u;
             basicAttackDetailScroll=BeginTouchScroll("basic-attack-detail",area,basicAttackDetailScroll,new Rect(0,0,w,contentHeight));
             for(int i=1;i<=4;i++)
             {
@@ -58,12 +52,12 @@ namespace Emberfall
                 bool melee=p.Profile.heroClass==HeroClass.Vanguard;
                 string title=melee?BasicAttackGrowth.Range(i).ToString("0.0")+"米":i==1?"单发":i==2?"二连发":"扇形 "+BasicAttackGrowth.Shots(i)+" 发";
                 Text(new Rect(tile.x+5*u,tile.y+84*u,tile.width-10*u,24*u),title,Mathf.RoundToInt(15*u),current?pale:accent,true,false,TextAnchor.MiddleCenter);
-                Text(new Rect(tile.x+5*u,tile.y+110*u,tile.width-10*u,18*u),melee?BasicAttackGrowth.Angle(i).ToString("0")+"°挥斩":i==2?"间隔 0.12秒":i>2?"展开 60°":"单体攻击",Mathf.RoundToInt(10*u),muted,false,false,TextAnchor.MiddleCenter);
+                Text(new Rect(tile.x+5*u,tile.y+110*u,tile.width-10*u,18*u),melee?BasicAttackGrowth.Angle(i).ToString("0")+"°挥斩":i==2?"间隔 0.12秒":i>2?"":"单体攻击",Mathf.RoundToInt(10*u),muted,false,false,TextAnchor.MiddleCenter);
             }
             float statsY=(4/columns)*(tileHeight+gap);
             bool ranged=p.Profile.heroClass!=HeroClass.Vanguard;
             float perShot=SkillDamageBudgets.BasicCoefficient(p.Profile.heroClass)*(ranged?BasicAttackGrowth.ProjectileMultiplier(tier):1f);
-            Text(new Rect(0,statsY,w,48*u),(ranged?"每发 ":"伤害 ")+(perShot*100).ToString("0.#")+"% · "+(ranged?"单体上限 "+(SkillDamageBudgets.BasicCoefficient(p.Profile.heroClass)*BasicAttackGrowth.TargetMultiplier(tier)*100).ToString("0.#")+"%":"")+"\n回能 "+SkillDamageBudgets.BasicEnergyOnHit.ToString("0")+"（每次攻击一次）",Mathf.RoundToInt(11*u),jade);
+            Text(new Rect(0,statsY,w,24*u),(ranged?"每发 ":"伤害 ")+(perShot*100).ToString("0.#")+"% · "+(ranged?"单体上限 "+(SkillDamageBudgets.BasicCoefficient(p.Profile.heroClass)*BasicAttackGrowth.TargetMultiplier(tier)*100).ToString("0.#")+"% · ":"")+"回能 "+SkillDamageBudgets.BasicEnergyOnHit.ToString("0"),Mathf.RoundToInt(11*u),jade);
             EndTouchScroll();
             float footerY=r.yMax-54*u;
             Text(new Rect(r.x+12*u,footerY,r.width-174*u,20*u),tier>=4?"已达最高档":"消耗 "+cost+"   /   持有 "+p.Profile.basicAttackMaterials,Mathf.RoundToInt(12*u),p.Profile.basicAttackMaterials>=cost?gold:muted,true);
