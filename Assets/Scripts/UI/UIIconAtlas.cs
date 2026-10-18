@@ -322,16 +322,22 @@ namespace Emberfall
         public static Texture2D EquipmentCardIcon(ItemData item,HeroClass hero,bool highResolution=false)
         {
             if(item==null)return null;
+            Texture2D painting=AuthoredIconArt.RefinedEquipment(item.slot,hero,item.rarity);
+            if(painting!=null)return painting;
             Texture2D native=ProductionGearIconArt.Equipment(item,hero);
             return native!=null?native:EquipmentCardIconFallback(item.slot,item.level,item.rarity,hero,highResolution);
         }
         public static Texture2D EquipmentCardIcon(ItemSlot slot,int level=1,Rarity rarity=Rarity.Common,HeroClass hero=HeroClass.Vanguard,bool highResolution=false)
         {
+            Texture2D painting=AuthoredIconArt.RefinedEquipment(slot,hero,rarity);
+            if(painting!=null)return painting;
             Texture2D native=ProductionGearIconArt.Equipment(slot,level,rarity,hero);
             return native!=null?native:EquipmentCardIconFallback(slot,level,rarity,hero,highResolution);
         }
         private static Texture2D EquipmentCardIconFallback(ItemSlot slot,int level,Rarity rarity,HeroClass hero,bool highResolution)
         {
+            Texture2D painting = AuthoredIconArt.Equipment(slot, hero, rarity);
+            if (painting != null) return painting;
             var targetCache=highResolution?detailCache:cache;
             int tier=Mathf.Clamp(level/10,0,10),rank=Mathf.Clamp((int)rarity,0,3),key=-3000000-(int)slot*10000-tier*100-rank*10-(int)hero;
             Texture2D texture;if(targetCache.TryGetValue(key,out texture))return texture;
