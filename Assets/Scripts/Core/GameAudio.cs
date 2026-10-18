@@ -27,7 +27,7 @@ namespace Emberfall
         private const float BackgroundVolume = .14f;
         private const double Tau = Math.PI * 2.0;
         private static readonly float[] Durations = { .16f, .34f, .13f, .22f, .38f, .64f, .95f, .65f, .09f, .17f, .42f, .90f, .62f };
-        private static readonly float[] MinimumIntervals = { .075f, .12f, .075f, .15f, .16f, .25f, .5f, .5f, .055f, .085f, .12f };
+        private static readonly float[] MinimumIntervals = { .075f, .12f, .075f, .15f, .16f, .25f, .5f, .5f, .055f, .085f, .12f, .25f, .25f };
         private static GameAudio instance;
         private static bool muted;
         private static bool quitting;

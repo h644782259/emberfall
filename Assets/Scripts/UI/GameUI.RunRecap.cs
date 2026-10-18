@@ -197,8 +197,8 @@ namespace Emberfall
             var disc=UIIconAtlas.ControlDisc();
             for(int layer=0;layer<4;layer++)
             {
-                float size=icon.width*(1.65f-layer*.22f);
-                GUI.color=new Color(1f,.62f,.12f,opacity*(.07f+layer*.025f+pulse*.025f));
+                float size=icon.width*(1.85f-layer*.24f+pulse*.10f);
+                GUI.color=new Color(1f,.62f,.12f,opacity*(.12f+layer*.035f+pulse*.07f));
                 GUI.DrawTexture(new Rect(icon.center.x-size*.5f,icon.center.y-size*.5f,size,size),disc,ScaleMode.StretchToFill,true);
             }
             GUI.color=previous;
@@ -208,10 +208,27 @@ namespace Emberfall
             {
                 float angle=i*Mathf.PI*.2f+Time.unscaledTime*.15f;
                 Vector2 point=icon.center+new Vector2(Mathf.Cos(angle),Mathf.Sin(angle))*icon.width*(.60f+burst*.22f);
-                float size=icon.width*(.025f+burst*.025f);
-                Color light=new Color(1f,.85f,.43f,opacity*(.45f+pulse*.35f));
+                float size=icon.width*(.035f+burst*.025f+pulse*.012f);
+                Color light=new Color(1f,.85f,.43f,opacity*(.65f+pulse*.35f));
                 Fill(new Rect(point.x-size,point.y-size*.2f,size*2,size*.4f),light);
                 Fill(new Rect(point.x-size*.2f,point.y-size,size*.4f,size*2),light);
+            }
+        }
+        private void DrawLegendaryConfetti(Rect icon,float opacity)
+        {
+            if(Event.current.type!=EventType.Repaint||EffectPreferences.ReducedEffects)return;
+            float elapsed=Time.unscaledTime-chestRevealedAt-ChestDuration*.60f;
+            if(elapsed<0||elapsed>3.5f)return;
+            for(int i=0;i<32;i++)
+            {
+                float t=elapsed-(i%8)*.045f;if(t<0)continue;
+                float seed=(i*37%101)/100f;
+                float x=icon.center.x+(seed-.5f)*icon.width*t*2;
+                float y=icon.center.y-icon.height*(1.6f+seed)*t+icon.height*.8f*t*t;
+                float alpha=opacity*Mathf.Clamp01((3.5f-elapsed)/.6f);
+                Color tint=i%3==0?new Color(1,.88f,.3f,alpha):i%3==1?new Color(1,.45f,.25f,alpha):new Color(1,.96f,.75f,alpha);
+                float size=icon.width*.045f;
+                Fill(new Rect(x,y,size*(.35f+.65f*Mathf.Abs(Mathf.Sin(t*7+i))),size*1.8f),tint);
             }
         }
         private void DrawSettlementChestStage(Rect stage,ChestReward reward,float u)
@@ -221,7 +238,7 @@ namespace Emberfall
             bool legendary=HasLegendaryChestReward(reward);
             if(legendary&&progress>=.60f&&chestReceiptId==reward.Id&&!rewardSoundPlayed)
             {rewardSoundPlayed=true;GameAudio.Play(SoundCue.Victory);}
-            if(stage.height>=100*u)Text(new Rect(stage.x,stage.y,stage.width,24*u),legendary&&progress>=.42f?"传说降临 · 珍稀奖励入手":"宝箱已开启",Mathf.RoundToInt((legendary?18:15)*u),legendary?new Color(1f,.82f,.38f):gold,true,false,TextAnchor.MiddleCenter);
+            if(stage.height>=100*u)Text(new Rect(stage.x,stage.y,stage.width,24*u),"宝箱已开启",Mathf.RoundToInt((legendary?18:15)*u),legendary?new Color(1f,.82f,.38f):gold,true,false,TextAnchor.MiddleCenter);
             for(int choice=0;choice<3;choice++)
             {
                 Rect art=SettlementChestArt(stage,choice,u);
@@ -255,10 +272,10 @@ namespace Emberfall
                     // Only the granted chest pulses; hit bounds and quantity stay stable.
                     float pulse=selected?.5f+.5f*Mathf.Cos(Time.unscaledTime*Mathf.PI*2/1.2f):0;
                     bool legendaryItem=selected&&legendary&&item.Rarity==Rarity.Legendary;
-                    if(legendaryItem)DrawLegendaryChestGlow(icon,opacity,reveal);
+                    if(legendaryItem){DrawLegendaryChestGlow(icon,opacity,reveal);DrawLegendaryConfetti(icon,opacity);}
                     DrawChestItemGrounding(icon,item.QualityColor,opacity,selected,pulse);
                     Color artTint=item.QualityColor;
-                    artTint.a=opacity*(selected&&!legendaryItem?Mathf.Lerp(EffectPreferences.ReducedEffects?.8f:.5f,1f,pulse):1f);
+                    artTint.a=opacity*(selected?Mathf.Lerp(EffectPreferences.ReducedEffects?.9f:legendaryItem?.72f:.5f,1f,pulse):1f);
                     DrawIcon(new Rect(icon.x+4*u,icon.y+4*u,icon.width-8*u,icon.height-8*u),item.Icon,artTint);
                     GUI.color=new Color(before.r,before.g,before.b,opacity);
                     if(item.Quantity>1)DrawOutlinedIconText(new Rect(icon.x,icon.yMax-16*u,icon.width-2*u,16*u),item.Quantity.ToString(),Mathf.RoundToInt(11*u),pale,TextAnchor.MiddleRight);
@@ -267,7 +284,7 @@ namespace Emberfall
                     Rect hit=MobileControls.Active?new Rect(icon.center.x-Mathf.Max(icon.width,44*u)*.5f,icon.center.y-Mathf.Max(icon.height,44*u)*.5f,Mathf.Max(icon.width,44*u),Mathf.Max(icon.height,44*u)):icon;
                     InspectRewardItem(hit,item,false,inspectionKey);
                 }
-                if(side>=80*u)Text(new Rect(square.x,square.yMax-18*u,square.width,18*u),selected?(legendary?"传说 · 已获得":"已获得"):"未选中",Mathf.RoundToInt(11*u),selected?gold:muted,true,false,TextAnchor.MiddleCenter);
+                if(side>=80*u)Text(new Rect(square.x,square.yMax-18*u,square.width,18*u),selected?"已获得":"未选中",Mathf.RoundToInt(11*u),selected?gold:muted,true,false,TextAnchor.MiddleCenter);
             }
         }
         private void DrawChestItemGrounding(Rect icon,Color rarity,float opacity,bool selected,float pulse)

@@ -4,6 +4,36 @@ namespace Emberfall
 {
     public sealed partial class GameUI
     {
+        private sealed class PickupLine {public string Text;public Color Tint;public float Started;}
+        private readonly List<PickupLine> pickupLines=new List<PickupLine>(4);
+        private void AddPickupLine(string text,Color tint)
+        {
+            if(session.IsDead||session.PracticeActive||!session.HasStarted)return;
+            if(pickupLines.Count==4)pickupLines.RemoveAt(0);
+            pickupLines.Add(new PickupLine{Text=text,Tint=tint,Started=Time.unscaledTime});
+        }
+        private void QueueSupplyNotice(int coins,int potions)
+        {
+            if(coins>0)AddPickupLine("获得金币 ×"+coins,gold);
+            if(potions>0)AddPickupLine("拾取生命药剂 ×"+potions,jade);
+        }
+        private void DrawPickupLines()
+        {
+            pickupLines.RemoveAll(line=>Time.unscaledTime-line.Started>=1.5f);
+            if(panel!=Panel.None||session.Paused||session.InputBlocked||session.IsDead)return;
+            float u=MobileControls.Active?TouchRatio:1;
+            float available=MobileControls.Active?Mathf.Min(220,MobileControls.Layout.Potion.X-24):240;
+            float bottom=MobileControls.Active?MobileControls.Layout.Height-34:height-50;
+            for(int i=0;i<pickupLines.Count;i++)
+            {
+                var line=pickupLines[i];float age=Time.unscaledTime-line.Started;
+                Rect row=MobileControls.Active?TouchRect(12,bottom-(pickupLines.Count-i)*26,Mathf.Max(100,available),24):new Rect(16,bottom-(pickupLines.Count-i)*26,available,24);
+                float before=controlOpacity;controlOpacity*=Mathf.Clamp01((1.5f-age)/.2f);
+                Fill(row,new Color(.015f,.025f,.035f,.65f));
+                Text(new Rect(row.x+6*u,row.y,row.width-12*u,row.height),line.Text,Mathf.RoundToInt(12*u),line.Tint,true,false,TextAnchor.MiddleLeft);
+                controlOpacity=before;
+            }
+        }
         private sealed class LootNotice { public string Id,Name;public ItemSlot Slot;public Rarity Rarity;public int Level;public ItemData Appearance;public float Started=-1; }
         private readonly List<LootNotice> lootNotices=new List<LootNotice>();
         private ProgressionService lootNoticeOwner;private string lootNoticeSlot;
@@ -11,12 +41,14 @@ namespace Emberfall
         {
             var p=session.Progression;
             if(lootNoticeOwner==p&&lootNoticeSlot==p.CurrentSlotId)return;
-            ReleaseLootNotices();lootNoticeOwner=p;lootNoticeSlot=p.CurrentSlotId;p.LootCollected+=QueueLootNotice;
+            ReleaseLootNotices();lootNoticeOwner=p;lootNoticeSlot=p.CurrentSlotId;p.LootCollected+=QueueLootNotice;p.SuppliesCollected+=QueueSupplyNotice;
         }
         private void ReleaseLootNotices()
-        {if(lootNoticeOwner!=null)lootNoticeOwner.LootCollected-=QueueLootNotice;lootNoticeOwner=null;lootNotices.Clear();}
+        {if(lootNoticeOwner!=null){lootNoticeOwner.LootCollected-=QueueLootNotice;lootNoticeOwner.SuppliesCollected-=QueueSupplyNotice;}lootNoticeOwner=null;lootNotices.Clear();pickupLines.Clear();}
         private void QueueLootNotice(ItemData item)
         {
+            if(item!=null&&lootNoticeOwner==session.Progression&&lootNoticeSlot==session.Progression.CurrentSlotId)
+                AddPickupLine("拾取 "+item.name+" ×1",GameBalance.RarityColor(item.rarity));
             if(item==null||!session.InDungeon||session.IsDead||session.PracticeActive||lootNoticeOwner!=session.Progression||lootNoticeSlot!=session.Progression.CurrentSlotId)return;
             if(lootNotices.Exists(n=>n.Id==item.id))return;
             lootNotices.Insert(0,new LootNotice{Id=item.id,Name=item.name,Slot=item.slot,Rarity=item.rarity,Level=item.level,Appearance=session.Progression.PreviewUpgrade(item,item.upgradeLevel)});
@@ -64,6 +96,7 @@ namespace Emberfall
         }
         private void DrawLootNotices()
         {
+            DrawPickupLines();
             if(!LootNoticesVisible)return;
             float u=MobileControls.Active?TouchRatio:1;
             for(int i=0;i<VisibleLootNoticeCount;i++)

@@ -123,12 +123,12 @@ namespace Emberfall
     if(line.Length==0||line.StartsWith("Lv")||line==GameBalance.RarityName(item.Rarity)||line=="兵装"||line=="羽翼")continue;
     if(CompactRewardItem(item)&&line.StartsWith("数量"))continue;
     bool section=line.StartsWith("实际属性")||line.StartsWith("基础属性")||line.StartsWith("随机附加")||line.StartsWith("机制");
-    var stat=System.Text.RegularExpressions.Regex.Match(line,@"^(攻击加成|攻击|防御|生命|暴击率|暴击几率|暴击伤害|移动速度|受到伤害减免|技能冷却缩减|能量回复|护甲|数量)[ ：]*(.+)$");
+    var stat=System.Text.RegularExpressions.Regex.Match(line,@"^(攻击加成|攻击|防御|生命|暴击率|暴击几率|暴击伤害|移动速度|受到伤害减免|技能冷却缩减|能量回复|护甲|吸血|数量)[ ：]*(.+)$");
     if(stat.Success)
     {
      if(draw){Rect row=new Rect(0,y*u,available*u,36*u);Fill(row,new Color(.06f,.10f,.14f));Border(row,new Color(.23f,.43f,.48f),u);
       string name=stat.Groups[1].Value;float valueWidth=Mathf.Min(72,available*.3f),labelWidth=available-40-valueWidth;
-      DrawIcon(new Rect(7*u,(y+8)*u,20*u,20*u),UIIconAtlas.Utility(name=="攻击"?"attack":name=="防御"||name=="受到伤害减免"?"defense":name=="生命"?"health":name=="数量"?"shard":"core"),jade);
+      DrawIcon(new Rect(7*u,(y+8)*u,20*u,20*u),UIIconAtlas.Utility(name=="攻击"?"attack":name=="防御"||name=="受到伤害减免"?"defense":name=="生命"||name=="吸血"?"health":name=="数量"?"shard":"core"),jade);
       DrawGemEffectText(new Rect(34*u,y*u,labelWidth*u,36*u),name,Mathf.RoundToInt(12*u),pale,true,TextAnchor.MiddleLeft);
       Text(new Rect((available-valueWidth-6)*u,y*u,valueWidth*u,36*u),stat.Groups[2].Value,Mathf.RoundToInt(14*u),jade,true,false,TextAnchor.MiddleRight);}
      y+=40;continue;

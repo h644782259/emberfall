@@ -23,9 +23,9 @@ namespace Emberfall
             Vector3 direction=CombatFx.Flat(transform.position-origin);if(direction.sqrMagnitude<.001f)direction=-transform.forward;direction.Normalize();
             hurtFlashUntil=Time.time+.3f;
             GameAudio.PlayPlayerHurt(reaction!=PlayerHitReaction.Light);
-            if(model!=null)model.Recoil(direction,Mathf.Clamp(damage/Mathf.Max(1,MaxHealth)*8f,.85f,1.7f));
+            if(!UltimateSuperArmor&&model!=null)model.Recoil(direction,Mathf.Clamp(damage/Mathf.Max(1,MaxHealth)*8f,.85f,1.7f));
             HitFeedback.Spawn(transform.position+Vector3.up*1.1f,direction,reaction==PlayerHitReaction.Light?.85f:1.55f);
-            if(reaction==PlayerHitReaction.Light||Time.time<nextImpactControl||ImpactControlled||Health<=0)return;
+            if(UltimateSuperArmor||reaction==PlayerHitReaction.Light||Time.time<nextImpactControl||ImpactControlled||Health<=0)return;
             if(charge!=null)charge.Cancel();if(targeting!=null)targeting.Cancel();CancelCombatPose();
             if(FrostStrideActive){burnStrideTime=0;guardTime=0;}
             impactEpoch=CombatEpoch;impactGroundY=WorldTraversal.SurfaceHeight(transform.position,.45f);

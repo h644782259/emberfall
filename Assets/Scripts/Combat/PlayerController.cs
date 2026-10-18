@@ -326,7 +326,7 @@ namespace Emberfall
             if (CombatReviewEvents.Enabled) CombatReviewEvents.Emit("takendamage",CombatReviewObjectId.Get(this),amount:healthBeforeHit-Health,detail:source);
             if(Health>0){float recovery=masteryCore.DamageTaken(Health/MaxHealth);if(recovery>0){Heal(MaxHealth*recovery);session.RecordCombatAction("生机核心");}}
             invulnerability = .2f;
-            hurtTimer = .22f;
+            hurtTimer = UltimateSuperArmor?0:.22f;
             ReceiveHitReaction(sourcePosition??(transform.position+transform.forward),reaction,damage);
             session.SpawnFloatingText(transform.position + Vector3.up * 2.5f,"−" + Mathf.CeilToInt(damage),new Color(1f,.4f,.42f));
             if (Health > 0) TryDefensePassive();
@@ -1247,7 +1247,7 @@ namespace Emberfall
             return true;
         }
 
-        internal void CancelCombatPose() { ClearBlinkFollowup(); paidSkillSlot = -1; StopSkillChannel(); CancelPendingSkillRelease(); skillBasicRecovery.Clear(); if (model != null) model.CancelAction(); }
+        internal void CancelCombatPose() { ultimateArmorUntil=0; ClearBlinkFollowup(); paidSkillSlot = -1; StopSkillChannel(); CancelPendingSkillRelease(); skillBasicRecovery.Clear(); if (model != null) model.CancelAction(); }
         private float counterWindowDuration;
         internal float CounterOpportunityDuration {get{return counterWindowDuration;}}
         internal float CounterOpportunityRemaining { get { return IsDead ? 0 : counterTime; } }
@@ -1457,6 +1457,7 @@ namespace Emberfall
             if(resourceProc.Energy>0){skillRuntime.RestoreEnergy(resourceProc.Energy);skillRuntime.ReduceCooldowns(resourceProc.CooldownReduction);session.RecordCombatAction("循能核心");}
             int castId = NewCastId();HoldCastReceipt(ref skillCastReceipt,castId);
             BeginSkillChannel(slot,castId);
+            if(slot==9){ultimateArmorEpoch=CombatEpoch;ultimateArmorUntil=Time.time+SkillDamageBudgets.AdvancedFirstEvent(HeroClass,slot)+SkillDamageBudgets.AdvancedSteps(HeroClass,slot,rank)*SkillDamageBudgets.AdvancedInterval(HeroClass,slot)+SkillCastingPolicy.Recovery(HeroClass,slot);}
             session.RecordPracticeCast(castId,slot);
             session.RecordCombatAction("职业能力");
             if (executingChargedSkill && session.HasBlessing(RunBlessing.ChargedWard)) chargedWardTime = Mathf.Max(chargedWardTime, 2f);

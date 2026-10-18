@@ -132,6 +132,6 @@ namespace Emberfall
         public static float AdvancedFirstEvent(HeroClass hero,int skill)
         {return skill==6?1:hero==HeroClass.Vanguard&&skill==9?.15f:skill==9?.6f:hero==HeroClass.Arcanist&&skill==7?.3f:0;}
         public static float ChargeSeconds(HeroClass hero,int skill)
-        {if(skill==9)return hero==HeroClass.Vanguard?.9f:hero==HeroClass.Ranger?.75f:1.1f;if(hero==HeroClass.Arcanist&&skill==1)return .55f;if(hero==HeroClass.Vanguard&&skill==7)return .5f;if(hero==HeroClass.Summoner&&skill==4)return .4f;return 0;}
+        {if(skill==9)return hero==HeroClass.Vanguard||hero==HeroClass.Ranger?0:hero==HeroClass.Arcanist?.65f:.4f;if(hero==HeroClass.Arcanist&&skill==1)return .55f;if(hero==HeroClass.Vanguard&&skill==7)return .5f;if(hero==HeroClass.Summoner&&skill==4)return .4f;return 0;}
     }
 }

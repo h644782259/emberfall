@@ -14,9 +14,9 @@ public static class BossAttackPolicyTests
     public static string Run()
     {
         assertions = 0;
-        Check(BossAttackPolicy.Select(0) == BossAttackPolicy.Move.Slam, "overlapping target selects slam");
-        Check(BossAttackPolicy.Select(3.5f) == BossAttackPolicy.Move.Slam, "old melee gate remains close range");
-        Check(BossAttackPolicy.Select(BossAttackPolicy.CloseRange) == BossAttackPolicy.Move.Slam, "close boundary is inclusive");
+        Check(BossAttackPolicy.Select(0) == BossAttackPolicy.Move.Strike, "overlapping target selects close strike");
+        Check(BossAttackPolicy.Select(3.5f) == BossAttackPolicy.Move.Spin, "old melee gate remains close range");
+        Check(BossAttackPolicy.Select(BossAttackPolicy.CloseRange) == BossAttackPolicy.Move.Spin, "close boundary is inclusive");
         Check(BossAttackPolicy.Select(BossAttackPolicy.CloseRange + .001f) == BossAttackPolicy.Move.Charge, "charge begins beyond close range");
         Check(BossAttackPolicy.Select(6) == BossAttackPolicy.Move.Charge, "midrange charge starts without entering 3.5m gate");
         Check(BossAttackPolicy.Select(BossAttackPolicy.ChargeRange) == BossAttackPolicy.Move.Charge, "charge boundary is inclusive");
@@ -33,14 +33,14 @@ public static class BossAttackPolicyTests
         Check(!BossAttackPolicy.IsEnraged(float.NaN, 100) && !BossAttackPolicy.IsEnraged(float.PositiveInfinity, 100), "invalid current health cannot enable combo");
         Check(BossAttackPolicy.FollowUp(BossAttackPolicy.Move.Slam, 2) == BossAttackPolicy.Move.Fan, "slam combo changes to ranged pressure");
         Check(BossAttackPolicy.FollowUp(BossAttackPolicy.Move.Slam, 10) == BossAttackPolicy.Move.Fan, "slam cannot queue another unreachable melee attack");
-        Check(BossAttackPolicy.FollowUp(BossAttackPolicy.Move.Charge, 2) == BossAttackPolicy.Move.Slam, "charge closes into slam");
+        Check(BossAttackPolicy.FollowUp(BossAttackPolicy.Move.Charge, 2) == BossAttackPolicy.Move.Strike, "charge closes into melee");
         Check(BossAttackPolicy.FollowUp(BossAttackPolicy.Move.Charge, 12) == BossAttackPolicy.Move.Fan, "escaped charge target gets reachable follow-up");
         Check(BossAttackPolicy.FollowUp(BossAttackPolicy.Move.Fan, 6) == BossAttackPolicy.Move.Charge, "approaching a fan can trigger charge follow-up");
         Check(BossAttackPolicy.ComboGap >= .3f, "combo has a real inter-move gap");
         foreach (BossAttackPolicy.Move move in Enum.GetValues(typeof(BossAttackPolicy.Move)))
         {
-            Check(BossAttackPolicy.Windup(move, false) >= 1.6f, move + " first attack warning stays readable");
-            Check(BossAttackPolicy.Windup(move, true) >= 1.5f, move + " combo keeps an independent readable warning");
+            Check(BossAttackPolicy.Windup(move, false) >= (move==BossAttackPolicy.Move.Strike?.7f:move==BossAttackPolicy.Move.Spin?1.2f:1.6f), move + " first attack warning stays readable");
+            Check(BossAttackPolicy.Windup(move, true) >= (move==BossAttackPolicy.Move.Strike?.65f:move==BossAttackPolicy.Move.Spin?1.1f:1.5f), move + " combo keeps an independent readable warning");
             Check(BossAttackPolicy.Windup(move, true) < BossAttackPolicy.Windup(move, false), move + " combo has distinct but fair pacing");
         }
         Check(BossAttackPolicy.Recovery(true) >= BossAttackPolicy.Recovery(false), "full combo gives a punish window");

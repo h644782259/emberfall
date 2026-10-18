@@ -40,6 +40,7 @@ namespace Emberfall
                 }
                 return false;
             }
+            if(slot!=9)ultimateArmorUntil=0;
             paidSkillSlot = slot;
             StopSkillChannel();
             return true;

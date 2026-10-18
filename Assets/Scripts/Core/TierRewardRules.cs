@@ -13,8 +13,8 @@ namespace Emberfall
         public static Rarity DropRarity(bool boss, int tier, int roll)
         {
             roll=Math.Max(0,Math.Min(99,roll));
-            if(boss)return roll<80?Rarity.Rare:roll<98?Rarity.Epic:Rarity.Legendary;
-            return roll<65?Rarity.Common:roll<90?Rarity.Rare:roll<99?Rarity.Epic:Rarity.Legendary;
+            if(boss)return roll<80?Rarity.Rare:Rarity.Epic;
+            return roll<65?Rarity.Common:roll<90?Rarity.Rare:Rarity.Epic;
         }
     }
 

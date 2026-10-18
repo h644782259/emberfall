@@ -11,7 +11,8 @@ namespace Emberfall
             icon=UIIconAtlas.ForDisplay(icon,Mathf.Max(rect.width,rect.height)*Mathf.Abs(GUI.matrix.lossyScale.x));
             Color previous=GUI.color;
             GUI.color=new Color(intensity,intensity,intensity,opacity*controlOpacity);
-            GUI.DrawTexture(rect,icon,ScaleMode.ScaleToFit,true);
+            if(MobileControls.Active)GUI.DrawTexture(rect,icon,ScaleMode.ScaleToFit,true,0,Color.white,0,rect.width*.5f);
+            else GUI.DrawTexture(rect,icon,ScaleMode.ScaleToFit,true);
             GUI.color=previous;
         }
 

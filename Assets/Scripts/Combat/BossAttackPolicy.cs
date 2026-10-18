@@ -5,7 +5,7 @@ namespace Emberfall
     /// <summary>Engine-independent encounter pacing. Every follow-up keeps its own readable windup.</summary>
     public static class BossAttackPolicy
     {
-        public enum Move { Slam, Charge, Fan }
+        public enum Move { Slam, Charge, Fan, Strike, Spin }
         public const float CloseRange = 3.8f;
         public const float ChargeRange = 8.5f;
         public const float EngageRange = 16f;
@@ -26,13 +26,15 @@ namespace Emberfall
 
         public static Move Select(float distance)
         {
-            if (distance <= CloseRange) return Move.Slam;
+            if (distance <= 2.5f) return Move.Strike;
+            if (distance <= CloseRange) return Move.Spin;
             if (distance <= ChargeRange) return Move.Charge;
             return Move.Fan;
         }
 
         public static Move Select(float distance, Move previous, int repeated)
         {
+            if(distance<=CloseRange&&repeated>0){if(previous==Move.Strike)return Move.Spin;if(previous==Move.Spin)return Move.Slam;if(previous==Move.Slam)return distance<=2.5f?Move.Strike:Move.Charge;}
             Move preferred = Select(distance);
             if (repeated < 1 || preferred != previous) return preferred;
             if (preferred == Move.Slam) return distance > 2f ? Move.Charge : Move.Fan;
@@ -47,7 +49,7 @@ namespace Emberfall
         { return ShouldAdvance(distance, previous, repeated) || pattern == 1 && (distance > CloseRange || !slamReachable); }
 
         public static bool InRange(Move move, float distance)
-        { return CanEngage(distance) && (move == Move.Fan || distance <= (move == Move.Slam ? CloseRange : ChargeRange)); }
+        { return CanEngage(distance) && (move == Move.Fan || distance <= (move == Move.Strike ? 2.5f : move == Move.Slam || move == Move.Spin ? CloseRange : ChargeRange)); }
 
         public static Move LegalFallback(Move selected, float distance, bool expired, bool chargeReachable, bool rangedVisible)
         {
@@ -73,8 +75,8 @@ namespace Emberfall
 
         public static float Windup(Move move, bool followUp)
         {
-            float duration = move == Move.Charge ? 1.8f : move == Move.Fan ? 1.7f : 1.6f;
-            return followUp ? Math.Max(1.5f, duration - .1f) : duration;
+            float duration = move == Move.Strike ? .7f : move == Move.Spin ? 1.2f : move == Move.Charge ? 1.8f : move == Move.Fan ? 1.7f : 1.6f;
+            return followUp ? Math.Max(move==Move.Strike?.65f:1.1f, duration - .1f) : duration;
         }
 
         public static float ChargeContactDelay(float along, float lateral, float remainingWindup)

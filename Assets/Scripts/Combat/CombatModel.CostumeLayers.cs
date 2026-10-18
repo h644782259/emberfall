@@ -122,15 +122,15 @@ namespace Emberfall
         }
         private void BuildGearSignature(EquipmentAppearance look,Transform parent,Vector3 centre)
         {
-            // At most five solid inlays, two quality facets and two crown prongs; no particles, lights or transparent shell.
-            int layers=(look.LevelBand+1)/2;
+            // At most ten solid inlays, two quality facets and two crown prongs; no particles, lights or transparent shell.
+            int layers=look.LevelBand;
             for(int i=0;i<layers;i++)
-                GearDetailBox("Ten-level inlay "+look.LevelBand,centre+new Vector3((i-2)*.034f,0,.045f),
-                    new Vector3(.025f,.035f+look.LevelBand*.0012f,.018f),i%2==0?look.Metal:look.Accent,parent,VisualSurface.Metal);
+                GearDetailBox("Ten-level inlay "+look.LevelBand,centre+new Vector3((i-(layers-1)*.5f)*.045f,0,.045f),
+                    new Vector3(.034f,.055f+look.LevelBand*.004f,.025f),i%2==0?look.Metal:look.Accent,parent,VisualSurface.Metal);
             if(look.RarityRank>=1&&look.RarityRank<3)for(int side=-1;side<=1;side+=2)
                 GearDetailBox("Quality-set facet",centre+new Vector3(side*.072f,-.035f,.042f),new Vector3(.024f,.024f+look.RarityRank*.012f,.020f),look.Accent,parent,VisualSurface.Crystal).localRotation=Quaternion.Euler(0,0,side*35);
             if(look.RarityRank==3)for(int side=-1;side<=1;side+=2)
-                GearDetailBox("Legendary crown edge",centre+new Vector3(side*.10f,.035f,.025f),new Vector3(.022f,.10f,.022f),look.Glow,parent,VisualSurface.Crystal).localRotation=Quaternion.Euler(0,0,side*25);
+                GearDetailBox("Legendary crown edge",centre+new Vector3(side*.10f,.035f,.025f),new Vector3(.04f,.18f,.04f),look.Glow,parent,VisualSurface.Crystal).localRotation=Quaternion.Euler(0,0,side*25);
         }
         // Twelve triangles per detail, instead of the shared 300-triangle bevel box.
         private Transform GearDetailBox(string name,Vector3 at,Vector3 size,Color color,Transform parent,VisualSurface surface)

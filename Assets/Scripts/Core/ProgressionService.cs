@@ -2079,13 +2079,17 @@ namespace Emberfall
             {
                 int stagedGold=Math.Min(gold,Profile.groundGold),stagedPotions=Math.Min(potions,Profile.groundPotions);
                 Profile.groundGold-=stagedGold;Profile.groundPotions-=stagedPotions;Profile.dungeonRewardRevision=1;
-                Profile.dungeonGold=(int)Math.Min(MaximumGold,(long)Profile.dungeonGold+stagedGold);Profile.dungeonPotions=Math.Min(999,Profile.dungeonPotions+stagedPotions);return true;
+                int beforeGold=Profile.dungeonGold,beforePotions=Profile.dungeonPotions;
+                Profile.dungeonGold=(int)Math.Min(MaximumGold,(long)Profile.dungeonGold+stagedGold);Profile.dungeonPotions=Math.Min(999,Profile.dungeonPotions+stagedPotions);
+                PublishSuppliesCollected(Profile.dungeonGold-beforeGold,Profile.dungeonPotions-beforePotions);return true;
             }
             var candidate=Snapshot();int g=Math.Min(gold,candidate.groundGold),p=Math.Min(Math.Max(0,99-candidate.potions),Math.Min(potions,candidate.groundPotions));
             if(g==0&&p==0)return true;
             candidate.groundGold-=g;candidate.groundPotions-=p;
             candidate.gold=(int)Math.Min(MaximumGold,(long)candidate.gold+g);candidate.potions=Math.Min(99,candidate.potions+p);
-            return CommitCandidate(candidate);
+            int receivedGold=candidate.gold-Profile.gold,receivedPotions=candidate.potions-Profile.potions;
+            if(!CommitCandidate(candidate))return false;
+            PublishSuppliesCollected(receivedGold,receivedPotions);return true;
         }
         public int UnlockedChapterTier(ChapterNode node,ChapterDifficulty difficulty=ChapterDifficulty.Heroic){return ChapterProgression.CanEnter(Profile,node,difficulty)?ChapterProgression.AvailableTier(Profile,node,difficulty):0;}
         public int UnlockedAdventureTier(int mode) { int i=Clamp(mode+1,0,4); return Math.Min(100,1+(Profile.adventureBestTiers!=null && Profile.adventureBestTiers.Length==5?Profile.adventureBestTiers[i]:0)); }
@@ -2869,6 +2873,13 @@ namespace Emberfall
             RaiseChanged();
         }
 
+        public event Action<int,int> SuppliesCollected;
+        private void PublishSuppliesCollected(int coins,int potions)
+        {
+            var handlers=SuppliesCollected;if(handlers==null||coins<=0&&potions<=0)return;
+            foreach(Action<int,int> handler in handlers.GetInvocationList())
+                try{handler(coins,potions);}catch(Exception error){Debug.LogWarning("Emberfall: pickup notice observer failed: "+error);}
+        }
         public event Action<ItemData> LootCollected;
         private void PublishLootCollected(ItemData item)
         {

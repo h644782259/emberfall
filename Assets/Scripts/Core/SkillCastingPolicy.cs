@@ -4,9 +4,9 @@
     public static class SkillCastingPolicy
     {
         private static readonly float[,] windup = {
-            {.16f,.28f,.32f,0,.14f,.12f,.30f,.40f,0,.58f},
+            {.16f,.28f,.32f,0,.14f,.12f,.30f,.40f,0,.18f},
             {.22f,.38f,.42f,0,.20f,.14f,.32f,.50f,0,.65f},
-            {.14f,.22f,.38f,0,.16f,.26f,.18f,.30f,0,.50f},
+            {.14f,.22f,.38f,0,.16f,.26f,.18f,.30f,0,.16f},
             {.20f,.32f,.45f,0,.40f,.22f,.48f,.50f,0,.70f}
         };
         private static readonly float[,] recovery = {
