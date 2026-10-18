@@ -889,6 +889,13 @@ namespace Emberfall
                 stats.Armor *= 1f + Clamp(Profile.masteryRanks[2], 0, MaximumMasteryRank) * .0075f;
             }
             stats.CritChance=Math.Max(0,stats.CritChance-gemCritPenalty);
+            if(Profile.heroClass==HeroClass.Vanguard){
+                if(Profile.martialSpecialization==MartialSpecialization.Assault){stats.Damage*=1.15f;stats.Armor*=.9f;}
+                else if(Profile.martialSpecialization==MartialSpecialization.Survival){stats.Armor*=1.25f;stats.MaxHealth*=1.1f;stats.Damage*=.92f;}
+            }else if(Profile.heroClass==HeroClass.Ranger){
+                if(Profile.martialSpecialization==MartialSpecialization.Assault){stats.CritChance=Math.Min(1,stats.CritChance+.08f);stats.CritDamageBonus+=.20f;stats.MoveSpeed*=.95f;}
+                else if(Profile.martialSpecialization==MartialSpecialization.Survival){stats.MoveSpeed*=1.1f;stats.CooldownReduction=Math.Min(.5f,stats.CooldownReduction+.10f);stats.Damage*=.92f;}
+            }
             return stats;
         }
 
@@ -917,6 +924,12 @@ namespace Emberfall
             return CommitCandidate(candidate);
         }
 
+        public bool SetMartialSpecialization(MartialSpecialization specialization,bool inCamp)
+        {
+            if(Profile.heroClass!=HeroClass.Vanguard&&Profile.heroClass!=HeroClass.Ranger)return Fail("当前职业不使用武技专精。");
+            if(!Enum.IsDefined(typeof(MartialSpecialization),specialization))return Fail("无效的专精。");
+            GameProfile candidate=Snapshot();candidate.martialSpecialization=specialization;return CommitCandidate(candidate);
+        }
         public bool SetSpecialization(ElementalistSpecialization specialization, bool inCamp)
         {
             if (Profile.heroClass != HeroClass.Arcanist) return Fail("只有元素师可切换冰火专精。");
@@ -1202,7 +1215,7 @@ namespace Emberfall
         {
             if (!inCamp) return Fail("只能在营地免费重置精通。");
             GameProfile candidate = Snapshot(); candidate.masteryRanks = new int[4]; candidate.masteryCore = -1;
-            candidate.specialization=ElementalistSpecialization.None;candidate.summonerRoute=SummonerRoute.Bonded;
+            candidate.martialSpecialization=MartialSpecialization.Balanced;candidate.specialization=ElementalistSpecialization.None;candidate.summonerRoute=SummonerRoute.Bonded;
             return CommitCandidate(candidate);
         }
 
@@ -1355,7 +1368,7 @@ namespace Emberfall
             GameProfile candidate = Snapshot();
             for (int i = 0; i < candidate.skillRanks.Length; i++) candidate.skillRanks[i] = Math.Min(1, candidate.skillRanks[i]);
             candidate.masteryRanks = new int[4]; candidate.masteryCore = -1;
-            candidate.specialization=ElementalistSpecialization.None;candidate.summonerRoute=SummonerRoute.Bonded;
+            candidate.martialSpecialization=MartialSpecialization.Balanced;candidate.specialization=ElementalistSpecialization.None;candidate.summonerRoute=SummonerRoute.Bonded;
             return CommitCandidate(candidate);
         }
 
@@ -1368,6 +1381,7 @@ namespace Emberfall
             public int[] masteryRanks;
             public int masteryCore = -1;
             public ElementalistSpecialization specialization;
+            public MartialSpecialization martialSpecialization;
             public SummonerRoute summonerRoute;
             public int[] equippedSkills;
             public int[] hotbarKeys;
@@ -1388,7 +1402,7 @@ namespace Emberfall
             {
                 version = 1, populated = true, heroClass = Profile.heroClass,
                 skillRanks = (int[])Profile.skillRanks.Clone(), masteryRanks = (int[])Profile.masteryRanks.Clone(),
-                masteryCore = Profile.masteryCore, specialization = Profile.specialization, summonerRoute = Profile.summonerRoute,
+                masteryCore = Profile.masteryCore, specialization = Profile.specialization, martialSpecialization=Profile.martialSpecialization, summonerRoute = Profile.summonerRoute,
                 equippedSkills = (int[])Profile.equippedSkills.Clone(), hotbarKeys = (int[])Profile.hotbarKeys.Clone(), hotbarPage = Profile.hotbarPage,
                 weaponId = Profile.weaponId, armorId = Profile.armorId, relicId = Profile.relicId,
                 equipmentVariants = new[] { CapturedVariant(Profile.weaponId), CapturedVariant(Profile.armorId), CapturedVariant(Profile.relicId) },
@@ -1436,7 +1450,7 @@ namespace Emberfall
             }
             string core = configuration.masteryCore >= 0 && configuration.masteryCore < 4 ? BuildCatalog.MasteryName((MasteryType)configuration.masteryCore) : "无核心";
             string classChoice = configuration.heroClass == HeroClass.Arcanist ? " · " + BuildCatalog.SpecializationName(configuration.specialization) :
-                configuration.heroClass == HeroClass.Summoner ? (configuration.summonerRoute == SummonerRoute.Bonded ? " · 双契" : " · 群契") : "";
+                configuration.heroClass == HeroClass.Summoner ? (configuration.summonerRoute == SummonerRoute.Bonded ? " · 强契" : " · 群契") : " · "+BuildCatalog.MartialSpecializationName(configuration.heroClass,configuration.martialSpecialization);
             var equipment = new List<string>();
             foreach (string id in new[] { configuration.weaponId, configuration.armorId, configuration.relicId })
             {
@@ -1486,7 +1500,7 @@ namespace Emberfall
             if (configuration.masteryCore < -1 || configuration.masteryCore >= 4 ||
                 (configuration.masteryCore >= 0 && configuration.masteryRanks[configuration.masteryCore] < MasteryCoreRules.InitialInvestment))
                 return "配点核心无效或该方向未投入10点。";
-            if (!Enum.IsDefined(typeof(ElementalistSpecialization), configuration.specialization) ||
+            if (!Enum.IsDefined(typeof(MartialSpecialization), configuration.martialSpecialization) || !Enum.IsDefined(typeof(ElementalistSpecialization), configuration.specialization) ||
                 (Profile.heroClass != HeroClass.Arcanist && configuration.specialization != ElementalistSpecialization.None) ||
                 !Enum.IsDefined(typeof(SummonerRoute), configuration.summonerRoute)) return "配点专精或契约路线无效。";
             if (configuration.equippedSkills == null || configuration.equippedSkills.Length != GameBalance.HotbarSize * GameBalance.HotbarPages ||
@@ -1545,7 +1559,7 @@ namespace Emberfall
             var state=new ClassBuildState
             {
                 initialized=true,heroClass=p.heroClass,mountedGems=CaptureMountedGems(p,p.heroClass),skillRanks=p.skillRanks,masteryRanks=p.masteryRanks,
-                masteryCore=p.masteryCore,specialization=p.specialization,summonerRoute=p.summonerRoute,
+                masteryCore=p.masteryCore,specialization=p.specialization,martialSpecialization=p.martialSpecialization,summonerRoute=p.summonerRoute,
                 equippedSkills=p.equippedSkills,hotbarKeys=p.hotbarKeys,hotbarPage=p.hotbarPage,
                 tutorialMask=p.tutorialMask,classTutorialCompleted=p.classTutorialCompleted,growthRevision=1,automaticGrowth=p.automaticGrowth,
                 progressionGoal=p.progressionGoal,progressionGoalItemId=p.progressionGoalItemId,
@@ -1579,7 +1593,7 @@ namespace Emberfall
                 foreach(var gem in p.attachments)
                     if(BuildCatalog.GemCompatible(gem.mechanic,p.heroClass))gem.mounted=Array.IndexOf(state.mountedGems,gem.mechanic)>=0;
             p.skillRanks=state.skillRanks;p.masteryRanks=state.masteryRanks;p.masteryCore=state.masteryCore;
-            p.specialization=state.specialization;p.summonerRoute=state.summonerRoute;
+            p.specialization=state.specialization;p.martialSpecialization=state.martialSpecialization;p.summonerRoute=state.summonerRoute;
             p.equippedSkills=state.equippedSkills;p.hotbarKeys=state.hotbarKeys;p.hotbarPage=state.hotbarPage;
             p.tutorialMask=state.tutorialMask;p.classTutorialCompleted=state.classTutorialCompleted;
             p.automaticGrowth=state.automaticGrowth;
@@ -1637,7 +1651,7 @@ namespace Emberfall
                 // First visit maps the already-legal shared skill indices and mastery budget.
                 // Equipment, economy, world progress, receipts and pending draws stay shared.
                 state=CaptureClassState(candidate);state.heroClass=target;state.mountedGems=InitialMountedGems(candidate,target);
-                state.specialization=ElementalistSpecialization.None;state.summonerRoute=SummonerRoute.Bonded;
+                state.martialSpecialization=MartialSpecialization.Balanced;state.specialization=ElementalistSpecialization.None;state.summonerRoute=SummonerRoute.Bonded;
                 state.tutorialMask=0;state.classTutorialCompleted=false;
                 state.progressionGoal=ProgressionGoalKind.None;state.progressionGoalItemId=null;state.progressionGoalMechanic=EquipmentMechanic.None;
                 state.automaticGrowth=true;state.growthRevision=1;
@@ -3182,6 +3196,7 @@ namespace Emberfall
             profile.tutorialMask = Math.Max(0, profile.tutorialMask) & 15;
             if (profile.heroClass != HeroClass.Arcanist || !Enum.IsDefined(typeof(ElementalistSpecialization), profile.specialization))
                 profile.specialization = ElementalistSpecialization.None;
+            if(!Enum.IsDefined(typeof(MartialSpecialization),profile.martialSpecialization)||profile.heroClass!=HeroClass.Vanguard&&profile.heroClass!=HeroClass.Ranger)profile.martialSpecialization=MartialSpecialization.Balanced;
             profile.mechanicMaterials = Clamp(profile.mechanicMaterials, 0, 999999);
             profile.revivalStones=Clamp(profile.revivalStones,0,999999);
             if(profile.gemBags==null||profile.gemBags.Length!=3)profile.gemBags=new int[3];

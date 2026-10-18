@@ -76,26 +76,26 @@ namespace Emberfall
         {
             var p=session.Progression;
             bool elemental=p.Profile.heroClass==HeroClass.Arcanist;
-            if(!elemental&&p.Profile.heroClass!=HeroClass.Summoner)return y;
-            string[] names=elemental?new[]{"均衡","碎冰","灼燃"}:new[]{"强契","群契"};
-            string[] descriptions=elemental?new[]{
+            bool martial=p.Profile.heroClass==HeroClass.Vanguard||p.Profile.heroClass==HeroClass.Ranger;
+            string[] names=martial?new[]{BuildCatalog.MartialSpecializationName(p.Profile.heroClass,MartialSpecialization.Balanced),BuildCatalog.MartialSpecializationName(p.Profile.heroClass,MartialSpecialization.Assault),BuildCatalog.MartialSpecializationName(p.Profile.heroClass,MartialSpecialization.Survival)}:elemental?new[]{"均衡","碎冰","灼燃"}:new[]{"强契","群契"};
+            string[] descriptions=martial?new[]{BuildCatalog.MartialSpecializationDescription(p.Profile.heroClass,MartialSpecialization.Balanced),BuildCatalog.MartialSpecializationDescription(p.Profile.heroClass,MartialSpecialization.Assault),BuildCatalog.MartialSpecializationDescription(p.Profile.heroClass,MartialSpecialization.Survival)}:elemental?new[]{
                 "均衡：保留冰霜控制与陨星直接伤害；消耗霜痕时追加 50% 基础伤害。",
                 "碎冰：陨星直接伤害降低 15%，碎冰追加 100% 基础伤害；霜环延长霜痕，大招积霜后引爆。",
                 "灼燃：普攻与陨星附加灼烧，新星改为减速；霜焰行者提供机动火区，大招偏持续灼烧。"
             }:new[]{"强契：每次召唤一只，召唤物伤害提高20%；全部限时存在。","群契：灵狼每次召唤两只，召唤物伤害降低20%；全部限时存在。"};
-            int selected=elemental?(int)p.Profile.specialization:(int)p.Profile.summonerRoute;
+            int selected=martial?(int)p.Profile.martialSpecialization:elemental?(int)p.Profile.specialization:(int)p.Profile.summonerRoute;
             float descriptionHeight=0;
             foreach(string text in descriptions)descriptionHeight=Mathf.Max(descriptionHeight,Style(Mathf.RoundToInt(13*u),false,true).CalcHeight(new GUIContent(text),(width-8)*u)/u);
             if(draw)
             {
-                Text(new Rect(4*u,y*u,(width-8)*u,26*u),elemental?"专精":"契约模式",Mathf.RoundToInt(16*u),pale,true);
+                Text(new Rect(4*u,y*u,(width-8)*u,26*u),"专精",Mathf.RoundToInt(16*u),pale,true);
                 float optionWidth=(width-(names.Length-1)*8)/names.Length;
                 for(int i=0;i<names.Length;i++)
                 {
                     Rect hit=new Rect(i*(optionWidth+8)*u,(y+30)*u,optionWidth*u,44*u);
                     if(TabButton(hit,names[i],selected==i)&&selected!=i)
                     {
-                        bool saved=elemental?p.SetSpecialization((ElementalistSpecialization)i,session.IsInCamp):p.SetSummonerRoute((SummonerRoute)i,session.IsInCamp);
+                        bool saved=martial?p.SetMartialSpecialization((MartialSpecialization)i,session.IsInCamp):elemental?p.SetSpecialization((ElementalistSpecialization)i,session.IsInCamp):p.SetSummonerRoute((SummonerRoute)i,session.IsInCamp);
                         MobileWorkshopResult(saved,names[i]+"已选择");
                         if(saved)selected=i;
                     }

@@ -34,6 +34,7 @@ namespace Emberfall
     public enum ItemSlot { Weapon, Armor, Relic }
     public enum Rarity { Common, Rare, Epic, Legendary }
     public enum FashionSlot { Wings, Weapon }
+    public enum MartialSpecialization { Balanced, Assault, Survival }
     public enum ElementalistSpecialization { None, Shatter, Burn }
     public enum EquipmentMechanic { None, FrostEcho, CinderTrail, ReturningBlade, VenomSpread, TwinSummonResonance, WeaponPower, WeaponPrecision, WeaponRuin, ArmorPower, ArmorPrecision, ArmorRuin, RelicPower, RelicPrecision, RelicRuin, WeaponFlow, WeaponTempo, ArmorFlow, ArmorStride, RelicVitality, RelicWard, RelicLeech }
     public enum SummonerRoute { Bonded, Pack }
@@ -231,6 +232,14 @@ namespace Emberfall
             return "副本宝石由星台封印通关宝箱产出：每次1颗，史诗80%、传说20%。升阶最高9阶；3、6、9阶各可消耗24碎片升华一次，强化机制；首次升华解锁支持的机制形态。";
         }
 
+        public static string MartialSpecializationName(HeroClass hero,MartialSpecialization choice)
+        {return choice==MartialSpecialization.Assault?(hero==HeroClass.Vanguard?"破阵":"鹰眼"):choice==MartialSpecialization.Survival?(hero==HeroClass.Vanguard?"铁壁":"疾风"):"均衡";}
+        public static string MartialSpecializationDescription(HeroClass hero,MartialSpecialization choice)
+        {
+            if(choice==MartialSpecialization.Balanced)return "均衡：保持原有攻击、防御与机动能力；专精可免费切换。";
+            if(hero==HeroClass.Vanguard)return choice==MartialSpecialization.Assault?"破阵：攻击提高15%，护甲降低10%，偏向主动进攻。":"铁壁：护甲提高25%、生命提高10%，攻击降低8%，偏向近身生存。";
+            return choice==MartialSpecialization.Assault?"鹰眼：暴击率增加8个百分点、暴击伤害增加20个百分点，移动速度降低5%。":"疾风：移动速度提高10%、技能冷却缩减增加10个百分点，攻击降低8%，偏向游走与持续释放技能。";
+        }
         public static string SpecializationName(ElementalistSpecialization specialization)
         {
             return specialization == ElementalistSpecialization.Shatter ? "碎冰" : specialization == ElementalistSpecialization.Burn ? "灼燃" : "均衡";
@@ -386,6 +395,7 @@ namespace Emberfall
         public int[] masteryRanks;
         public int masteryCore = -1;
         public ElementalistSpecialization specialization;
+        public MartialSpecialization martialSpecialization;
         public SummonerRoute summonerRoute;
         public int[] equippedSkills;
         public int[] hotbarKeys;
@@ -411,6 +421,7 @@ namespace Emberfall
         public EquipmentMechanic[] mountedGems;
         public int masteryCore=-1,hotbarPage,tutorialMask;
         public ElementalistSpecialization specialization;
+        public MartialSpecialization martialSpecialization;
         public SummonerRoute summonerRoute;
         public BuildPreset[] buildPresets;
         public bool classTutorialCompleted;
@@ -521,6 +532,7 @@ namespace Emberfall
         public int chapterHighestAdventureTier;
         public int chapterPriorAdventureTier;
         public ElementalistSpecialization specialization;
+        public MartialSpecialization martialSpecialization;
         public int[] masteryRanks = new int[4];
         public int masteryCore = -1;
         public int masteryRevision;
