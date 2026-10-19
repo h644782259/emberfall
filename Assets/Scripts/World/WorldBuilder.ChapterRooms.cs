@@ -35,8 +35,8 @@ namespace Emberfall
                 for(int i=0;i<8;i++)
                 {
                     float a=i*Mathf.PI/4;Vector3 ray=new Vector3(Mathf.Sin(a),0,Mathf.Cos(a));
-                    // Branches stay on the existing solid island, never new traversal blockers.
-                    Ribbon(parent,r,plan.Room==0?"Dormant forest root vein":"Restored forest root vein",new[]{ray*.4f,ray*1.8f+new Vector3(ray.z,0,-ray.x)*.25f,ray*3.15f},.16f,1.265f,roots);
+                    // Root patterns are flush with the open combat floor.
+                    Ribbon(parent,r,plan.Room==0?"Dormant forest root vein":"Restored forest root vein",new[]{ray*.4f,ray*1.8f+new Vector3(ray.z,0,-ray.x)*.25f,ray*3.15f},.16f,.025f,roots);
                 }
                 for(int i=0;i<24;i++)
                 {float a=i*Mathf.PI/12;Primitive(parent,"Forest outer trail marker",PrimitiveType.Cube,new Vector3(Mathf.Sin(a)*10.8f,.015f,Mathf.Cos(a)*10.8f),new Vector3(.35f,.02f,.18f),trim);}
@@ -47,9 +47,9 @@ namespace Emberfall
                     Primitive(parent,"Forked mine flush rail",PrimitiveType.Cube,new Vector3(side*7+rail*.42f,.02f,-1),new Vector3(.07f,.02f,21),trim);
                 int mirror=(plan.Seed&1)==0?1:-1;
                 Ribbon(parent,r,"Mine hunt-side feeder conduit",new[]{new Vector3(mirror*8,0,7),new Vector3(mirror*6,0,9),new Vector3(0,0,11)},.13f,.03f,r.Material(new Color(.48f,.35f,.20f),false,VisualSurface.Metal));
-                // Supports sit entirely on the already-solid central retaining spine.
-                for(int z=-5;z<=3;z+=8)Primitive(parent,"Mine hoist column",PrimitiveType.Cube,new Vector3(0,3,z),new Vector3(.5f,3,.5f),trim,cameraOccluder:true);
-                Primitive(parent,"Mine hoist suspended beam",PrimitiveType.Cube,new Vector3(0,4.55f,-1),new Vector3(.5f,.35f,9),trim,cameraOccluder:true);
+                // Hoist supports sit outside the combat floor.
+                for(int z=-5;z<=3;z+=8)Primitive(parent,"Mine hoist column",PrimitiveType.Cube,new Vector3(19,3,z),new Vector3(.5f,3,.5f),trim,cameraOccluder:true);
+                Primitive(parent,"Mine hoist suspended beam",PrimitiveType.Cube,new Vector3(19,4.55f,-1),new Vector3(.5f,.35f,9),trim,cameraOccluder:true);
             }
             else
             {

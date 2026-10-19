@@ -39,7 +39,7 @@ namespace Emberfall
             public bool simulationFrozen;
             public bool combatReview;
             public bool combatCrowdReview;
-            public int combatPeakEnemies;
+            public int combatPeakEnemies, combatCrowdWorkloadVersion;
             public double combatCrowdedSeconds, combatEnemySeconds;
             public int combatRounds, combatCasts;
             public double combatActiveSeconds;
@@ -318,7 +318,7 @@ namespace Emberfall
             Directory.CreateDirectory(directory);
             File.WriteAllText(Path.Combine(directory, "frame-review-" + report.tag + ".json"), JsonUtility.ToJson(report, true));
             Debug.Log("Explicit local frame review saved: " + tag + " | fps=" + report.fps.ToString("F2") + " | p95ms=" + report.p95Ms.ToString("F2"));
-            if ((renderComparison||terrainComparison||opaqueComparison||decorationDepthComparison||sceneDepthComparison||worldProjectionComparison||treeGeometryComparison||preparedTerrainComparison||smallActorComparison||resolutionComparison||groundComparison||sustainedReview) && ++comparisonWindow < (sustainedReview?20:renderComparison||decorationDepthComparison||sceneDepthComparison||worldProjectionComparison||treeGeometryComparison||preparedTerrainComparison||smallActorComparison||resolutionComparison||groundComparison?5:4))
+            if ((renderComparison||terrainComparison||opaqueComparison||decorationDepthComparison||sceneDepthComparison||worldProjectionComparison||treeGeometryComparison||preparedTerrainComparison||smallActorComparison||resolutionComparison||groundComparison||sustainedReview) && ++comparisonWindow < (sustainedReview?20:renderComparison?7:decorationDepthComparison||sceneDepthComparison||worldProjectionComparison||treeGeometryComparison||preparedTerrainComparison||smallActorComparison||resolutionComparison||groundComparison?5:4))
             {
                 RestoreRenderIsolation();
                 if(preparedTerrainComparison)Shader.SetGlobalFloat("_EmberPreparedTerrain",comparisonWindow%2); if(treeGeometryComparison)WorldBuilder.ApplyTreeGeometryReview(comparisonWindow%2==1); if(smallActorComparison)SmallActorPrimitiveReview.Apply(Camera.main,comparisonWindow%2==1); if(worldProjectionComparison)WorldProjectionReview.Apply(comparisonWindow%2==1); if(sceneDepthComparison)MobileSceneDepth.ForceAlwaysForReview=comparisonWindow%2==0;

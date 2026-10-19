@@ -1618,6 +1618,7 @@ namespace Emberfall
                 if(state.version!=1||state.heroClass!=(HeroClass)i)throw new ArgumentException("职业存档版本或位置不符；原文件已保留。");
                 if(state.growthRevision<1){state.automaticGrowth=state.progressionGoal==ProgressionGoalKind.None;state.growthRevision=1;}
                 if(i==(int)profile.heroClass)continue;
+                if(state.skillRanks!=null&&state.skillRanks.Length==10)Array.Resize(ref state.skillRanks,GameBalance.SkillCount);
                 if(state.skillRanks==null||state.skillRanks.Length!=GameBalance.SkillCount||state.masteryRanks==null||state.masteryRanks.Length!=4)
                     throw new ArgumentException("其他职业的配点结构无效；原文件已保留。");
                 int spent=0;
@@ -2769,7 +2770,7 @@ namespace Emberfall
             for(int skill=0;skill<GameBalance.SkillCount;skill++)
             {
                 int rank=0;
-                while(rank<3&&profile.level>=GameBalance.SkillRankRequiredLevel(skill,rank+1))rank++;
+                while(skill<GameBalance.SkillCountFor(profile.heroClass)&&rank<3&&profile.level>=GameBalance.SkillRankRequiredLevel(skill,rank+1))rank++;
                 profile.skillRanks[skill]=rank;
             }
         }
@@ -2993,6 +2994,7 @@ namespace Emberfall
             var profile = new GameProfile { chapterTierRevision=2,equipmentEnhancementRevision=1,heroClass = heroClass,chestRulesRevision=2, variantKnowledgeRevision = 1, fashionQualityRevision = 1 };
             SkillStockRules.Normalize(profile);profile.skillStockVersion=1;
             profile.skillRanks[0] = 1;
+            profile.equippedSkills=GameBalance.DefaultLoadout(heroClass);
             for (int slot = 0; slot < 3; slot++) AddStarterItem(profile, (ItemSlot)slot);
             return profile;
         }
@@ -3302,6 +3304,8 @@ namespace Emberfall
             // The level budget belongs exclusively to mastery; ordinary skills cost no points.
             profile.skillPoints = remaining;
             profile.equippedSkills = RepairLoadout(profile.equippedSkills);
+            if(profile.heroClass!=HeroClass.Arcanist)for(int i=0;i<profile.equippedSkills.Length;i++)if(profile.equippedSkills[i]==10)profile.equippedSkills[i]=-1;
+            if(profile.heroClass==HeroClass.Arcanist&&Array.IndexOf(profile.equippedSkills,10)<0&&profile.equippedSkills[8]==-1)profile.equippedSkills[8]=10;
             profile.hotbarKeys = RepairHotbarKeys(profile.hotbarKeys);
             // Add the default potion only to a free B slot; preserve customized layouts.
             int potionSlot=Array.IndexOf(profile.hotbarKeys,98);

@@ -12,11 +12,12 @@ namespace Emberfall
         {
             string key="Emberfall.TouchBindings."+session.Progression.CurrentSlotId+"."+(int)session.Progression.Profile.heroClass;
             if(mobileBindings!=null&&mobileBindingOwner==key)return;
-            mobileBindingOwner=key;mobileBindings=MobileSkillPolicy.DefaultBindings(session.Progression.Profile.heroClass==HeroClass.Summoner);
+            mobileBindingOwner=key;mobileBindings=MobileSkillPolicy.DefaultBindings(session.Progression.Profile.heroClass==HeroClass.Summoner,session.Progression.Profile.heroClass==HeroClass.Arcanist);
             string[] saved=PlayerPrefs.GetString(key,"").Split(',');
             int[] parsed=new int[saved.Length];bool valid=true;
             for(int i=0;i<saved.Length;i++)if(!int.TryParse(saved[i],out parsed[i]))valid=false;
             if(valid&&MobileSkillPolicy.ValidBindings(parsed))mobileBindings=parsed;
+            if(session.Progression.Profile.heroClass==HeroClass.Arcanist&&mobileBindings[7]==-1&&System.Array.IndexOf(mobileBindings,10)<0)mobileBindings[7]=10;
             bindingDragSource=-1;bindingDragFinger=-1000;CancelMobileCast();
         }
         private int BoundMobileSkill(int button,int page)

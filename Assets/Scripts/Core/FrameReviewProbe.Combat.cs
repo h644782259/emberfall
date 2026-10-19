@@ -7,7 +7,8 @@ namespace Emberfall
         // Explicit device review only. Practice owns a temporary progression copy;
         // normal launch never drives input or changes the player's adventure.
         private bool combatReview, combatInputOwned, savedInputSimulation;
-        private bool combatCrowdReview, preparingCombatCrowd;
+        private bool combatCrowdReview, preparingCombatCrowd, combatSteering;
+        private Vector2 combatJoystickOrigin;
         private int combatPeakEnemies;
         private double combatCrowdedSeconds, combatEnemySeconds;
         private CampPracticeRecord observedPractice;
@@ -37,7 +38,7 @@ namespace Emberfall
             }
             if (!session.PracticeActive)
             {
-                MobileControls.ResetInput();
+                MobileControls.ResetInput(); combatSteering=false;
                 if (Time.realtimeSinceStartupAsDouble < nextCombatAction || session.InputBlocked) return;
                 nextCombatAction = Time.realtimeSinceStartupAsDouble + 1;
                 if (session.BeginPractice(CampPracticeScenario.GuardAndWispPressure, 60))
@@ -57,6 +58,7 @@ namespace Emberfall
             combatEnemySeconds += living * Time.deltaTime;
             if (living >= 12) combatCrowdedSeconds += Time.deltaTime;
             var controls = session.GetComponent<MobileControls>();
+            SteerCombatReview(session, controls);
             if (record.Elapsed >= 4 && controls != null && !MobileControls.AttackHeld)
                 controls.ProcessPointer(-812, TouchPhase.Began, controls.ControlScreenPoint("attack"));
             if (Time.realtimeSinceStartupAsDouble < nextCombatAction) return;
@@ -64,6 +66,34 @@ namespace Emberfall
             // Begin enforces learned skills, energy, cooldown, and mobile aiming.
             var targeting = session.Player.GetComponent<SkillTargetingController>();
             if (targeting != null) targeting.Begin(nextCombatSkill++ % GameBalance.SkillCount);
+        }
+
+        // Simulate the same joystick steering a player uses during Frost Walker.
+        // Never change the skill or teleport the hero to keep a benchmark on screen.
+        private void SteerCombatReview(GameSession session, MobileControls controls)
+        {
+            if (!combatCrowdReview || controls == null) return;
+            Vector3 center = Vector3.zero; int count = 0;
+            if (session.Player.FrostStrideActive)
+                foreach (var enemy in session.Enemies)
+                    if (enemy != null && !enemy.IsDead) { center += enemy.transform.position; count++; }
+            if (count == 0)
+            {
+                if (combatSteering) controls.ProcessPointer(-813, TouchPhase.Ended, combatJoystickOrigin);
+                combatSteering = false;
+                return;
+            }
+            Vector3 direction = CombatFx.Flat(center / count - session.Player.transform.position).normalized;
+            Vector3 right = AdventureCamera.MobileMovement(Vector2.right);
+            Vector3 forward = AdventureCamera.MobileMovement(Vector2.up);
+            Vector2 input = new Vector2(Vector3.Dot(direction, right), Vector3.Dot(direction, forward));
+            if (!combatSteering)
+            {
+                combatJoystickOrigin = controls.ControlScreenPoint("move");
+                combatSteering = controls.ProcessPointer(-813, TouchPhase.Began, combatJoystickOrigin);
+            }
+            if (combatSteering)
+                controls.ProcessPointer(-813, TouchPhase.Moved, combatJoystickOrigin + input * Mathf.Min(Screen.width, Screen.height) * .2f);
         }
 
         private System.Collections.IEnumerator PrepareCombatCrowd(GameSession session)
@@ -91,6 +121,7 @@ namespace Emberfall
             if (!combatReview) return;
             report.combatReview = true;
             report.combatCrowdReview = combatCrowdReview;
+            report.combatCrowdWorkloadVersion = combatCrowdReview ? 3 : 0;
             report.combatPeakEnemies = combatPeakEnemies;
             report.combatCrowdedSeconds = combatCrowdedSeconds;
             report.combatEnemySeconds = combatEnemySeconds;
@@ -138,6 +169,12 @@ namespace Emberfall
                 // Avoid a synchronous creation spike masquerading as combat cost.
                 yield return null;
             }
+            foreach (var enemy in Enemies)
+                if (enemy == null || !enemy.PreparePerformanceReviewDurability())
+                {
+                    EndPractice("压力验证未能配置持续怪群");
+                    yield break;
+                }
         }
     }
 }

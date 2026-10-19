@@ -6,11 +6,12 @@ namespace Emberfall
     {
         public int chapterCompletedMask,chapterFirstRewardMask,chapterRevision,chapterHighestAdventureTier,chapterPriorAdventureTier;
         public int chapterDifficultyRewardRevision,chapterDifficultyRewardMask,mechanicMaterials;
+        public int chapterTierRevision; public bool chapterTierMigrationPending; public int[] chapterDifficultyBestTiers;
         public int chapterMasteryMask;public int[] chapterMasteryTiers;
         public int[] chapterHighestDifficulties;
         public int level=1;public int[] chapterBestTiers=new int[3],chapterBestLevels=new int[3];
         public long chapterRewardSequence;
         public string lastChapterRewardId;
     }
-    public static class TierRewardBand { public static int Materials(int basis,int tier){throw new System.NotSupportedException("No reward execution in geometry fixture");} }
+    public static class BossScaleRules { internal static bool ReviewLegacyDimensions; }
 }

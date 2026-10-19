@@ -52,7 +52,7 @@ namespace Emberfall
             // Explicit soak comparisons select the complete preset before world
             // creation, without writing the player's saved graphics preference.
             string review = System.Environment.GetEnvironmentVariable("EMBERFALL_PERF_REVIEW");
-            if (!string.IsNullOrEmpty(review) && review.StartsWith("performance-soak-", System.StringComparison.Ordinal))
+            if (!string.IsNullOrEmpty(review) && (review.StartsWith("performance-soak-", System.StringComparison.Ordinal) || review == "performance-render-ab"))
             {
                 string quality = System.Environment.GetEnvironmentVariable("EMBERFALL_REVIEW_QUALITY");
                 if (quality == "Smooth") graphicsSelection = GraphicsQualityMode.Smooth;

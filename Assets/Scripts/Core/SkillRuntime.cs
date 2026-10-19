@@ -74,7 +74,7 @@ namespace Emberfall
         public bool TryConsume(int skill, int rank, float cooldownMultiplier = 1f)
         {
             StockPersistenceFailed=false;
-            if (skill < 0 || skill >= cooldowns.Length || GameBalance.IsPassive(skill) || rank < 1 || rank > 3 || Remaining(skill) > 0) return false;
+            if (skill < 0 || skill >= GameBalance.SkillCountFor(HeroClass) || GameBalance.IsPassive(skill) || rank < 1 || rank > 3 || Remaining(skill) > 0) return false;
             float cost = GameBalance.SkillEnergyCost(HeroClass, skill);
             if (Energy < cost) return false;
             if(skill==StockSkill(HeroClass))

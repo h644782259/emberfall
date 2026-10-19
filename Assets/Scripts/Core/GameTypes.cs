@@ -610,7 +610,9 @@ namespace Emberfall
     public static class GameBalance
     {
         public const float ArcanistFinaleRadius=16f,ArcanistPulseRadius=13.6f;
-        public const int SkillCount = 10;
+        public const int SkillCount = 11;
+        public const int TrackingLaserSkill = 10;
+        public static int SkillCountFor(HeroClass hero) { return hero==HeroClass.Arcanist?11:10; }
         public const int HotbarSize = 10;
         public const int HotbarPotion = -2;
         public const int HotbarPages = 3;
@@ -625,13 +627,13 @@ namespace Emberfall
         public static readonly Color[] ClassColors = {
             new Color(1f, .65f, .26f), new Color(.4f, .7f, 1f), new Color(.38f, .88f, .65f), new Color(.83f, .63f, 1f)
         };
-        public static readonly int[] SkillRequiredLevels = { 1, 4, 6, 4, 10, 6, 13, 20, 13, 30 };
+        public static readonly int[] SkillRequiredLevels = { 1, 4, 6, 4, 10, 6, 13, 20, 13, 30, 20 };
         public static readonly int[][] SkillPrerequisites = {
             new int[0], new[] { 0 }, new[] { 1 }, new[] { 0 }, new[] { 2 },
-            new[] { 3 }, new[] { 5 }, new[] { 4 }, new[] { 5 }, new[] { 7, 6 }
+            new[] { 3 }, new[] { 5 }, new[] { 4 }, new[] { 5 }, new[] { 7, 6 }, new[] { 4 }
         };
-        public static int SkillTreeRow(int skill) { return new[] { 0, 1, 2, 1, 3, 2, 4, 5, 4, 6 }[skill]; }
-        public static float SkillTreeColumn(int skill) { return new[] { 1f, 0f, 0f, 2f, 0f, 2f, 1f, 0f, 2f, 1f }[skill]; }
+        public static int SkillTreeRow(int skill) { return new[] { 0, 1, 2, 1, 3, 2, 4, 5, 4, 6, 5 }[skill]; }
+        public static float SkillTreeColumn(int skill) { return new[] { 1f, 0f, 0f, 2f, 0f, 2f, 1f, 0f, 2f, 1f, 2f }[skill]; }
         public static string PrerequisiteDescription(HeroClass hero, int skill)
         {
             int[] parents = SkillPrerequisites[skill];
@@ -646,19 +648,19 @@ namespace Emberfall
         // leave an exposed interval even at rank three. Summons have a hard cap.
         private static readonly float[,] ClassSkillCooldowns = {
             { 5f, 9f, 18f, 0f, 28f, 11f, 32f, 16f, 0f, 42f },
-            { 10f, 11f, 20f, 0f, 8f, 26f, 34f, 22f, 0f, 45f },
+            { 10f, 11f, 22f, 0f, 8f, 26f, 34f, 20f, 0f, 45f },
             { 6f, 12f, 19f, 0f, 12f, 18f, 32f, 16f, 0f, 40f },
             { 7f, 16f, 14f, 0f, 12f, 28f, 36f, 21f, 0f, 46f }
         };
         private static readonly float[,] ClassSkillEnergyCosts = {
             { 12f, 20f, 34f, 0f, 30f, 24f, 28f, 38f, 0f, 64f },
-            { 18f, 28f, 38f, 0f, 24f, 28f, 30f, 42f, 0f, 68f },
+            { 18f, 28f, 42f, 0f, 24f, 28f, 30f, 38f, 0f, 68f },
             { 14f, 20f, 34f, 0f, 22f, 30f, 28f, 42f, 0f, 64f },
             { 16f, 28f, 30f, 0f, 28f, 32f, 36f, 40f, 0f, 70f }
         };
         private static readonly string[,] SkillNames = {
             { "旋风斩", "裂地冲击", "剑刃风暴", "剑术精研", "破空剑气", "破军突进", "生命战旗", "大地崩裂", "不屈意志", "终焉裁决" },
-            { "冰霜新星", "陨星术", "奥术风暴", "奥能亲和", "雷霆锁链", "霜焰行者", "冰雷交织", "虚空漩涡", "元素回响", "天灾终章" },
+            { "冰霜新星", "陨星术", "虚空漩涡", "奥能亲和", "雷霆锁链", "霜焰行者", "上升重力", "重力开关", "元素回响", "流星雨" },
             { "扇形箭", "震荡陷阱", "天幕箭雨", "弱点洞察", "逐风跃击", "毒蔓牢笼", "疾风穿云", "幻影连射", "灵风庇佑", "万箭归星" },
             { "灵能冲击", "荆棘牢笼", "灵狼召唤", "灵魂共鸣", "星灵炮台", "灵魂长矛", "烬羽召唤", "引力印记", "契约余响", "远古树灵" }
         };
@@ -670,10 +672,10 @@ namespace Emberfall
                 "巨剑裁决与多段剑阵爆发，终结大范围敌群。无需战意，适合聚怪后的爆发。"
             },
             {
-                "冰刺持续4.2至5.4秒，将普通/精英敌人抛起；目标受重力下落，回到冰刺高度后会再次被击飞。首领保留霜痕，并可打断其带青色符号的预警。", "在瞄准地点降下陨星，造成范围爆发，将普通/精英敌人垂直抛起后自然落地；主冲击可打断带青色符号的首领预警。", "在瞄准地点制造持续6秒的奥术风暴。",
+                "向角色前方较长的矩形区域释放冰刺，持续4.2至5.4秒，将普通/精英敌人抛起；目标受重力下落，回到冰刺高度后会再次被击飞。首领保留霜痕，并可打断其带青色符号的预警。", "在瞄准地点降下陨星，造成范围爆发，将普通/精英敌人垂直抛起后自然落地；主冲击可打断带青色符号的首领预警。", "创造旋转的虚空漩涡，将敌人吸向中心并反复撕裂。升阶增大主体与吸附范围。",
                 "被动：永久提高法术攻击与生命，学习后自动生效。", "雷霆在敌人间跳跃，逐个造成伤害并短暂眩晕。", "踏焰疾行，撞击敌人并留下灼烧火径。",
-                "在目标区域先释放冰霜冲击，再引爆雷霆，造成两段范围伤害与短暂控制。", "创造旋转的虚空漩涡，将敌人吸向中心并反复撕裂。等级提升会增大黑洞主体与吸附范围。", "被动：受伤后释放元素反击并回复能量，具有内置冷却。",
-                "陨星连续坠落，火焰、冰晶与雷霆逐段引爆目标区域；元素专精会改变爆发元素。无需奥能，兼顾范围伤害与控制。"
+                "召唤持续翻滚的大型重力球，周围气流螺旋上升；将范围内普通与精英怪物压倒在地，持续造成伤害。", "以角色为圆心反转重力，将周围普通与精英怪物抬到空中，再受重力坠落；首领承受伤害但免疫浮空。", "被动：受伤后释放元素反击并回复能量，具有内置冷却。",
+                "向角色前方大片矩形和身后小片矩形区域持续召来陨石；命中普通与精英怪物时将其砸起，随后自然坠地。无需奥能，释放后可自由行动。"
             },
             {
                 "向前方发射多支穿透箭矢。短冷却，适合清理敌群。", "在瞄准地点引爆陷阱，伤害并眩晕敌人；主爆炸可打断带青色符号的首领预警。", "向瞄准地点持续倾泻箭雨。",
@@ -690,20 +692,20 @@ namespace Emberfall
         };
         private static readonly string[,] ReinforcedEffects = {
             { "追加一段旋斩；伤害+30%，范围+15%。", "追加震荡，延长眩晕；伤害+30%，范围+15%。", "剑刃风暴持续4.35秒；整段伤害单独预算，范围+15%。", "", "大型剑气造成390%攻击伤害，向前推进并强化击退。", "冲锋末端追加爆发；伤害+30%，路径扩大。", "", "裂地增加至7段，逐段击飞；伤害+30%，范围+15%。", "", "裁决增加至7段；伤害+30%，范围+15%。" },
-            { "释放双重新星；伤害+30%，范围+15%。", "双陨星连续落下；伤害+30%，范围+15%。", "风暴脉冲加快；整段伤害单独预算，范围+15%。", "", "连锁最多8个目标；伤害+30%，范围+15%。", "霜焰持续8秒，强化霜环伤害；灼燃沿途留下火区。", "", "漩涡攻击增加至11次；伤害+30%，范围+15%。", "", "天灾增加至7段；伤害+30%，范围+15%。" },
+            { "前方矩形区域追加一次冰刺冲击；伤害+30%，范围+15%。", "双陨星连续落下；伤害+30%，范围+15%。", "风暴脉冲加快；整段伤害单独预算，范围+15%。", "", "连锁最多8个目标；伤害+30%，范围+15%。", "霜焰持续8秒，强化霜环伤害；灼燃沿途留下火区。", "", "漩涡攻击增加至11次；伤害+30%，范围+15%。", "", "天灾增加至7段；伤害+30%，范围+15%。" },
             { "增加至7支箭矢；伤害+30%，作用范围+15%。", "陷阱追加余震；伤害+30%，范围+15%。", "箭雨持续6.5秒；整段伤害单独预算，范围+15%。", "", "跃击范围+15%，落地伤害提高，获得6秒机动与普攻增益。", "毒区持续更久；伤害+30%，范围+15%。", "", "连续射出17支穿透箭；伤害+30%，射程扩大。", "", "箭幕增加至10段；伤害+30%，范围+15%。" },
             { "灵能冲击伤害+30%，范围+15%，击退敌人。", "荆棘伤害+30%，范围+15%，延长减速与中毒覆盖。", "灵狼攻击+30%，持续18秒；自动追击近处敌人。", "", "炮台攻击+30%，持续16秒，固定位置自动发射灵弹。", "灵魂长矛伤害+30%，穿透范围+15%。", "", "引力印记伤害+30%，范围+15%，持续倒地压制。", "", "树灵持续30秒，重击伤害+30%，范围扩大。" }
         };
         private static readonly string[,] AwakenedEffects = {
             { "三段旋斩并牵引收束；伤害+60%，范围+35%。", "追加终结冲击与强化眩晕；伤害+60%，范围+35%。", "持续5.1秒，牵引敌人并追加收尾爆发。", "", "大型剑气造成480%攻击伤害，推进距离与宽度增加，强力击退。", "冲锋终点爆发，起点追加残影冲击。", "", "8段裂地逐段击飞，并追加末端爆破；伤害+60%，范围+35%。", "", "8段裁决，终击留下2秒剑气领域。" },
-            { "双重新星后追加8枚冰片；同目标冰片递减并设上限，扩大范围与冻结。", "双陨星后留下2秒灼烧领域。", "高速脉冲聚拢敌人，并追加收束爆发。", "", "连锁最多10个目标，每个节点追加溅射。", "霜焰持续10秒，每秒释放强化霜环；灼燃沿途留下火区。", "", "13次漩涡攻击，更强吸附并追加终结爆发。", "", "8段天灾，终击留下聚怪元素领域。" },
+            { "前方矩形区域追加冲击，并向前发射8枚冰片；同目标冰片递减并设上限。", "双陨星后留下2秒灼烧领域。", "高速脉冲聚拢敌人，并追加收束爆发。", "", "连锁最多10个目标，每个节点追加溅射。", "霜焰持续10秒，每秒释放强化霜环；灼燃沿途留下火区。", "", "13次漩涡攻击，更强吸附并追加终结爆发。", "", "8段天灾，终击留下聚怪元素领域。" },
             { "9支穿透箭，命中追加爆裂；同目标后续命中递减，伤害有上限。", "引爆前吸附敌人，随后追加余震。", "持续7.5秒箭雨，并在结束时追加爆发。", "", "跃击范围+35%，起点追加残影陷阱，落地获得7秒机动与普攻增益。", "毒区吸附敌人，并在结束时追加爆裂。", "", "连续射出20支追踪穿透箭，强化覆盖能力。", "", "11段箭幕，终爆追加12支放射箭。" },
             { "灵能冲击伤害+60%，范围+35%，将敌群轰开。", "荆棘伤害+60%，范围+35%，强化毒伤与区域控制。", "灵狼攻击+60%，持续22秒；自动追击近处敌人。", "", "炮台攻击+60%，持续20秒，固定位置自动发射灵弹。", "灵魂长矛伤害+60%，穿透范围+35%。", "", "引力印记伤害+60%，范围+35%，能量球持续压制并爆发。", "", "树灵持续36秒，重击伤害+60%，范围扩大。" }
         };
         public static string ClassName(HeroClass value) { return ClassNames[(int)value]; }
         public static Color ClassColor(HeroClass value) { return ClassColors[(int)value]; }
-        public static string SkillName(HeroClass value, int slot) { return SkillNames[(int)value, slot]; }
-        public static string SkillDescription(HeroClass value, int slot) { return SkillDescriptions[(int)value, slot]; }
+        public static string SkillName(HeroClass value, int slot) { return slot==10?"巡星天柱":SkillNames[(int)value, slot]; }
+        public static string SkillDescription(HeroClass value, int slot) { return slot==10?"在地面召出冲天激光圆柱，脱手后自动移动追踪附近敌人；目标死亡后重新寻敌，持续灼击范围内怪物。":SkillDescriptions[(int)value, slot]; }
         public static string EnergyName(HeroClass value) { return new[] { "战意", "奥能", "专注", "灵力" }[(int)value]; }
         public static bool IsPassive(int skill) { return skill == 3 || skill == 8; }
         public static int SkillPointBudget(int level) { return Math.Max(1, level - 1); }
@@ -711,13 +713,13 @@ namespace Emberfall
         public static int SkillRankRequiredLevel(int skill, int rank) { return rank <= 1 ? SkillRequiredLevels[skill] : Math.Max(2, SkillRequiredLevels[skill]) + (rank == 2 ? 8 : 18); }
         public static float SkillRangeMultiplier(int rank) { return rank <= 1 ? 1f : rank == 2 ? 1.15f : 1.35f; }
         public static float SkillRangeMultiplier(HeroClass hero,int skill,int rank)
-        { return hero==HeroClass.Arcanist&&skill==7 ? (rank<=1?1f:rank==2?1.35f:1.75f) : SkillRangeMultiplier(rank); }
+        { return hero==HeroClass.Arcanist&&skill==2 ? (rank<=1?1f:rank==2?1.35f:1.75f) : SkillRangeMultiplier(rank); }
         public static string SkillRankName(int rank) { return rank <= 0 ? "未习得" : rank == 1 ? "初习" : rank == 2 ? "强化" : "觉醒"; }
         public static SkillCategory GetSkillCategory(HeroClass hero, int skill)
         {
             if (skill == 3) return SkillCategory.Buff;
             if (skill == 8) return hero == HeroClass.Vanguard || hero == HeroClass.Ranger ? SkillCategory.Defense : SkillCategory.Damage;
-            if (skill == 6) return hero == HeroClass.Vanguard ? SkillCategory.Healing : SkillCategory.Damage;
+            if (skill == 6) return hero == HeroClass.Vanguard ? SkillCategory.Healing : hero==HeroClass.Arcanist?SkillCategory.Control:SkillCategory.Damage;
             if (hero == HeroClass.Vanguard)
             {
                 if (skill == 1 || skill == 7) return SkillCategory.Control;
@@ -726,7 +728,7 @@ namespace Emberfall
             }
             else if (hero == HeroClass.Arcanist)
             {
-                if (skill == 0 || skill == 7) return SkillCategory.Control;
+                if (skill == 0 || skill == 2 || skill == 7) return SkillCategory.Control;
                 if (skill == 5) return SkillCategory.Damage;
             }
             else if (hero == HeroClass.Ranger)
@@ -745,6 +747,11 @@ namespace Emberfall
         public static string SkillEvolution(HeroClass hero, int skill, int rank)
         {
             int stage = Math.Max(1, Math.Min(3, rank)) - 1;
+            if(skill==10)return "持续"+(6+stage)+"秒，每0.5秒造成"+(45+stage*10)+"%攻击伤害。伤害范围与同阶陨星术相同，自动追踪并切换目标；无目标时停留，继续寻找。";
+            if(hero==HeroClass.Arcanist&&skill==9)return "持续召唤"+(14+stage*4)+"颗陨石，覆盖前方大矩形与后方小矩形；陨石可砸飞普通与精英怪物，首领免疫浮空。";
+            if(hero==HeroClass.Arcanist&&skill==2)return "旋转漩涡持续吸附，撕裂"+(9+stage*2)+"次；升阶扩大范围。";
+            if(hero==HeroClass.Arcanist&&skill==7)return "以自身为中心抬升敌群，随后自然坠地；升空与落地各造成"+(150+stage*45)+"%攻击伤害，首领免疫浮空。";
+            if(hero==HeroClass.Arcanist&&skill==6)return "重力球持续"+(5+stage)+"秒，持续压倒范围内普通与精英怪物；每0.5秒造成"+(45+stage*10)+"%攻击伤害，首领免疫倒地。";
             if(hero==HeroClass.Vanguard&&skill==4)return new[]{
                 "向前释放大型剑气，以每秒7米推进9米，宽6.8米；造成300%攻击伤害并击退怪物。每个目标命中一次，遇障碍停止；首领遵循控制抗性。",
                 "向前释放大型剑气，以每秒7米推进10.4米，宽7.8米；造成390%攻击伤害并强化击退。每个目标命中一次，遇障碍停止；首领遵循控制抗性。",
@@ -784,12 +791,12 @@ namespace Emberfall
         public static float SkillCooldown(HeroClass hero, int skill)
         {
             ValidateSkillBudget(hero, skill);
-            return ClassSkillCooldowns[(int)hero, skill];
+            return skill==10?24f:ClassSkillCooldowns[(int)hero, skill];
         }
         public static float SkillEnergyCost(HeroClass hero, int skill)
         {
             ValidateSkillBudget(hero, skill);
-            return skill==9?0:(float)Math.Floor(ClassSkillEnergyCosts[(int)hero, skill]*2d/3d);
+            return skill==10?30f:skill==9?0:(float)Math.Floor(ClassSkillEnergyCosts[(int)hero, skill]*2d/3d);
         }
         public static float EffectiveCooldown(HeroClass hero, int skill, int rank)
         {
@@ -802,12 +809,12 @@ namespace Emberfall
             if ((int)hero < 0 || (int)hero >= ClassSkillCooldowns.GetLength(0)) throw new ArgumentOutOfRangeException(nameof(hero));
             if (skill < 0 || skill >= SkillCount) throw new ArgumentOutOfRangeException(nameof(skill));
         }
-        public static int[] DefaultLoadout()
+        public static int[] DefaultLoadout(HeroClass hero=HeroClass.Vanguard)
         {
             int[] result = new int[HotbarSize * HotbarPages];
             for (int i = 0; i < result.Length; i++) result[i] = -1;
             int slot = 0;
-            for (int skill = 0; skill < SkillCount; skill++) if (!IsPassive(skill)) result[slot++] = skill;
+            for (int skill = 0; skill < SkillCountFor(hero); skill++) if (!IsPassive(skill)) result[slot++] = skill;
             for(int page=0;page<HotbarPages;page++)result[page*HotbarSize+HotbarSize-1]=HotbarPotion;
             return result;
         }

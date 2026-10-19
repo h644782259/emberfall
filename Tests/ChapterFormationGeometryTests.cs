@@ -10,8 +10,7 @@ public static class ChapterFormationGeometryTests
         foreach(int seed in new[]{0,1,2,3,17,64,255,256,int.MinValue,int.MaxValue})for(int room=0;room<2;room++)
         {
             var p=ChapterRoomGeometry.Plan(ChapterNode.Redrock,room,seed);
-            WorldTraversal.Reset(ZoneKind.Dungeon);ChapterRoomGeometry.Register(p);
-            for(int side=-1;side<=1;side+=2)WorldTraversal.AddDynamicCircle(new Vector3(side*13.3f,0,2.2f),.7f);
+            WorldTraversal.Reset(ZoneKind.Dungeon);WorldTraversal.SetArenaRadius(ArenaSizeRules.Radius(ZoneKind.Dungeon,p.Layout,0));ChapterRoomGeometry.Register(p);
             var occupied=new List<Vector3>();
             var desired=new[]{p.SpawnCandidates[room==0?0:2],p.SpawnCandidates[1],new Vector3(-2,0,11),new Vector3(2,0,11),p.SpawnCandidates[4],p.SpawnCandidates[5]};
             for(int i=0;i<desired.Length;i++)
@@ -28,7 +27,7 @@ public static class ChapterFormationGeometryTests
             Vector3 first,second;
             check(ChapterRoomGeometry.TrySpawn(p,0,new List<Vector3>(),.65f,out first)&&ChapterRoomGeometry.TrySpawnAt(p,p.SpawnCandidates[0],new List<Vector3>(),.65f,out second)&&Vector3.Distance(first,second)<.0001f,"indexed API delegates without changing old placement");
             for(int i=6;i<10;i++){check(ChapterRoomGeometry.TrySpawn(p,i,occupied,.65f,out first),"additional roster positions resolve");foreach(var other in occupied)check(Vector3.Distance(first,other)>=2.4f,"additional actors preserve spacing");occupied.Add(first);}
-            check(!ChapterRoomGeometry.TrySpawn(p,10,occupied,.65f,out first),"indexed roster capped at ten");
+            check(!ChapterRoomGeometry.TrySpawn(p,30,occupied,.65f,out first),"out of range roster rejected");
             check(!ChapterRoomGeometry.TrySpawnAt(p,new Vector3(float.NaN,0,0),occupied,.65f,out first),"invalid requested point rejected");
         }
         return "PASS: "+n+" chapter formation production navigation assertions (managed shims, not combat AI playback)";

@@ -25,6 +25,8 @@ namespace Emberfall
 
         public static Texture2D Skill(HeroClass hero, int skill)
         {
+            if(hero==HeroClass.Arcanist&&(skill==0||skill==6||skill==7||skill==9||skill==10)){var revised=Load("elementalist-rework/"+skill.ToString("D2"));if(revised!=null)return revised;}
+            if(hero==HeroClass.Arcanist&&skill==2)skill=7;
             if(hero==HeroClass.Vanguard&&skill==4)return Load("sword-wave-vanguard");
             return skill >= 0 && skill < GameBalance.SkillCount ? Load(RefinedSkillKey(hero,skill)) ?? Load(SkillPresentationKey(hero,skill)) ?? Load(SkillIdentity.IconResourceKey(hero,skill)) ?? Load("skills-" + heroes[(int)hero] + "/" + skill.ToString("D2")) : null;
         }

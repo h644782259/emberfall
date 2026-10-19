@@ -566,6 +566,7 @@ namespace Emberfall
         private float radius, stun, delay, duration, interval, age, nextTick, pullStrength;
         private CombatDamage damage, finalDamage;
         private bool follow, meteor, finished;
+        private float laneWidth,laneLength;private Vector3 laneDirection;
         private int statusSkill = -1, statusRank = 1, castId;
         private int epoch;
         private Color color;
@@ -579,12 +580,13 @@ namespace Emberfall
         private bool IsCurrentCast { get { return owner != null && session != null && session.Player == owner && !owner.IsDead && session.HasStarted && !session.CombatEffectsEnded && owner.CombatEpoch == epoch && (!(follow&&duration>0&&owner.HeroClass==HeroClass.Vanguard)||owner.IsSkillChannelCurrent(castId)); } }
 
         public static void Spawn(PlayerController player, GameSession game, Vector3 at, float size, CombatDamage amount, float disable,
-            float startup, float activeTime, float tickInterval, Color tint, bool followPlayer = false, bool fallingMeteor = false, float pulling = 0f, CombatDamage finisher = default(CombatDamage), int statusSkill = -1, int statusRank = 1, int castId = 0, SkillVisualRecipe visual = SkillVisualRecipe.Neutral, int trackedMechanic = -1)
+            float startup, float activeTime, float tickInterval, Color tint, bool followPlayer = false, bool fallingMeteor = false, float pulling = 0f, CombatDamage finisher = default(CombatDamage), int statusSkill = -1, int statusRank = 1, int castId = 0, SkillVisualRecipe visual = SkillVisualRecipe.Neutral, int trackedMechanic = -1, Vector3 laneDirection=default(Vector3),float laneWidth=0,float laneLength=0)
         {
             GameObject obj = new GameObject("Skill Area");
             obj.transform.position = new Vector3(at.x,WorldTraversal.SurfaceHeight(at,.04f),at.z);
             CombatArea area = obj.AddComponent<CombatArea>();
             area.owner = player; area.session = game; area.epoch = player.CombatEpoch;
+            area.laneDirection=laneDirection.normalized;area.laneWidth=laneWidth;area.laneLength=laneLength;
             area.radius = size; area.damage = activeTime > 0 ? amount.WithoutCritical() : amount; area.stun = disable;
             area.delay = startup; area.duration = activeTime; area.interval = Mathf.Max(.1f,tickInterval);
             area.color = tint; area.follow = followPlayer; area.meteor = fallingMeteor;
@@ -592,14 +594,14 @@ namespace Emberfall
             area.statusSkill = statusSkill; area.statusRank = statusRank; area.castId = castId==0?player.NewCastId():castId;area.castReceipt=player.RetainCastReceipt(area.castId);
             area.nextTick = startup;
             if(area.IsCurrentCast&&game.InDungeon&&trackedMechanic>=0)area.mechanismInstance=game.MechanismEvidence.Register(player,area.epoch,trackedMechanic);
-            if (startup > 0) FilledSkillVfx.Charge(obj.transform, player, obj.transform.position, size, tint, startup);
+            if (startup > 0&&laneLength<=0) FilledSkillVfx.Charge(obj.transform, player, obj.transform.position, size, tint, startup);
             // Keep radius for contacts and cover checks without a visible range marker.
             area.visualRecipe = visual;
             area.fireVisual = visual == SkillVisualRecipe.Fire;
             area.poisonVisual = visual == SkillVisualRecipe.Poison;
             area.lightningVisual = visual == SkillVisualRecipe.Lightning;
             area.performanceModel=player.GetComponentInChildren<CombatModel>();
-            if(activeTime>=1.2f)
+            if(activeTime>=1.2f&&laneLength<=0)
             {
                 // A recipe is an identity, not a generic spirit fallback. Steel
                 // aftermath remains fractured earth; only Spirit owns wolf bodies.
@@ -684,6 +686,7 @@ namespace Emberfall
                         if(arrowRainVisual.IsValid)arrowRainVisual.ArrowBeat(transform.position,radius,false);
                         else arrowRainVisual=FilledSkillVfx.ArrowRain(owner,transform.position,radius,color,priority:CombatVisualPriority.SustainedBackground,actionActive:()=>this!=null&&gameObject.activeInHierarchy&&IsCurrentCast);
                     }
+                    if(!solidImpactSpawned&&laneLength>0){solidImpactSpawned=true;FrostLaneVisual.Spawn(transform,session,laneDirection,laneWidth,laneLength,Mathf.Max(.7f,duration+.1f));}
                     if (!solidImpactSpawned)
                     {
                         solidImpactSpawned = true;
@@ -709,7 +712,7 @@ namespace Emberfall
                             Vector3 end = transform.position + new Vector3(point.x, .15f, point.y);
                             ElementalCombatVfx.Lightning(transform.position + Vector3.up * Random.Range(2.1f, 3.5f), end);
                         }
-                    if (tick == 0 && !meteor && !follow && visualRecipe!=SkillVisualRecipe.ArrowRain)
+                    if (tick == 0 && laneLength<=0 && !meteor && !follow && visualRecipe!=SkillVisualRecipe.ArrowRain)
                     {
                         for (int j = 0; j < 3; j++)
                         {
@@ -728,7 +731,8 @@ namespace Emberfall
                     Vector3 delta = CombatFx.Flat(enemy.transform.position - transform.position);
                     float contactHeight=visualRecipe==SkillVisualRecipe.Ice?EnemyImpactMotion.FrostContactHeight:meteor?3.2f:lightningVisual?5f:2f;
                     float feet=enemy.ImpactFeet.y-transform.position.y;
-                    if (delta.magnitude <= radius && feet<=contactHeight&&feet+enemy.PhysicalBodyHeight>=0 && CombatSight.Area(transform.position,enemy.transform.position))
+                    bool inArea=laneLength>0?ElementalistGeometry.InRectangle(Vector3.Dot(delta,laneDirection),Vector3.Dot(delta,Vector3.Cross(Vector3.up,laneDirection)),laneLength*.5f,laneWidth*.5f):delta.magnitude<=radius;
+                    if (inArea && (laneLength<=0||CombatSight.Area(transform.position-laneDirection*(laneLength*.5f),enemy.transform.position)) && feet<=contactHeight&&feet+enemy.PhysicalBodyHeight>=0 && CombatSight.Area(transform.position,enemy.transform.position))
                     {
                         if (fireVisual)
                             ElementalCombatVfx.OnEnemy(enemy, ElementalCombatVfx.Element.Fire, 2.5f);

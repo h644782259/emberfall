@@ -6,7 +6,7 @@ namespace Emberfall
         // These are skeletal actions. They never select targets, move the actor,
         // spend resources, emit effects or cause damage.
         internal enum ReleaseGesture { None, Sweep, Stamp, StormBlade, Brace, Thrust, Rally, Quake, Execution,
-            IcePush, MeteorThrow, StormGuide, ChainPoint, FireStride, ElementWeave, VoidPlant, Echo, Cataclysm,
+            IceScoop, VoidCircle, GravityLift, GravityPalm, IcePush, MeteorThrow, StormGuide, ChainPoint, FireStride, ElementWeave, VoidPlant, Echo, Cataclysm,
             BowFan, TrapSet, RainDraw, LeapDraw, RootSet, PierceDraw, VolleyDraw, WindBrace, StarDraw,
             SpiritPush, ThornPlant, WolfCall, TurretCall, SoulPoint, WispCall, GravityPoint, PackBrace, TreantCall }
         internal static ReleaseGesture SkillReleaseGesture(HeroClass hero,int slot)
@@ -20,9 +20,9 @@ namespace Emberfall
             }
             if(hero==HeroClass.Arcanist)
             {
-                switch(slot){case 0:return ReleaseGesture.IcePush;case 1:return ReleaseGesture.MeteorThrow;case 2:return ReleaseGesture.StormGuide;
-                    case 4:return ReleaseGesture.ChainPoint;case 5:return ReleaseGesture.FireStride;case 6:return ReleaseGesture.ElementWeave;
-                    case 7:return ReleaseGesture.VoidPlant;case 8:return ReleaseGesture.Echo;default:return ReleaseGesture.Cataclysm;}
+                switch(slot){case 0:return ReleaseGesture.IceScoop;case 1:return ReleaseGesture.MeteorThrow;case 2:return ReleaseGesture.VoidCircle;
+                    case 4:return ReleaseGesture.ChainPoint;case 5:return ReleaseGesture.FireStride;case 6:return ReleaseGesture.GravityPalm;
+                    case 7:return ReleaseGesture.GravityLift;case 8:return ReleaseGesture.Echo;default:return ReleaseGesture.Cataclysm;}
             }
             if(hero==HeroClass.Ranger)
             {
@@ -34,8 +34,8 @@ namespace Emberfall
                 case 4:return ReleaseGesture.TurretCall;case 5:return ReleaseGesture.SoulPoint;case 6:return ReleaseGesture.WispCall;
                 case 7:return ReleaseGesture.GravityPoint;case 8:return ReleaseGesture.PackBrace;default:return ReleaseGesture.TreantCall;}
         }
-        private Transform releaseBracePlate;
-        private void HideSkillPoseProps(){if(releaseBracePlate!=null)releaseBracePlate.gameObject.SetActive(false);}
+        private Transform releaseBracePlate,releasePalm;private Quaternion releasePalmRest;private bool releasePalmCached;
+        private void HideSkillPoseProps(){if(releaseBracePlate!=null)releaseBracePlate.gameObject.SetActive(false);if(releasePalmCached&&releasePalm!=null)releasePalm.localRotation=releasePalmRest;}
         private void ShowBracePlate()
         {
             if(leftElbow==null)return;
@@ -193,7 +193,46 @@ namespace Emberfall
             spine.localPosition+=new Vector3(0,-load*depth,drive*.07f);
             leftLeg.localRotation*=Quaternion.Euler(-load*8,0,-load*7);
             rightLeg.localRotation*=Quaternion.Euler(load*10,0,load*7);
+            if(heroClass==HeroClass.Arcanist)ApplyElementalistGesture(t,gesture);
             if(castingOrb!=null)castingOrb.localScale=Vector3.one*(.21f+load*.15f);
+        }
+        private void ApplyElementalistGesture(float t,ReleaseGesture gesture)
+        {
+            if(gesture!=ReleaseGesture.IceScoop&&gesture!=ReleaseGesture.VoidCircle&&gesture!=ReleaseGesture.GravityLift&&gesture!=ReleaseGesture.GravityPalm)return;
+            // Pending casts sample 0..0.30; the paid release starts at 0.52.
+            // Draw the anticipation during the actual preparation, then settle once.
+            float ready=Mathf.SmoothStep(0,1,t/.12f);
+            float settle=1-Mathf.SmoothStep(0,1,(t-.60f)/.40f);
+            float weight=ready*settle;
+            if(gesture==ReleaseGesture.VoidCircle)
+            {
+                float phase=Mathf.Clamp01(t/.30f)*Mathf.PI*2;
+                leftArm.localRotation=Quaternion.Slerp(Quaternion.Euler(-12,0,-10),Quaternion.Euler(-90+25*Mathf.Sin(phase),-12+33*Mathf.Sin(phase+Mathf.PI*.5f),-20),weight);
+                leftElbow.localRotation=Quaternion.Euler(-22*weight,0,-14*Mathf.Sin(phase)*weight);
+                rightArm.localRotation=Pose(new Vector3(-10,0,10),new Vector3(-44,-8,22),new Vector3(-50,8,18),t);
+                staffRig.localRotation=Pose(new Vector3(12,0,-12),new Vector3(8,0,-14),new Vector3(12,0,-12),t);
+            }
+            else if(gesture==ReleaseGesture.GravityLift)
+            {
+                // Keep the staff's axis upright while the shoulder raises its grip overhead.
+                rightArm.localRotation=Pose(new Vector3(-10,0,10),new Vector3(-154,-8,12),new Vector3(-168,0,8),t);
+                rightElbow.localRotation=Pose(new Vector3(-16,0,0),new Vector3(-15,0,0),new Vector3(-4,0,0),t);
+                staffRig.rotation=spine.rotation*Quaternion.Euler(0,0,-5*weight);
+                leftArm.localRotation=Pose(new Vector3(-12,0,-10),new Vector3(-112,15,-45),new Vector3(-138,8,-35),t);
+                leftElbow.localRotation=Pose(new Vector3(-20,0,0),new Vector3(-28,0,0),new Vector3(-12,0,0),t);
+            }
+            else
+            {
+                float scoop=Mathf.SmoothStep(0,1,Mathf.Clamp01((t-.08f)/.22f));
+                float lift=gesture==ReleaseGesture.IceScoop?scoop:Mathf.SmoothStep(0,1,t/.30f);
+                leftArm.localRotation=Quaternion.Slerp(Quaternion.Euler(-12,0,-10),Quaternion.Euler(Mathf.Lerp(-28,-92,lift),-8,-18),weight);
+                leftElbow.localRotation=Quaternion.Euler(Mathf.Lerp(-12,-30,lift)*weight,0,0);
+                rightArm.localRotation=Pose(new Vector3(-10,0,10),new Vector3(-35,-7,22),new Vector3(-43,5,18),t);
+                staffRig.localRotation=Pose(new Vector3(12,0,-12),new Vector3(8,0,-14),new Vector3(12,0,-12),t);
+                if(!releasePalmCached){releasePalm=leftElbow.Find("Glove");if(releasePalm!=null){releasePalmRest=releasePalm.localRotation;releasePalmCached=true;}}
+                // Natural hand fingers extend forward; the cupped palm faces the sky.
+                if(releasePalm!=null)releasePalm.rotation=Quaternion.Slerp(releasePalm.rotation,spine.rotation*Quaternion.Euler(-90,0,0),weight);
+            }
         }
         private void ApplyRangerReleasePose(float t,int slot,ReleaseGesture gesture,float load,float drive)
         {

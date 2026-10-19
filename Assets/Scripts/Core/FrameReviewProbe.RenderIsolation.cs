@@ -11,14 +11,14 @@ namespace Emberfall
         private int? savedReviewAntialiasing;
         private bool disableReviewAntialiasing;
         private string RenderIsolationMode => comparisonWindow == 1 ? "decoration-hidden" :
-            comparisonWindow == 2 ? "shadows-disabled" : comparisonWindow == 3 ? "actors-hidden" : "baseline";
+            comparisonWindow == 3 ? "shadows-disabled" : comparisonWindow == 5 ? "actors-hidden" : "baseline";
 
         private void PrepareRenderIsolationWindow()
         {
             RestoreRenderIsolation();
-            if(comparisonWindow == 2)
+            if(comparisonWindow == 3)
             {savedShadows=QualitySettings.shadows;QualitySettings.shadows=ShadowQuality.Disable;return;}
-            if(comparisonWindow != 1 && comparisonWindow != 3)return;
+            if(comparisonWindow != 1 && comparisonWindow != 5)return;
             foreach(var renderer in FindObjectsByType<Renderer>())
             {
                 if(!renderer.enabled||!renderer.gameObject.activeInHierarchy)continue;

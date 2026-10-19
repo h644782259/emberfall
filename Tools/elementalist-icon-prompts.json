@@ -1,0 +1,32 @@
+{
+  "generator": "Built-in image_gen",
+  "transparent_background": true,
+  "style": "Polished hand-painted 3D fantasy RPG spell cutout, transparent alpha, no frame or text, luminous elemental accents, legible at 48 pixels, center inside safe margins.",
+  "assets": [
+    {
+      "key": "10",
+      "name": "巡星天柱",
+      "subject": "A huge upright cyan-white cylindrical laser erupts from a small cracked stone ground disc. White hot narrow core, bright cyan concentric translucent beam layers, curved cyan ground streak implying autonomous travel. Column cropped nowhere, an unmistakable straight vertical pillar. No meteor, no weapon, no figure."
+    },
+    {
+      "key": "07",
+      "name": "重力开关",
+      "subject": "A single dark irregular stone levitating high above a small cracked ground disc, purple upward and downward curved energy arrows made from magic light, purple gravity wake below the stone. Clear idea of reversing gravity to lift then drop. No text symbols, no staff, no human."
+    },
+    {
+      "key": "06",
+      "name": "上升重力",
+      "subject": "A large dark violet gravity sphere with glowing purple rolling meridian bands, dominating the center. Cyan-violet spiral air streams rise from a small cracked ground disc, stones visibly pressed flat at its base. Sphere has dimensional dark solid core and bright spinning rings. No black hole hole, no human, no text."
+    },
+    {
+      "key": "09",
+      "name": "流星雨",
+      "subject": "Three distinct flaming orange molten-rock meteors descending diagonally toward a small cracked ground strip, one large meteor in front and two smaller behind. Long tapered fire tails point upward right, lava rock faces downward left. Clear multiple meteor shower silhouette. No circular fireball explosion, no text, no sky."
+    },
+    {
+      "key": "00",
+      "name": "冰霜新星",
+      "subject": "A forward elongated strip of five sharply faceted cyan ice spikes erupting upward from a narrow cracked stone ground strip in perspective, biggest spike near the center, smaller toward the far end. A cyan energy sweep rises from below the spikes, communicating scooping them up from the ground. Sharp pointed crystal geometry, icy white highlights. No snowflake emblem, no circular ring field, no human, no text."
+    }
+  ]
+}

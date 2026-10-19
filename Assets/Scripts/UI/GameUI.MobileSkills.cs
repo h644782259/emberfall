@@ -28,7 +28,7 @@ namespace Emberfall
             var progression = session.Progression;
             ReconcileMobileSkillOwner();
             GameProfile profile = progression.Profile;
-            selectedSkill = Mathf.Clamp(selectedSkill, 0, GameBalance.SkillCount - 1);
+            selectedSkill = Mathf.Clamp(selectedSkill, 0, GameBalance.SkillCountFor(profile.heroClass) - 1);
             var layout = MobilePanelGeometry();
             if (DrawMobilePanelChrome(layout, GameBalance.ClassName(profile.heroClass) + " · 技能",
                 "人物等级达成后技能自动解锁",showNotice:false,headerRightReserve:276)) return;
@@ -81,7 +81,7 @@ namespace Emberfall
             DrawBlinkFollowupNode(TouchRect(4+branchWidth,4+2*mobileSkillTreeStep,branchWidth-8,CompactSkillTree?40:82),TouchRatio);
             var nodes=skillTreeNodes;
             for(int skill=0;skill<nodes.Length;skill++)nodes[skill]=MobileSkillTreeNode(skill,width);
-            for(int child=0;child<GameBalance.SkillCount;child++)foreach(int parent in GameBalance.SkillPrerequisites[child])
+            for(int child=0;child<GameBalance.SkillCountFor(p.heroClass);child++)foreach(int parent in GameBalance.SkillPrerequisites[child])
             {
                 Rect a=nodes[parent],b=nodes[child];
                 Color c=p.skillRanks[parent]>0?jade:muted*.45f;float mid=b.y-12*TouchRatio;
@@ -89,7 +89,7 @@ namespace Emberfall
                 DrawSkillTreeLine(new Rect(Mathf.Min(a.center.x,b.center.x),mid,Mathf.Max(2*TouchRatio,Mathf.Abs(a.center.x-b.center.x)),2*TouchRatio),nodes,c);
                 DrawSkillTreeLine(new Rect(b.center.x-TouchRatio,mid,2*TouchRatio,b.y-mid),nodes,c);
             }
-            for(int skill=0;skill<GameBalance.SkillCount;skill++)
+            for(int skill=0;skill<GameBalance.SkillCountFor(p.heroClass);skill++)
             {
                 int rank=p.skillRanks[skill];bool canLearn=Attention.LearnableSkills.Contains(skill);
                 Rect node=MobileSkillTreeNode(skill,width);Color accent=!basicAttackSelected&&!blinkFollowupSelected&&selectedSkill==skill?gold:rank>0?jade:muted;
@@ -125,10 +125,10 @@ namespace Emberfall
         private float DrawPhoneSkillList(float width,bool draw)
         {
             const float rowHeight=64;
-            float height=GameBalance.SkillCount*rowHeight+90;
+            float height=GameBalance.SkillCountFor(session.Progression.Profile.heroClass)*rowHeight+90;
             if(!draw)return height;
             var p=session.Progression.Profile;
-            for(int skill=0;skill<GameBalance.SkillCount;skill++)
+            for(int skill=0;skill<GameBalance.SkillCountFor(p.heroClass);skill++)
             {
                 int rank=p.skillRanks[skill];bool selected=!basicAttackSelected&&!blinkFollowupSelected&&selectedSkill==skill;
                 bool learnable=Attention.LearnableSkills.Contains(skill);
@@ -142,7 +142,7 @@ namespace Emberfall
                 if(MobileSkillRowClicked(row)&&!selected)
                 {basicAttackSelected=false;blinkFollowupSelected=false;selectedSkill=skill;mobileSkillDetailScroll=Vector2.zero;mobileSkillStatus=null;CancelMobileScroll();}
             }
-            DrawBlinkFollowupNode(TouchRect(2,GameBalance.SkillCount*rowHeight+2,width-4,84),TouchRatio);
+            DrawBlinkFollowupNode(TouchRect(2,GameBalance.SkillCountFor(p.heroClass)*rowHeight+2,width-4,84),TouchRatio);
             return height;
         }
 

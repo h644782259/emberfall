@@ -13,12 +13,9 @@ namespace Emberfall
         }
         public static Wall[] Walls(int layout)
         {
-            int terrain=(layout-20)/2,mirror=layout%2==0?1:-1;
-            if(terrain==0)return new[]{new Wall(0,0,5,8),new Wall(-mirror*9,7,4,1)};
-            if(terrain==2)return new[]{new Wall(-mirror*5,-2,12,1.3f),new Wall(mirror*5,5,12,1.3f)};
             return new Wall[0];
         }
-        public static bool Flooded(int layout){return (layout-20)/2==1;}
+        public static bool Flooded(int layout){return false;}
         public static Vector3[] River(){return new[]{new Vector3(-18,0,0),new Vector3(18,0,0)};}
         public static Rect Bridge(int layout){return new Rect((layout%2==0?7:-7)-2.7f,-3,5.4f,6);}
         public static bool TrySpawn(int seed,int room,int index,System.Collections.Generic.List<Vector3> occupied,out Vector3 position)

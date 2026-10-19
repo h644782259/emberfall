@@ -1663,7 +1663,7 @@ namespace Emberfall
             if(skillSection==1){DrawSkillDevelopment();return;}
             if(MobileControls.Active){DrawMobileSkills();return;}
             GameProfile p = session.Progression.Profile;
-            selectedSkill = Mathf.Clamp(selectedSkill, 0, GameBalance.SkillCount - 1);
+            selectedSkill = Mathf.Clamp(selectedSkill, 0, GameBalance.SkillCountFor(p.heroClass) - 1);
             Rect w = Modal(1160, 660, GameBalance.ClassName(p.heroClass) + " · 技能", "");
             if (PopupCloseButton(new Rect(w.xMax - 69, w.y + 20, 44, 32))) ClosePanel();
             Text(new Rect(w.x + 763, w.y + 28, 296, 32), "精通点 " + p.skillPoints + "   /   角色 Lv." + p.level, 18, gold, true, false, TextAnchor.MiddleRight);
@@ -1684,7 +1684,7 @@ namespace Emberfall
             DrawBlinkFollowupNode(followupNode,1);
             var treeNodes=skillTreeNodes;
             for(int skill=0;skill<treeNodes.Length;skill++)treeNodes[skill]=SkillNodeRect(skill);
-            for (int skill = 0; skill < GameBalance.SkillCount; skill++)
+            for (int skill = 0; skill < GameBalance.SkillCountFor(p.heroClass); skill++)
             {
                 Rect node = treeNodes[skill];
                 int[] parents = GameBalance.SkillPrerequisites[skill];
@@ -1699,7 +1699,7 @@ namespace Emberfall
                     DrawSkillTreeLine(new Rect(node.center.x - 3, node.y - 5, 6, 5), treeNodes, connection);
                 }
             }
-            for (int i = 0; i < GameBalance.SkillCount; i++)
+            for (int i = 0; i < GameBalance.SkillCountFor(p.heroClass); i++)
             {
                 int rank = p.skillRanks[i];
                 int required = GameBalance.SkillRequiredLevels[i];

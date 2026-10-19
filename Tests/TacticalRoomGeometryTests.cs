@@ -10,17 +10,16 @@ public static class TacticalRoomGeometryTests
         for(int layout=20;layout<=25;layout++)
         {
             WorldTraversal.Reset(ZoneKind.Dungeon);
-            // Unchanged linked-room frame and optional rubble, at production dimensions.
+            // Outer room frame and portal pillars at production dimensions.
             for(int side=-1;side<=1;side+=2)
             {
                 WorldTraversal.AddBox(new Vector3(side*16,0,0),new Vector2(1.1f,29));
                 WorldTraversal.AddBox(new Vector3(side*3.4f,0,15),new Vector2(1.4f,1.4f));
-                WorldTraversal.AddDynamicCircle(new Vector3(side*13.3f,0,2.2f),.7f);
             }
             TacticalRoomGeometry.Register(layout);
             int mirror=layout%2==0?1:-1;
             var entrance=TacticalRoomGeometry.Entrance;var exit=new Vector3(0,0,14);
-            foreach(float radius in new[]{.45f,.65f,1.3f})
+            foreach(float radius in new[]{.45f,.65f,1.3f,2.4f})
             {
                 Check(Vector3.Distance(exit,TacticalRoomGeometry.ExitCapturePoint)>7.2f,"capture radius stays clear of auto portal trigger");
                 foreach(var target in new[]{exit,new Vector3(-mirror*8,0,-6),new Vector3(mirror*8,0,9),TacticalRoomGeometry.ExitCapturePoint,new Vector3(-mirror*12,0,-6)})
@@ -53,13 +52,9 @@ public static class TacticalRoomGeometryTests
                     occupied.Add(at);
                 }
             }
-            if(TacticalRoomGeometry.Flooded(layout))
-            {
-                Check(!WorldTraversal.HasGroundPath(entrance,exit),"water prevents straight walk");
-                Check(WorldTraversal.HasLineOfSight(new Vector3(0,0,-3),new Vector3(0,0,3)),"spells cross water");
-                Check(WorldTraversal.IsWalkable(new Vector3(mirror*7,0,0),1.3f),"bridge fits widest creature");
-            }
-            else Check(!WorldTraversal.HasLineOfSight(entrance,exit),"walls split ranged sight lines");
+            Check(!TacticalRoomGeometry.Flooded(layout),"no forced bridge crossings");
+            Check(WorldTraversal.HasLineOfSight(entrance,exit),"open combat sight line");
+            Check(WorldTraversal.HasGroundPath(entrance,exit,2.4f),"large boss has direct central route");
         }
         WorldTraversal.Reset(ZoneKind.Dungeon);
         Check(!WorldTraversal.CanReach(new Vector3(30,0,0),Vector3.zero),"reject out-of-bounds entrance instead of snapping it");

@@ -14,14 +14,15 @@ namespace Emberfall
             get
             {
                 if(flowNoise!=null)return flowNoise;
-                const int size=32;var pixels=new Color32[size*size*size];uint state=1729;
+                // Every volume consumer samples .r; other colour channels carry no data.
+                const int size=32;var pixels=new byte[size*size*size];uint state=1729;
                 for(int i=0;i<pixels.Length;i++)
                 {
                     state^=state<<13;state^=state>>17;state^=state<<5;
-                    byte value=(byte)(state>>24);pixels[i]=new Color32(value,value,value,255);
+                    pixels[i]=(byte)(state>>24);
                 }
-                flowNoise=new Texture3D(size,size,size,TextureFormat.RGBA32,false){name="Shared skill flow noise",wrapMode=TextureWrapMode.Repeat,filterMode=FilterMode.Bilinear,hideFlags=HideFlags.HideAndDontSave};
-                flowNoise.SetPixels32(pixels);flowNoise.Apply(false,true);return flowNoise;
+                flowNoise=new Texture3D(size,size,size,TextureFormat.R8,false){name="Shared skill flow noise",wrapMode=TextureWrapMode.Repeat,filterMode=FilterMode.Bilinear,hideFlags=HideFlags.HideAndDontSave};
+                flowNoise.SetPixelData(pixels,0);flowNoise.Apply(false,true);return flowNoise;
             }
         }
         private readonly GameObject root;

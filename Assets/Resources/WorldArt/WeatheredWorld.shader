@@ -69,10 +69,15 @@ Shader "Emberfall/Weathered World"
         }
         void vert(inout appdata_full v)
         {
+            float sway=_Wind*lerp(1,v.color.a,_VertexTint);
+            // Rigid props already have object-space positions and normals. Only
+            // deformed vertices need the world-space round trip below.
+            UNITY_BRANCH if(_TerrainFollow!=0 || sway!=0)
+            {
             float3 p=mul(unity_ObjectToWorld,v.vertex).xyz;
-            float h=0,dx=0,dz=0;
             UNITY_BRANCH if(_TerrainFollow!=0)
             {
+                float h,dx,dz;
 #if defined(EMBER_TERRAIN_LEGACY)
                 h=EmberHeight(p.xz)*_TerrainFollow;
                 dx=(EmberHeight(p.xz+float2(.02,0))-EmberHeight(p.xz-float2(.02,0)))/.04*_TerrainFollow;
@@ -84,18 +89,19 @@ Shader "Emberfall/Weathered World"
                 else terrain=EmberHeightGradient(p.xz)*_TerrainFollow;
                 h=terrain.x;dx=terrain.y;dz=terrain.z;
 #endif
+                float3 n=UnityObjectToWorldNormal(v.normal);
+                n=normalize(float3(n.x-dx*n.y,n.y,n.z-dz*n.y));
+                p.y+=h;
+                v.normal=normalize(mul(n,(float3x3)unity_ObjectToWorld));
             }
-            float3 n=UnityObjectToWorldNormal(v.normal);
-            n=normalize(float3(n.x-dx*n.y,n.y,n.z-dz*n.y));
-            p.y+=h;
-            float sway=_Wind*lerp(1,v.color.a,_VertexTint);
             UNITY_BRANCH if(sway!=0)
             {
                 p.x+=sway*sin(_Time.y*1.3+p.z*.8+p.x*.5)*.035;
                 p.z+=sway*cos(_Time.y*.9+p.x*.7)*.02;
             }
             v.vertex=mul(unity_WorldToObject,float4(p,1));
-            v.normal=normalize(mul(n,(float3x3)unity_ObjectToWorld));
+            }
+            UNITY_BRANCH if(_TerrainFollow==0) v.normal=normalize(v.normal);
             // World meshes include ribbons without UV tangents; supply a stable frame.
             float3 reference=abs(v.normal.y)>.9?float3(0,0,1):float3(0,1,0);
             v.tangent=float4(normalize(cross(reference,v.normal)),1);

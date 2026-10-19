@@ -63,10 +63,12 @@ namespace Emberfall
         public static string Id(HeroClass hero, int slot)
         { Validate(hero, slot); return families[(int)hero] + "/" + slot.ToString("D2"); }
         public static string IconResourceKey(HeroClass hero, int slot)
-        { Validate(hero, slot); return "skill-entities-" + families[(int)hero] + "/" + slot.ToString("D2"); }
+        { Validate(hero, slot); return "skill-entities-" + families[(int)hero] + "/" + (hero==HeroClass.Arcanist&&slot==2?7:slot).ToString("D2"); }
         public static SkillIdentityRecipe Describe(HeroClass hero, int slot)
         {
             Validate(hero, slot);
+            if(slot==10)return new SkillIdentityRecipe(hero,slot,SkillPrimaryBody.Lightning,1f,false);
+            if(hero==HeroClass.Arcanist&&(slot==2||slot==6||slot==7))return new SkillIdentityRecipe(hero,slot,bodies[(int)hero,7],slot==7?1f:2f,slot==7);
             bool caster = slot == 3 || hero == HeroClass.Vanguard && (slot == 5 || slot == 8)
                 || hero == HeroClass.Arcanist && slot == 5 || hero == HeroClass.Ranger && (slot == 4 || slot == 8);
             return new SkillIdentityRecipe(hero, slot, bodies[(int)hero, slot], photograph[(int)hero, slot], caster);

@@ -18,20 +18,18 @@ namespace Emberfall
    BuildRoomPortalShell(parent,r,new Vector3(0,0,14));
    if(room==0)
    {
-    for(int i=0;i<4;i++){int side=i%2==0?-1:1;Tree(parent,r,new Vector3(side*10,0,-6+i*4),1.2f,i+12);}
+    for(int i=0;i<4;i++){int side=i%2==0?-1:1;Tree(parent,r,new Vector3(side*19,0,-6+i*4),1.2f,i+12);}
     Primitive(parent,"Broken entrance stair inlay",PrimitiveType.Cube,new Vector3(0,.02f,-8),new Vector3(12,.02f,4),trim);
    }
    else if(room==1)
    {
-    for(int i=0;i<4;i++){float x=i%2==0?-7:7,z=-8+i*5;GameObject beam=Primitive(parent,"Archive fallen beam",PrimitiveType.Cube,new Vector3(x,.8f,z),new Vector3(8,1.6f,1.2f),wall,cameraOccluder:true);RegisterSceneryBox(new Vector3(x,0,z),new Vector2(8,1.2f),beam);}
+    // Archive paving replaces movement-blocking fallen beams.
+    Primitive(parent,"Archive floor inscription",PrimitiveType.Cube,new Vector3(0,.015f,0),new Vector3(12,.012f,8),trim);
    }
    else if(room==2)
    {
-    Vector3[] stream={new Vector3(-16,0,0),new Vector3(0,0,1),new Vector3(16,0,0)};
-    WorldTraversal.SetRiver(stream,3.2f,new Rect(-3.4f,-3,6.8f,7));BuildWaterSurface(parent,r,"Sunken room water",stream,3.2f,.02f,WaterEnvironment.Courtyard);
-    Primitive(parent,"Sunken courtyard bridge",PrimitiveType.Cube,new Vector3(0,.05f,.5f),new Vector3(6.8f,.04f,6),trim);
-    BuildBridgeWaterContact(parent,r,new Rect(-3.4f,-2.5f,6.8f,6),.07f);
-    Rock(parent,r,new Vector3(-9,0,7),1.6f,11);Rock(parent,r,new Vector3(9,0,-7),1.7f,7);
+    // Keep a shallow decorative inset without a river or forced bridge choke.
+    Primitive(parent,"Sunken courtyard flush inset",PrimitiveType.Cube,new Vector3(0,.015f,.5f),new Vector3(14,.012f,6),trim);
    }
    else if(room==3)
    {
@@ -41,7 +39,7 @@ namespace Emberfall
    }
    else if(room==4)
    {
-    for(int side=-1;side<=1;side+=2){Pillar(parent,r,new Vector3(side*8,0,-2),3.3f,true);Pillar(parent,r,new Vector3(side*8,0,7),4.1f,true);}
+    for(int side=-1;side<=1;side+=2){Pillar(parent,r,new Vector3(side*19,0,-2),3.3f,true);Pillar(parent,r,new Vector3(side*19,0,7),4.1f,true);}
     Primitive(parent,"Throne battle seal",PrimitiveType.Cylinder,new Vector3(0,.024f,5),new Vector3(10,.02f,10),trim);
     Crystal(parent,r,new Vector3(0,3,17),1.6f,glow);
    }

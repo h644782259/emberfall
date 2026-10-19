@@ -41,7 +41,7 @@ static void Main(){
  Check(WorldTerrain.Height(new Vector3(-24,0,-18))>3,"outer camp ridge has stronger relief");
  WorldTraversal.Reset(ZoneKind.Dungeon);WorldTraversal.SetArenaRadius(28);WorldTerrain.Configure(ZoneKind.Dungeon,0,28);
  Check(WorldTerrain.Height(new Vector3(0,0,-16))==0&&WorldTerrain.Height(new Vector3(9,0,0))==0,"dungeon return and crossing datum remain flat");
- Check(WorldTerrain.Height(new Vector3(-14,0,-11))>2,"expanded dungeon archive ridge rises");
+ for(int x=-27;x<=27;x+=3)for(int z=-27;z<=27;z+=3)Check(WorldTerrain.Height(new Vector3(x,0,z))==0,"entire dungeon combat floor stays flat");
  player=WorldTraversal.NearestWalkable(new Vector3(-14,0,-14));monster=player;fall=0;
  for(int i=0;i<180;i++){player=WorldTraversal.MovePlayer(player,new Vector3(0,0,.045f),1f/60,ref fall);monster=WorldTraversal.Move(monster,new Vector3(0,0,.045f),.65f);Check(Math.Abs(player.y-WorldTerrain.Height(player))<.001,"dungeon player ground contact");Check(Math.Abs(monster.y-WorldTerrain.Height(monster))<.001,"dungeon monster ground contact");}
  CombatSight.FillAreaBoundary(boundary,player,3);foreach(var point in boundary)Check(Math.Abs(point.y-WorldTraversal.SurfaceHeight(point)-.12f)<.001,"dungeon skill boundary conforms to relief");

@@ -813,7 +813,7 @@ namespace Emberfall
         public static float Radius { get; private set; } = 18;
         public static void Configure(ZoneKind zone,int hub,float radius=18)
         {
-            Enabled=ReliefEnabled&&(zone==ZoneKind.Dungeon||hub==0);
+            Enabled=ReliefEnabled&&zone==ZoneKind.Wilderness&&hub==0;
             Dungeon=zone==ZoneKind.Dungeon;Radius=radius;
         }
         static float Hill(float x,float z,float cx,float cz,float radius,float height)

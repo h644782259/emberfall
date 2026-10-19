@@ -33,7 +33,9 @@ fixture = fixture.replace('public const float PI=', 'public static float Lerp(fl
 fixture = fixture.replace('public CombatModel(HeroClass hero){heroClass=hero;}', r'''
   private Transform leftFoot=new Transform(),rightFoot=new Transform();
   private Transform Part(string name,PrimitiveType shape,Vector3 at,Vector3 scale,Color color,Transform parent=null,VisualSurface? surface=null,string meshModule=null)=>new Transform{parent=parent,localPosition=at,localScale=scale};
-  public CombatModel(HeroClass hero){heroClass=hero;}
+  public CombatModel(HeroClass hero){heroClass=hero;leftElbow.childName="Glove";leftElbow.namedChild=new Transform();}
+  public void SampleGesture(int skill,float t){AnimateCharge(0,skill);ApplySkillReleasePose(t,skill);}
+  public Quaternion Palm=>leftElbow.namedChild.rotation;
   public Quaternion[] Bones()=>new[]{spine.localRotation,headRig.localRotation,leftArm.localRotation,rightArm.localRotation,leftElbow.localRotation,rightElbow.localRotation,leftLeg.localRotation,rightLeg.localRotation,leftKnee.localRotation,rightKnee.localRotation,swordRig.localRotation,staffRig.localRotation,bowRig.localRotation};
   public Vector3 Hip=>pelvis.localPosition;public Vector3 ModelRoot=>transform.localPosition;public float Nock=>bowstring.nock.z;public bool Arrow=>arrowRig.gameObject.active;public float BeatAge=>performanceBeatAge;
   public float PerformancePhase(){float t=1;bool acting=false;SampleSkillPerformance(ref t,ref acting,0);return t;}
@@ -45,6 +47,16 @@ static class ReleaseTests {
  static void Check(bool valid,string message){checks++;if(!valid)throw new Exception(message);}
  static int Difference(Quaternion[] a,Quaternion[] b){int n=0;for(int i=0;i<a.Length;i++)if(Quaternion.Difference(a[i],b[i])>.0001f)n++;return n;}
  static void Main(){
+  var mage=new CombatModel(HeroClass.Arcanist);
+  Check(CombatModel.SkillReleaseGesture(HeroClass.Arcanist,0)==CombatModel.ReleaseGesture.IceScoop,"ice uses upward scoop");
+  Check(CombatModel.SkillReleaseGesture(HeroClass.Arcanist,2)==CombatModel.ReleaseGesture.VoidCircle,"vortex follows swapped slot");
+  Check(CombatModel.SkillReleaseGesture(HeroClass.Arcanist,7)==CombatModel.ReleaseGesture.GravityLift,"switch raises staff");
+  Check(CombatModel.SkillReleaseGesture(HeroClass.Arcanist,6)==CombatModel.ReleaseGesture.GravityPalm,"pressure uses open palm");
+  mage.SampleGesture(2,.12f);var circleA=mage.Bones();mage.SampleGesture(2,.20f);var circleB=mage.Bones();mage.SampleGesture(2,.28f);var circleC=mage.Bones();
+  Check(Quaternion.Difference(circleA[2],circleB[2])>.001f&&Quaternion.Difference(circleB[2],circleC[2])>.001f,"circle traverses distinct hand positions before release");
+  mage.SampleGesture(0,.10f);var scoopLow=mage.Bones();mage.SampleGesture(0,.30f);Check(Quaternion.Difference(scoopLow[2],mage.Bones()[2])>.03f,"frost lifts forearm from low to high");
+  mage.SampleGesture(6,.52f);Check((mage.Palm*new Vector3(0,0,1)).y>.8f,"open palm faces sky at release");
+  mage.SampleGesture(6,1);Check(Quaternion.Difference(mage.Palm,Quaternion.identity)<.00001f,"palm returns after detached cast");
   foreach(HeroClass hero in new[]{HeroClass.Vanguard,HeroClass.Arcanist,HeroClass.Ranger,HeroClass.Summoner}) {
    Check(CombatModel.SkillReleaseGesture(hero,3)==CombatModel.ReleaseGesture.None,"attribute passive cannot invent a cast gesture");
    for(int slot=0;slot<10;slot++)if(slot!=3){
@@ -64,22 +76,17 @@ static class ReleaseTests {
    }
   }
   foreach(bool launchNow in new[]{false,true}){
-   Time.frameCount++;var m=new CombatModel(HeroClass.Ranger);m.PlayAction(9,false);m.BeginSkillPerformance(9,4,.42f,91);m.SkillPerformanceBeat(9,91);
-   m.PrepareSkillPerformanceBeat(9,91,.42f,launchNow);Time.frameCount++;m.Frame(.16f);float age=m.BeatAge;
-   m.SkillPerformanceBeat(9,90);m.PrepareSkillPerformanceBeat(9,90,.02f,true);Check(Math.Abs(m.BeatAge-age)<.00001f,"an old cast cannot restart the emitter or prepare an unrelated action");
-   if(launchNow){m.SkillPerformanceBeat(9,91);Check(Math.Abs(m.BeatAge-age)<.00001f,"flying-body arrival cannot manufacture another draw/release");}
-   else {Time.frameCount++;m.Frame(.24f);Check(m.PerformancePhase()<.52f,"future ground contact first receives a genuine anticipation");m.SkillPerformanceBeat(9,91);Check(Math.Abs(m.PerformancePhase()-.52f)<.00001f,"authoritative contact immediately commits its force pose");}
+   Time.frameCount++;var m=new CombatModel(HeroClass.Ranger);m.PlayAction(7,false);m.BeginSkillPerformance(7,4,.42f,91);m.SkillPerformanceBeat(7,91);
+   m.PrepareSkillPerformanceBeat(7,91,.42f,launchNow);Time.frameCount++;m.Frame(.16f);float age=m.BeatAge;
+   m.SkillPerformanceBeat(7,90);m.PrepareSkillPerformanceBeat(7,90,.02f,true);Check(Math.Abs(m.BeatAge-age)<.00001f,"an old cast cannot restart the emitter or prepare an unrelated action");
+   if(launchNow){m.SkillPerformanceBeat(7,91);Check(Math.Abs(m.BeatAge-age)<.00001f,"flying-body arrival cannot manufacture another draw/release");}
+   else {Time.frameCount++;m.Frame(.24f);Check(m.PerformancePhase()<.52f,"future ground contact first receives a genuine anticipation");m.SkillPerformanceBeat(7,91);Check(Math.Abs(m.PerformancePhase()-.52f)<.00001f,"authoritative contact immediately commits its force pose");}
   }
-  Time.frameCount++;var execution=new CombatModel(HeroClass.Vanguard);execution.AnimateCharge(1,9);execution.ReleaseCharge(9);
-  execution.BeginSkillPerformance(9,4,.48f,105);execution.PrepareSkillPerformanceBeat(9,105,.15f);
-  Time.frameCount++;execution.Frame(.075f);
-  Check(Math.Abs(execution.Age/execution.Duration-.41f)<.0001f,"charged execution keeps the real downward strike before its delayed contact");
-  execution.SkillPerformanceBeat(9,105);Check(Math.Abs(execution.PerformancePhase()-.52f)<.00001f,"execution contact synchronously submits its full force pose");
-  Time.frameCount++;var instant=new CombatModel(HeroClass.Vanguard);instant.PlayAction(9,false);instant.BeginSkillPerformance(9,4,.48f,106);
-  instant.BeginDelayedSkillRelease(9,.15f);instant.PrepareSkillPerformanceBeat(9,106,.15f);var loaded=instant.Bones();
-  Check(Math.Abs(instant.Age/instant.Duration-.30f)<.0001f,"tap execution visibly loads before its existing delayed contact");
-  Time.frameCount++;instant.Frame(.075f);Check(Math.Abs(instant.Age/instant.Duration-.41f)<.0001f&&Difference(loaded,instant.Bones())>=3,"tap execution advances multiple joints through the actual .15 second strike");
-  instant.SkillPerformanceBeat(9,106);Check(Math.Abs(instant.PerformancePhase()-.52f)<.00001f,"tap contact submits the same decisive force pose");
+  foreach(int detached in new[]{2,6,7,9}){
+   Time.frameCount++;var m=new CombatModel(HeroClass.Arcanist);m.PlayAction(detached,false);m.BeginSkillPerformance(detached,8,.5f,105);
+   Check(m.PerformancePhase()==1,"detached magic does not retain caster in a repeated hold");Time.frameCount++;m.Frame(.8f);
+   Check(m.Age>=m.Duration,"detached magic restores free action after release");
+  }
   Console.WriteLine("PASS "+checks+" actual skill body preparation/release/recovery checks; managed, not Unity rendering.");
  }
 }
@@ -87,7 +94,7 @@ static class ReleaseTests {
 dotnet=sys.argv[1] if len(sys.argv)>1 else os.environ.get('DOTNET','dotnet')
 with tempfile.TemporaryDirectory(prefix='emberfall-skill-body-poses-') as directory:
     work=Path(directory)
-    for name in ['HeroMotionStyle','GameTypes','CombatBalance','SkillDamageBudgets','BasicActionTimeline','VisualMotionEnvelope','CasterPoseRecipe']:
+    for name in ['SkillCastingPolicy','HeroMotionStyle','GameTypes','CombatBalance','SkillDamageBudgets','BasicActionTimeline','VisualMotionEnvelope','CasterPoseRecipe']:
         (work/(name+'.cs')).write_text((root/'Assets/Scripts/Core'/(name+'.cs')).read_text())
     for name in ['CombatModel.Recovery','CombatModel.CastPoses','CombatModel.SkillPerformance','CombatModel.SkillReleasePose']:
         (work/(name+'.cs')).write_text((root/'Assets/Scripts/Combat'/(name+'.cs')).read_text())

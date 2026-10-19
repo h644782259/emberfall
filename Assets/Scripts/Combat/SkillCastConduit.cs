@@ -10,9 +10,9 @@ namespace Emberfall
         {
             if(hero==null||body==null)return;
             float duration=SkillPerformanceTiming.Duration(hero.HeroClass,skill,rank);
-            float cadence=skill==2?SkillDamageBudgets.EarlyField(hero.HeroClass,rank).Interval:SkillDamageBudgets.AdvancedInterval(hero.HeroClass,skill);
+            float cadence=skill==2&&hero.HeroClass!=HeroClass.Arcanist?SkillDamageBudgets.EarlyField(hero.HeroClass,rank).Interval:SkillDamageBudgets.AdvancedInterval(hero.HeroClass,skill);
             body.BeginSkillPerformance(skill,duration,cadence,castId);
-            var sound=hero.HeroClass==HeroClass.Vanguard?SkillPerformanceBody.Tornado:hero.HeroClass==HeroClass.Ranger?SkillPerformanceBody.ArrowVolley:hero.HeroClass==HeroClass.Summoner?SkillPerformanceBody.Spirit:skill==1||skill==9?SkillPerformanceBody.Fire:skill==0||skill==6?SkillPerformanceBody.Frost:skill==7?SkillPerformanceBody.Gravity:SkillPerformanceBody.Lightning;
+            var sound=hero.HeroClass==HeroClass.Vanguard?SkillPerformanceBody.Tornado:hero.HeroClass==HeroClass.Ranger?SkillPerformanceBody.ArrowVolley:hero.HeroClass==HeroClass.Summoner?SkillPerformanceBody.Spirit:skill==1||skill==9?SkillPerformanceBody.Fire:skill==0?SkillPerformanceBody.Frost:skill==2||skill==6||skill==7?SkillPerformanceBody.Gravity:SkillPerformanceBody.Lightning;
             GameAudio.SustainSkill(hero,hero.transform,sound,duration+.4f,SkillCastingPolicy.Channeled(hero.HeroClass,skill)?()=>hero!=null&&hero.IsSkillChannelCurrent(castId):(System.Func<bool>)null);
             Create(hero,body,SkillCastingPolicy.Channeled(hero.HeroClass,skill)?duration:.45f);
         }

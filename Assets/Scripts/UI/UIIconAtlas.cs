@@ -29,6 +29,7 @@ namespace Emberfall
         };
         public static Color SkillColor(HeroClass hero, int skill)
         {
+            if(skill==10)return new Color(.3f,.85f,1f);
             return skill >= 0 && skill < GameBalance.SkillCount ? skillColors[(int)hero, skill] : Color.white;
         }
         public static Texture2D Skill(HeroClass hero, int skill) { return Skill(hero, skill, 48); }
@@ -39,10 +40,17 @@ namespace Emberfall
             Texture2D painting = AuthoredIconArt.Skill(hero, skill);
             if (painting != null) return painting;
             int rasterSize = Mathf.Max(128,SkillIconPresentation.RasterSize(requestedSize));
-            int key = (monochrome?1000000:0)+rasterSize * 1000 + (int)hero * 10 + skill;
+            int key = (monochrome?1000000:0)+rasterSize * 1000 + (int)hero * 16 + skill;
             Texture2D texture;
             if (cache.TryGetValue(key, out texture)) return texture;
             var ink = new Icon(SkillColor(hero, skill), rasterSize);
+            if(hero==HeroClass.Arcanist&&(skill==6||skill==7))
+            {
+                if(skill==6){ink.Disc(32,28,13);ink.Arc(32,28,21,15,300,3);ink.Arc(32,28,24,170,440,2);ink.Line(14,53,50,53,3);}
+                else{ink.Line(20,49,20,15,5);ink.Line(12,24,20,15,4);ink.Line(28,24,20,15,4);ink.Line(44,15,44,49,5);ink.Line(36,40,44,49,4);ink.Line(52,40,44,49,4);}
+                texture=ink.Finish("Gravity skill");cache[key]=texture;return texture;
+            }
+            if(skill==10){ink.Ring(32,49,17,3);ink.Line(24,47,24,10,5);ink.Line(40,47,40,10,5);ink.Line(32,52,32,5,8);texture=ink.Finish("Tracking laser");cache[key]=texture;return texture;}
             if (hero == HeroClass.Summoner && skill != 3 && skill != 6 && skill != 8 && skill != 9)
             {
                 if (skill == 0)

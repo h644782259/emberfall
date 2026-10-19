@@ -130,7 +130,7 @@ namespace Emberfall
             EnsureInstance();int index=(int)hero*10+skill;
             if(instance.skillClips[index]==null)instance.skillClips[index]=SynthesizeSkill(hero,skill);
             instance.PlayInternal((int)SoundCue.Cast,instance.skillClips[index]);
-            instance.PlayChant(hero,skill);
+            if(hero!=HeroClass.Arcanist||skill!=6&&skill!=7&&skill!=9)instance.PlayChant(hero,hero==HeroClass.Arcanist&&skill==2?7:skill);
         }
 
         public static void PlayBasicAttack(HeroClass hero)

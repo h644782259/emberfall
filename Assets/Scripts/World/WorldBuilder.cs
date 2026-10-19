@@ -346,14 +346,7 @@ namespace Emberfall
             {
                 Transform gallery = side < 0 ? west : east;
                 Primitive(gallery, "Nave edge inlay", PrimitiveType.Cube, new Vector3(side*5.3f,.05f,-2), new Vector3(.075f,.014f,29), rune);
-                Pillar(gallery, r, new Vector3(side*7,0,-4), 2.5f, true);
-                Pillar(gallery, r, new Vector3(side*7,0,6), 2.9f, true);
-                Vector3 barricade = layout % 2 == 0 ? new Vector3(side*10.5f,0,-7.5f) : new Vector3(side*5f,0,-1.5f);
-                Vector2 barrierSize = layout % 2 == 0 ? new Vector2(4.2f,.9f) : new Vector2(.9f,5.5f);
-                if(theme==1){barricade=new Vector3(side*9f,0,2.5f);barrierSize=new Vector2(2.4f,2.4f);}
-                else if(theme==2){barricade=new Vector3(side*8f,0,-4);barrierSize=new Vector2(5f,1.1f);}
-                GameObject partition=Primitive(gallery, "Collapsed gallery partition", PrimitiveType.Cube, barricade + Vector3.up*.65f, new Vector3(barrierSize.x,1.3f,barrierSize.y), border,cameraOccluder:true);
-                RegisterSceneryBox(barricade*1.5f, barrierSize*1.5f, partition);
+                // The central nave and both galleries are continuous combat space.
                 for (int i = 0; i < 5; i++)
                 {
                     Vector3 p = new Vector3(side*20.3f,0,-12+i*6);

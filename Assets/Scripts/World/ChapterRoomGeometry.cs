@@ -87,30 +87,7 @@ namespace Emberfall
             if(room<0||room>1)throw new ArgumentOutOfRangeException(nameof(room));
             int mirror=(seed&1)==0?1:-1;
             var obstacles=new List<ChapterObstacle>();
-            if(node==ChapterNode.ForestCourt)
-            {
-                obstacles.Add(new ChapterObstacle(Vector3.zero,3.4f,1.25f));
-                obstacles.Add(new ChapterObstacle(new Vector3(-mirror*8,0,4),1.05f,2.3f));
-                obstacles.Add(new ChapterObstacle(new Vector3(mirror*8,0,-4),1.05f,2.3f));
-            }
-            else if(node==ChapterNode.Redrock)
-            {
-                if(room==1&&RedrockSplitRoute(seed))
-                {
-                    // Four-metre cross passage; both hoist supports remain on solid wall.
-                    obstacles.Add(new ChapterObstacle(new Vector3(0,0,-5),new Vector2(4,4),1.8f));
-                    obstacles.Add(new ChapterObstacle(new Vector3(0,0,3),new Vector2(4,4),1.8f));
-                }
-                else obstacles.Add(new ChapterObstacle(new Vector3(0,0,-1),new Vector2(4,12),1.8f));
-                obstacles.Add(new ChapterObstacle(new Vector3(-mirror*8,0,3),new Vector2(5,1.4f),1.45f));
-                obstacles.Add(new ChapterObstacle(new Vector3(mirror*8,0,-4),new Vector2(5,1.4f),1.45f));
-            }
-            else
-                for(int spoke=0;spoke<3;spoke++)for(int step=0;step<2;step++)
-                {
-                    float angle=(30+spoke*120)*(Mathf.PI/180f),distance=9+step*3;
-                    obstacles.Add(new ChapterObstacle(new Vector3(Mathf.Sin(angle)*distance,0,Mathf.Cos(angle)*distance),1.05f,1.6f+step*.4f));
-                }
+            // Combat lanes stay open; theme structures now live on the outer scenery rim.
             Vector3[] objectives=node==ChapterNode.ForestCourt&&room==0?new[]{TacticalRoomGeometry.ExitCapturePoint}:
                 node==ChapterNode.Redrock&&room==0?new[]{new Vector3(mirror*8,0,7)}:
                 node==ChapterNode.StarPlatform?new[]{new Vector3(0,0,1)}:new[]{TacticalRoomGeometry.ExitCapturePoint};

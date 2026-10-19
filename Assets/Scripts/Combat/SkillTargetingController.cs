@@ -55,7 +55,7 @@ namespace Emberfall
         public static bool RequiresConfirmation(HeroClass hero, int index)
         {
             if (hero == HeroClass.Vanguard) return index == 9;
-            if (hero == HeroClass.Arcanist) return index == 1 || index == 2 || index == 6 || index == 7 || index == 9;
+            if (hero == HeroClass.Arcanist) return index == 1 || index == 2 || index == 6 || index == 9 || index == 10;
             if (hero == HeroClass.Ranger) return index == 1 || index == 2 || index == 5 || index == 9;
             if (hero == HeroClass.Summoner) return index == 1 || index == 2 || index == 4 || index == 6 || index == 7 || index == 9;
             return false;
@@ -217,9 +217,12 @@ namespace Emberfall
             }
             if (hero == HeroClass.Arcanist)
             {
-                if (skill == 0) return new Preview(Shape.Self, 3.7f * r);
+                if (skill == 0) return new Preview(Shape.Lane, ElementalistGeometry.FrostWidth(rank)*.5f,ElementalistGeometry.FrostLength(rank));
+                if(skill==9)return new Preview(Shape.Lane,MeteorShowerRules.HalfWidth(rank,false),MeteorShowerRules.Front(rank)){startDistance=-MeteorShowerRules.Rear(rank),startRadius=MeteorShowerRules.HalfWidth(rank,true)};
+                if(skill==7)return new Preview(Shape.Self,ElementalistGeometry.SwitchRadius(rank));
+                if(skill==6)return new Preview(Shape.Ground,ElementalistGeometry.PressRadius(rank),9*r);
                 if (skill == 5) return new Preview(Shape.Self, 2.8f * r);
-                float size = skill == 1 ? (rank == 3 ? 3.2f : 3f) : skill == 2 ? 3.9f : skill == 4 ? 6 : skill == 7 ? ElementalistFieldTuning.GravityDamageRadius : GameBalance.ArcanistFinaleRadius;
+                float size = skill == 1 || skill == 10 ? (rank == 3 ? 3.2f : 3f) : skill == 2 ? ElementalistFieldTuning.GravityDamageRadius : skill == 4 ? 6 : skill == 7 ? 5f : GameBalance.ArcanistFinaleRadius;
                 return new Preview(Shape.Ground, size * r, 9 * r);
             }
             if (skill == 0) return new Preview(Shape.Cone, 0, 23 * r, 50);
@@ -334,7 +337,13 @@ namespace Emberfall
                 lane[2] = end + side + up; lane[3] = origin + side + up; lane[4] = lane[0];
                 area.loop = false; area.positionCount = lane.Length; area.SetPositions(lane);
                 Circle(marker, end, .35f);
-                if (spec.startRadius > 0) { startArea.enabled = true; Circle(startArea, origin, spec.startRadius,true); }
+                if(spec.startDistance<0)
+                {
+                    Vector3 back=origin+dir*spec.startDistance,backSide=Vector3.Cross(Vector3.up,dir)*spec.startRadius;
+                    lane[0]=back-backSide+up;lane[1]=origin-backSide+up;lane[2]=origin+backSide+up;lane[3]=back+backSide+up;lane[4]=lane[0];
+                    startArea.enabled=true;startArea.loop=false;startArea.positionCount=lane.Length;startArea.SetPositions(lane);
+                }
+                else if (spec.startRadius > 0) { startArea.enabled = true; Circle(startArea, origin, spec.startRadius,true); }
                 if (spec.endRadius > 0) { endArea.enabled = true; Circle(endArea, end, spec.endRadius,true); }
             }
         }

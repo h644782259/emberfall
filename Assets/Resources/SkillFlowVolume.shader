@@ -54,7 +54,9 @@ Shader "Emberfall/Continuous Skill Volume"
      float3 flow=float3((world.xz+curl)*2.5,world.y*2.1-_Clock*2.7);
      grain=noise(flow)*.72+noise(flow*2.03+7.1)*.28;
      density=smoothstep(.27+h*.5,.43+h*.46,grain)*shape;
-     density*=lerp(1,smoothstep(.26,.64,noise(float3(world.xz*.72,0))),_Sparsity);
+     // Dense flames do not use the extra gap-noise sample.
+     UNITY_BRANCH if(_Sparsity!=0)
+      density*=lerp(1,smoothstep(.26,.64,noise(float3(world.xz*.72,0))),_Sparsity);
      float heat=saturate((grain-.38)*1.35+(1-h)*.27);
      color=lerp(float3(1,.09,.004),float3(1,.53,.035),smoothstep(.25,.68,heat));
      color=lerp(color,float3(1,.8,.22),smoothstep(.72,.96,heat));

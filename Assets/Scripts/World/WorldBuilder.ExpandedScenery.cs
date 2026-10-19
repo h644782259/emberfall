@@ -35,9 +35,9 @@ namespace Emberfall
             if(layout>=100)
             {
                 bool mine=ChapterRoomGeometry.FromLayout(layout,0).Node==ChapterNode.Redrock;
-                for(int i=0;i<24;i++)
+                for(int i=0;i<10;i++)
                 {
-                    float a=i*Mathf.PI*2/24;Vector3 p=new Vector3(Mathf.Sin(a)*17.4f,0,Mathf.Cos(a)*17.4f);
+                    float a=i*Mathf.PI*2/10;Vector3 p=new Vector3(Mathf.Sin(a)*20f,0,Mathf.Cos(a)*20f);
                     if(Mathf.Abs(p.x)<3.5f)continue;
                     if(forest)BuildBranchTree(parent,r,p,.85f+i%4*.16f,1213+i);
                     else if(mine)
@@ -49,10 +49,10 @@ namespace Emberfall
                     }
                 }
             }
-            for(int i=0;i<260;i++)
+            for(int i=0;i<65;i++)
             {
                 Vector3 p=new Vector3(Next(random,-extent,extent),.065f,Next(random,-extent,extent));
-                if(!WorldTraversal.IsWalkable(parent.TransformPoint(p),.35f)||Mathf.Abs(p.x)<3||Mathf.Abs(p.z)<3.4f)continue;
+                if(p.magnitude<extent*.78f||!WorldTraversal.IsWalkable(parent.TransformPoint(p),.35f)||Mathf.Abs(p.x)<3||Mathf.Abs(p.z)<3.4f)continue;
                 float size=Next(random,.12f,.42f);
                 rubble.Pebble(p,new Vector3(size,size*.46f,size*.8f),Next(random,0,6.28f));
                 if(i%3==0)

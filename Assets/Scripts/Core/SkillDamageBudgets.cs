@@ -40,7 +40,7 @@ namespace Emberfall
             // Ultimates retain the established upper envelope; early fields were
             // the outliers and are not used as a reason to inflate boss deletion.
             if(hero==HeroClass.Vanguard){if(skill==5)return .30f;if(skill==7)return .20f;if(skill==9)return .24f;}
-            if(hero==HeroClass.Arcanist){if(skill==4)return .42f;if(skill==7)return .30f;if(skill==9)return .24f;}
+            if(hero==HeroClass.Arcanist){if(skill==4)return .42f;if(skill==2)return .30f;if(skill==9)return .24f;}
             if(hero==HeroClass.Ranger){if(skill==4)return .32f;if(skill==5)return .30f;if(skill==7)return .24f;if(skill==9)return .24f;}
             return 0;
         }
@@ -112,7 +112,7 @@ namespace Emberfall
         {
             bool final=step>=AdvancedSteps(hero,skill,rank)-1;
             if(hero==HeroClass.Vanguard){if(skill==5)return 5.2f;if(skill==7)return 2.8f;if(skill==9)return step==0?8f:2.2f;}
-            if(hero==HeroClass.Arcanist){if(skill==4)return 2.9f;if(skill==7)return final?(Rank(rank)==3?6f:4f):.85f;if(skill==9)return final?9f:2.2f;}
+            if(hero==HeroClass.Arcanist){if(skill==4)return 2.9f;if(skill==2)return final?(Rank(rank)==3?6f:4f):.85f;if(skill==9)return final?9f:2.2f;}
             if(hero==HeroClass.Ranger){if(skill==4)return 1.65f;if(skill==5)return .7f;if(skill==7)return 1.05f;if(skill==9)return final?12f:2f;}
             return 0;
         }
@@ -123,14 +123,14 @@ namespace Emberfall
         {
             rank=Rank(rank);if(skill==6)return 5;
             if(hero==HeroClass.Vanguard&&(skill==7||skill==9))return 6+rank-1;
-            if(hero==HeroClass.Arcanist){if(skill==7)return 9+(rank-1)*2;if(skill==9)return 6+rank-1;}
+            if(hero==HeroClass.Arcanist){if(skill==2)return 9+(rank-1)*2;if(skill==9)return 6+rank-1;}
             if(hero==HeroClass.Ranger){if(skill==7)return 14+(rank-1)*3;if(skill==9)return 9+rank-1;}
             return 1;
         }
         public static float AdvancedInterval(HeroClass hero,int skill)
-        {if(skill==6)return 1;if(hero==HeroClass.Vanguard)return skill==7?.36f:skill==9?.6f:.2f;if(hero==HeroClass.Arcanist)return skill==7?.7f:skill==9?.8f:.2f;return skill==7?.22f:skill==9?.52f:.2f;}
+        {if(skill==6)return 1;if(hero==HeroClass.Vanguard)return skill==7?.36f:skill==9?.6f:.2f;if(hero==HeroClass.Arcanist)return skill==2?.7f:skill==9?.8f:.2f;return skill==7?.22f:skill==9?.52f:.2f;}
         public static float AdvancedFirstEvent(HeroClass hero,int skill)
-        {return skill==6?1:hero==HeroClass.Vanguard&&skill==9?.15f:skill==9?.6f:hero==HeroClass.Arcanist&&skill==7?.3f:0;}
+        {return skill==6?1:hero==HeroClass.Vanguard&&skill==9?.15f:skill==9?.6f:hero==HeroClass.Arcanist&&skill==2?.3f:0;}
         public static float ChargeSeconds(HeroClass hero,int skill)
         {if(skill==9)return hero==HeroClass.Vanguard||hero==HeroClass.Ranger?0:hero==HeroClass.Arcanist?.65f:.4f;if(hero==HeroClass.Arcanist&&skill==1)return .55f;if(hero==HeroClass.Vanguard&&skill==7)return .5f;if(hero==HeroClass.Summoner&&skill==4)return .4f;return 0;}
     }

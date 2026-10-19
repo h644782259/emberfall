@@ -36,6 +36,7 @@ namespace Emberfall
                     text="召唤物每击 "+damage(CompanionRules.AttackCoefficient(form)*power*(profile.summonerRoute==SummonerRoute.Bonded?1.2f:.8f))+"\n攻击间隔 "+CompanionRules.AttackInterval(form).ToString("0.##")+" 秒";
                 }
             }
+            else if(hero==HeroClass.Arcanist&&skill==10)text="每 0.5 秒 "+damage(.45f+.10f*(rank-1))+"\n持续 "+(5+rank)+" 秒 · 自动追踪";
             else if(skill<=1)
             {
                 float initial=SkillDamageBudgets.OpeningImpact(hero,skill,rank);
@@ -48,7 +49,10 @@ namespace Emberfall
                 else text=(hero==HeroClass.Ranger&&skill==0?"每箭 ":"首击 ")+damage(initial);
                 if(rank>=2&&!(hero==HeroClass.Ranger&&skill==0))text+="\n追加 "+damage(SkillDamageBudgets.OpeningImpact(hero,skill,rank,1));
             }
-            else if(skill==2)
+            else if(hero==HeroClass.Arcanist&&skill==9)text="每颗 "+damage(MeteorShowerRules.Coefficient(rank))+" · 共 "+MeteorShowerRules.Count(rank)+" 颗\n前方 "+MeteorShowerRules.Front(rank).ToString("0.#")+" 米 · 后方 "+MeteorShowerRules.Rear(rank).ToString("0.#")+" 米";
+            else if(hero==HeroClass.Arcanist&&skill==7)text="升空 / 落地各 "+damage(ElementalistGeometry.SwitchHit(rank));
+            else if(hero==HeroClass.Arcanist&&skill==6)text="每 0.5 秒 "+damage(ElementalistGeometry.PressTick(rank))+"\n持续 "+ElementalistGeometry.PressDuration(rank)+" 秒 · 持续压倒";
+            else if(skill==2&&hero!=HeroClass.Arcanist)
             {
                 var field=SkillDamageBudgets.EarlyField(hero,rank);
                 text="每 "+field.Interval+" 秒 "+damage(field.TickCoefficient)+"\n全部命中合计 "+damage(field.TotalCoefficient);

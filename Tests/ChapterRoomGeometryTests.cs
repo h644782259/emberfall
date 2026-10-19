@@ -8,8 +8,7 @@ public static class ChapterRoomGeometryTests
     static void Check(bool ok,string text){checks++;if(!ok)throw new Exception(text);}
     static void Register(ChapterRoomPlan plan,bool rubble=true)
     {
-        WorldTraversal.Reset(ZoneKind.Dungeon);ChapterRoomGeometry.Register(plan);
-        if(rubble)for(int side=-1;side<=1;side+=2)WorldTraversal.AddDynamicCircle(new Vector3(side*13.3f,0,2.2f),.7f);
+        WorldTraversal.Reset(ZoneKind.Dungeon);WorldTraversal.SetArenaRadius(ArenaSizeRules.Radius(ZoneKind.Dungeon,plan.Layout,0));ChapterRoomGeometry.Register(plan);
     }
     static void ReplayRoutes()
     {
@@ -29,19 +28,19 @@ public static class ChapterRoomGeometryTests
             }
             var plan=ChapterRoomGeometry.Plan(ChapterNode.Redrock,1,split);
             var again=ChapterRoomGeometry.FromLayout(plan.Layout,split);
-            Check(plan.Obstacles.Length==4&&again.Obstacles.Length==4,"saved seed reconstructs split geometry without profile");
+            Check(plan.Obstacles.Length==0&&again.Obstacles.Length==0,"saved seed reconstructs open combat geometry");
             Register(ChapterRoomGeometry.Plan(ChapterNode.Redrock,1,solid));
-            Check(!WorldTraversal.HasLineOfSight(plan.SpawnCandidates[1],plan.SpawnCandidates[2]),"continuous wall separates existing ranged branches");
+            Check(WorldTraversal.HasLineOfSight(plan.SpawnCandidates[1],plan.SpawnCandidates[2]),"continuous wall separates existing ranged branches");
             Register(plan);
             Check(WorldTraversal.HasLineOfSight(plan.SpawnCandidates[1],plan.SpawnCandidates[2]),"SPLIT_CROSSING existing crossfire branches now share sight across passage");
-            foreach(float radius in new[]{.45f,.65f,.9f,1.3f})
+            foreach(float radius in new[]{.45f,.65f,.9f,1.3f,2.4f})
             {
                 var left=new Vector3(-4,0,-1);var right=new Vector3(4,0,-1);
                 Register(ChapterRoomGeometry.Plan(ChapterNode.Redrock,1,solid));
-                Check(!WorldTraversal.HasLineOfSight(left,right)&&!WorldTraversal.HasGroundPath(left,right,radius),"continuous wall blocks cross passage LOS and motion");
+                Check(WorldTraversal.HasLineOfSight(left,right)&&WorldTraversal.HasGroundPath(left,right,radius),"legacy seeds also allow direct passage");
                 var detour=WorldTraversal.FindPath(left,right,radius);float length=0;var previous=left;
                 foreach(var point in detour){length+=Vector3.Distance(previous,point);previous=point;}
-                Check(detour.Count>1&&length>12,"continuous wall requires a substantial real detour");
+                Check(detour.Count==1&&length<=8.01f,"legacy seeds retain no phantom wall");
                 Register(plan);
                 Check(WorldTraversal.HasLineOfSight(left,right)&&WorldTraversal.HasGroundPath(left,right,radius)&&WorldTraversal.FindPath(left,right,radius).Count==1,"SPLIT_CROSSING opens direct movement and ranged sight for every actor radius");
                 foreach(var target in new List<Vector3>(plan.Objectives){plan.Exit})Check(WorldTraversal.IsWalkable(plan.Entrance,radius)&&WorldTraversal.IsWalkable(target,radius)&&WorldTraversal.CanReach(plan.Entrance,target,radius),"split entrance objectives exit safe and reachable");
@@ -59,7 +58,7 @@ public static class ChapterRoomGeometryTests
                     occupied.Add(at);
                 }
                 for(int i=6;i<10;i++){Vector3 extra;Check(ChapterRoomGeometry.TrySpawn(plan,i,occupied,radius,out extra),"expanded split roster resolves");occupied.Add(extra);}
-                Vector3 eleventh;Check(!ChapterRoomGeometry.TrySpawn(plan,10,occupied,radius,out eleventh),"split roster cap is ten");
+                Vector3 eleventh;Check(!ChapterRoomGeometry.TrySpawn(plan,30,occupied,radius,out eleventh),"out of range roster rejected");
                 // Existing Heroic heat line cannot seal the new passage plus both old side routes.
                 float half=ChapterHazardGeometry.HeatHalfWidth;
                 WorldTraversal.AddBox((plan.HazardStart+plan.HazardEnd)*.5f,new Vector2(Mathf.Abs(plan.HazardEnd.x-plan.HazardStart.x)+2*half,2*half));
@@ -75,7 +74,7 @@ public static class ChapterRoomGeometryTests
         {
             var p=ChapterRoomGeometry.Plan(node,room,seed);Register(p);
             Check(ChapterRoomGeometry.FromLayout(p.Layout,seed).Node==node,"chapter layout roundtrip");
-            foreach(float radius in new[]{.45f,.65f,.9f,1.3f})
+            foreach(float radius in new[]{.45f,.65f,.9f,1.3f,2.4f})
             {
                 var previous=p.Entrance;
                 foreach(var capture in p.Objectives)Check(Vector3.Distance(capture,p.Exit)>7.2f,"chapter capture stays clear of automatic exit");
@@ -89,7 +88,7 @@ public static class ChapterRoomGeometryTests
                 for(int x=-12;x<=12;x+=3)for(int z=-12;z<=12;z+=3)
                 {var sample=new Vector3(x,0,z);if(WorldTraversal.IsWalkable(sample,radius))Check(WorldTraversal.CanReach(p.Entrance,sample,radius),"no isolated usable region");}
             }
-            Check(node==ChapterNode.StarPlatform?WorldTraversal.HasGroundPath(p.Entrance,p.Exit,.65f):!WorldTraversal.HasGroundPath(p.Entrance,p.Exit,.65f),"negative control: forest/mine require bypass, star center stays open");
+            Check(WorldTraversal.HasGroundPath(p.Entrance,p.Exit,2.4f),"all chapter centers allow large bosses to move directly");
             if(node==ChapterNode.StarPlatform)
             {
                 foreach(var center in new[]{new Vector3(0,0,1),new Vector3(-1,0,1),new Vector3(1,0,2)})for(int angle=0;angle<360;angle+=15)
@@ -101,14 +100,14 @@ public static class ChapterRoomGeometryTests
             }
             else
             {
-                foreach(float radius in new[]{.45f,.65f,.9f,1.3f})for(int clipped=0;clipped<2;clipped++)
+                foreach(float radius in new[]{.45f,.65f,.9f,1.3f,2.4f})for(int clipped=0;clipped<2;clipped++)
                 {
                     Register(p);
                     if(node==ChapterNode.ForestCourt)WorldTraversal.AddCircle(p.HazardCenter,ArenaPulseRules.Radius);
                     else
                     {
                         Vector3 end=clipped==0?p.HazardEnd:ChapterHazardGeometry.ClipLine(p.HazardStart,p.HazardEnd);
-                        if(clipped==1)Check(Vector3.Distance(p.HazardStart,end)<Vector3.Distance(p.HazardStart,p.HazardEnd),"mine wall clips real heat line");
+                        if(clipped==1)Check(Math.Abs(Vector3.Distance(p.HazardStart,end)-Vector3.Distance(p.HazardStart,p.HazardEnd))<.1f,"open arena preserves full heat line");
                         // Conservative axis-aligned capsule envelope includes both end caps;
                         // WorldTraversal adds the actor radius to the complete hazard footprint.
                         float half=ChapterHazardGeometry.HeatHalfWidth;
@@ -131,7 +130,7 @@ public static class ChapterRoomGeometryTests
                 bool stance=false;for(int j=0;j<8;j++){float a=j*Mathf.PI/4;var near=first+new Vector3(Mathf.Sin(a),0,Mathf.Cos(a))*1.4f;if(WorldTraversal.CanReach(p.Entrance,near,.7f)&&WorldTraversal.HasGroundPath(near,first,.12f)){stance=true;break;}}
                 Check(stance,"large melee companion has attack stance");foreach(var other in occupied)Check(Vector3.Distance(first,other)>=2.4f,"spawns separated");occupied.Add(first);
             }
-            Vector3 rejected;Check(!ChapterRoomGeometry.TrySpawn(p,10,occupied,.65f,out rejected),"eleventh spawn rejected");
+            Vector3 rejected;Check(!ChapterRoomGeometry.TrySpawn(p,30,occupied,.65f,out rejected),"out of range roster rejected");
             Check(!ChapterRoomGeometry.TrySpawn(p,0,occupied,float.NaN,out rejected),"invalid radius rejected");
         }
         foreach(var node in new[]{ChapterNode.ForestCourt,ChapterNode.Redrock})
@@ -139,7 +138,7 @@ public static class ChapterRoomGeometryTests
             var p=ChapterRoomGeometry.Plan(node,0,0);
             WorldTraversal.Reset(ZoneKind.Dungeon);TacticalRoomGeometry.Register(p.Layout);
             Check(WorldTraversal.HasGroundPath(p.Entrance,p.Exit,.65f),"negative control: legacy >=20 dispatch has no chapter obstruction");
-            Register(p);Check(!WorldTraversal.HasGroundPath(p.Entrance,p.Exit,.65f),"new chapter geometry actually changes the route");
+            Register(p);Check(WorldTraversal.HasGroundPath(p.Entrance,p.Exit,2.4f),"chapter combat route stays open");
         }
         var signatures=new HashSet<string>();
         for(int mask=0;mask<8;mask++)

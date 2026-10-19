@@ -42,15 +42,15 @@ namespace Emberfall
             interval=SkillDamageBudgets.AdvancedInterval(heroClass,skill);
             nextEvent=SkillDamageBudgets.AdvancedFirstEvent(heroClass,skill);
             performanceModel=owner.GetComponentInChildren<CombatModel>();
-            if(performanceModel!=null&&nextEvent>0&&!(heroClass==HeroClass.Ranger&&skill==9)&&!(heroClass==HeroClass.Arcanist&&(skill==7||skill==9)))
+            if(performanceModel!=null&&nextEvent>0&&!(heroClass==HeroClass.Ranger&&skill==9)&&!(heroClass==HeroClass.Arcanist&&(skill==2||skill==9)))
                 performanceModel.PrepareSkillPerformanceBeat(skill,castId,nextEvent);
             float visibleTime=nextEvent+(steps-1)*interval+.4f;
-            if(heroClass==HeroClass.Arcanist&&(skill==7||skill==9))
+            if(heroClass==HeroClass.Arcanist&&(skill==2||skill==9))
             {
-                performance=SkillPerformanceVfx.Sustain(owner,target,(skill==7?ElementalistFieldTuning.GravityRadius:ElementalistFieldTuning.UltimatePulseRadius)*range,visibleTime,skill==7?SkillPerformanceBody.Gravity:SkillPerformanceBody.Meteor);
+                performance=SkillPerformanceVfx.Sustain(owner,target,(skill==2?ElementalistFieldTuning.GravityRadius:ElementalistFieldTuning.UltimatePulseRadius)*range,visibleTime,skill==2?SkillPerformanceBody.Gravity:SkillPerformanceBody.Meteor);
                 PrepareNextPerformance();
             }
-            if(heroClass==HeroClass.Arcanist&&skill==7)return;
+            if(heroClass==HeroClass.Arcanist&&skill==2)return;
             if(heroClass==HeroClass.Ranger&&skill==9)
             {
                 performance=SkillPerformanceVfx.Sustain(owner,target,SkillDamageBudgets.RangerUltimateRadius*range,visibleTime,SkillPerformanceBody.ArrowVolley,transform,producerBoundActionBody:true);
@@ -76,7 +76,7 @@ namespace Emberfall
             { Destroy(gameObject); return; }
             if (session.InputBlocked || Time.deltaTime <= 0) return;
             age += Time.deltaTime;
-            if (heroClass == HeroClass.Arcanist && skill == 7) Pull(target,ElementalistFieldTuning.GravityPullRadius*range,ElementalistFieldTuning.GravityPullStrength(rank));
+            if (heroClass == HeroClass.Arcanist && skill == 2) Pull(target,ElementalistFieldTuning.GravityPullRadius*range,ElementalistFieldTuning.GravityPullStrength(rank));
             // Limit catch-up to three events per frame after a frame-time spike.
             int catchup = 0;
             while (step < steps && age >= nextEvent && catchup++ < 3)
@@ -199,7 +199,7 @@ namespace Emberfall
                 case 4:
                     ChainLightning(6+(rank-1)*2);
                     break;
-                case 7:
+                case 2:
                     if(step<steps-1)
                     {
                         owner.HitArea(target,ElementalistFieldTuning.GravityDamageRadius*range,damage*SkillDamageBudgets.AdvancedImpact(heroClass,skill,rank,step),0,.12f,castId:castId,strictRadius:true);

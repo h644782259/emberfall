@@ -591,7 +591,7 @@ namespace Emberfall
         // Called once for a mobile skill tap before the existing cast/charge path.
         // Selection only changes aim; it never spends energy or starts a cooldown.
         internal bool IsMobileSelfCenteredSkill(int skill)
-        {return MobileControls.Active&&HeroClass==HeroClass.Arcanist&&skill==9;}
+        {return HeroClass==HeroClass.Arcanist&&(skill==7);}
         internal void PrepareMobileSkillAim(int skill)
         {
             EnemyController enemy;Vector3 point;ResolveMobileSkillAim(skill,out enemy,out point);AimTarget=enemy;aimPoint=point;
@@ -1503,7 +1503,7 @@ namespace Emberfall
             if(resourceProc.Energy>0){skillRuntime.RestoreEnergy(resourceProc.Energy);skillRuntime.ReduceCooldowns(resourceProc.CooldownReduction);session.RecordCombatAction("循能核心");}
             int castId = NewCastId();HoldCastReceipt(ref skillCastReceipt,castId);
             BeginSkillChannel(slot,castId);
-            if(slot==9){ultimateArmorEpoch=CombatEpoch;ultimateArmorUntil=Time.time+SkillDamageBudgets.AdvancedFirstEvent(HeroClass,slot)+SkillDamageBudgets.AdvancedSteps(HeroClass,slot,rank)*SkillDamageBudgets.AdvancedInterval(HeroClass,slot)+SkillCastingPolicy.Recovery(HeroClass,slot);}
+            if(slot==9){ultimateArmorEpoch=CombatEpoch;ultimateArmorUntil=Time.time+SkillDamageBudgets.AdvancedFirstEvent(HeroClass,slot)+SkillDamageBudgets.AdvancedSteps(HeroClass,slot,rank)*SkillDamageBudgets.AdvancedInterval(HeroClass,slot)+SkillCastingPolicy.Recovery(HeroClass,slot);if(HeroClass==HeroClass.Arcanist)ultimateArmorUntil=Time.time+MeteorShowerRules.Duration(rank);}
             session.RecordPracticeCast(castId,slot);
             session.RecordCombatAction("职业能力");
             if (executingChargedSkill && session.HasBlessing(RunBlessing.ChargedWard)) chargedWardTime = Mathf.Max(chargedWardTime, 2f);
@@ -1523,6 +1523,14 @@ namespace Emberfall
             model.SkillPerformanceBeat(slot,castId);
             ApplyRelicProc(relicGems.SkillCast(slot),target);
             if(IsDead||session.CombatEffectsEnded)return;
+            if(HeroClass==HeroClass.Arcanist&&slot==9)
+            {MeteorShower.Spawn(this,session,rank,Damage(1f),castId);return;}
+            if(HeroClass==HeroClass.Arcanist&&slot==2)
+            {AdvancedSkillSequence.Spawn(this,session,slot,rank,target,transform.forward,Damage(power*SkillDamageBudgets.AdvancedScale(HeroClass,slot)),color,castId);return;}
+            if(HeroClass==HeroClass.Arcanist&&(slot==6||slot==7))
+            {ElementalistGravity.Spawn(this,session,slot,rank,slot==7?transform.position:target,Damage(1f),castId);return;}
+            if(HeroClass==HeroClass.Arcanist&&slot==10)
+            {TrackingLaser.Spawn(this,session,target,rank,Damage(.45f+.10f*(rank-1)),castId);return;}
             if (HeroClass == HeroClass.Summoner)
             {
                 {
@@ -1558,11 +1566,6 @@ namespace Emberfall
                     FlameRide.Spawn(this,session,guardTime,SkillAttack,castId);
 
                 }
-                else if(slot==6&&HeroClass==HeroClass.Arcanist)
-                {
-                    CombatArea.Spawn(this,session,target,3.8f*range,Damage(2f*power),.5f,.15f,0,1,color,castId:castId,visual:SkillVisualRecipe.Ice);
-                    CombatArea.Spawn(this,session,target,3.8f*range,Damage(2.5f*power),.25f,.6f,0,1,color,castId:castId,visual:SkillVisualRecipe.Lightning);
-                }
                 else if(slot==6&&HeroClass==HeroClass.Ranger)
                 {
                     MobilityBuff(rank);
@@ -1575,7 +1578,7 @@ namespace Emberfall
                 else AdvancedSkillSequence.Spawn(this,session,slot,rank,target,transform.forward,Damage(power * SkillDamageBudgets.AdvancedScale(HeroClass,slot)),color,castId);
                 return;
             }
-            if(rank>=2) AdvancedSkillVfx.Rune(this,slot==0?transform.position:target,3.1f*range,color,.8f,rank);
+            if(rank>=2&&!(HeroClass==HeroClass.Arcanist&&slot==0)) AdvancedSkillVfx.Rune(this,slot==0?transform.position:target,3.1f*range,color,.8f,rank);
             if (HeroClass == HeroClass.Vanguard)
             {
                 if (slot == 0)
@@ -1602,27 +1605,29 @@ namespace Emberfall
             {
                 if (slot == 0)
                 {
+                    Vector3 frostDirection=CombatFx.Flat(transform.forward).normalized;
+                    Vector3 frostCenter=transform.position+frostDirection*(ElementalistGeometry.FrostLength(rank)*.5f);
                     bool frostEcho = HasMechanic(EquipmentMechanic.FrostEcho);
                     bool wideEcho = MechanicVariant(EquipmentMechanic.FrostEcho) == 1;
                     float novaPower = frostEcho ? BuildCatalog.FrostEchoOpeningMultiplier(wideEcho) : 1f;
-                    CombatArea.Spawn(this,session,transform.position,3.7f*range,Damage(SkillDamageBudgets.OpeningImpact(HeroClass,slot,rank)*novaPower*.6f),0,0,0,1f,new Color(.51f,.92f,1f),statusSkill:0,statusRank:rank,castId:castId,visual:SkillVisualRecipe.Ice);
+                    CombatArea.Spawn(this,session,frostCenter,3.7f*range,Damage(SkillDamageBudgets.OpeningImpact(HeroClass,slot,rank)*novaPower*.6f),0,0,0,1f,new Color(.51f,.92f,1f),statusSkill:0,statusRank:rank,castId:castId,visual:SkillVisualRecipe.Ice,laneDirection:frostDirection,laneWidth:ElementalistGeometry.FrostWidth(rank),laneLength:ElementalistGeometry.FrostLength(rank));
                     var spikes=SkillDamageBudgets.FrostSpikes(rank);
-                    CombatArea.Spawn(this,session,transform.position,3.7f*range,Damage(spikes.TickCoefficient*novaPower),0,spikes.Startup,spikes.Duration,spikes.Interval,new Color(.51f,.92f,1f),statusSkill:0,statusRank:rank,castId:castId,visual:SkillVisualRecipe.Ice);
+                    CombatArea.Spawn(this,session,frostCenter,3.7f*range,Damage(spikes.TickCoefficient*novaPower),0,spikes.Startup,spikes.Duration,spikes.Interval,new Color(.51f,.92f,1f),statusSkill:0,statusRank:rank,castId:castId,visual:SkillVisualRecipe.Ice,laneDirection:frostDirection,laneWidth:ElementalistGeometry.FrostWidth(rank),laneLength:ElementalistGeometry.FrostLength(rank));
                     if (frostEcho)
                     {
-                        CombatArea.Spawn(this,session,transform.position,3.7f*range*BuildCatalog.FrostEchoRadiusMultiplier(wideEcho)*session.Progression.MechanicRangeMultiplier(EquipmentMechanic.FrostEcho),Damage(BuildCatalog.FrostEchoCoefficient(wideEcho)*power*session.Progression.MechanicPowerMultiplier(EquipmentMechanic.FrostEcho)),0,.7f,0,1f,new Color(.51f,.92f,1f),statusSkill:0,statusRank:rank,castId:castId,visual:SkillVisualRecipe.Ice,trackedMechanic:1);
+                        CombatArea.Spawn(this,session,frostCenter,3.7f*range*BuildCatalog.FrostEchoRadiusMultiplier(wideEcho)*session.Progression.MechanicRangeMultiplier(EquipmentMechanic.FrostEcho),Damage(BuildCatalog.FrostEchoCoefficient(wideEcho)*power*session.Progression.MechanicPowerMultiplier(EquipmentMechanic.FrostEcho)),0,.7f,0,1f,new Color(.51f,.92f,1f),statusSkill:0,statusRank:rank,castId:castId,visual:SkillVisualRecipe.Ice,trackedMechanic:1,laneDirection:frostDirection,laneWidth:ElementalistGeometry.FrostWidth(rank)*BuildCatalog.FrostEchoRadiusMultiplier(wideEcho),laneLength:ElementalistGeometry.FrostLength(rank));
                         session.RecordCombatAction("霜环回响");
                     }
-                    if(rank>=2) CombatArea.Spawn(this,session,transform.position,3.7f*range,Damage(SkillDamageBudgets.OpeningImpact(HeroClass,slot,rank,1)),0,.5f,0,1f,new Color(.51f,.92f,1f),statusSkill:0,statusRank:rank,castId:castId,visual:SkillVisualRecipe.Ice);
+                    if(rank>=2) CombatArea.Spawn(this,session,frostCenter,3.7f*range,Damage(SkillDamageBudgets.OpeningImpact(HeroClass,slot,rank,1)),0,.5f,0,1f,new Color(.51f,.92f,1f),statusSkill:0,statusRank:rank,castId:castId,visual:SkillVisualRecipe.Ice,laneDirection:frostDirection,laneWidth:ElementalistGeometry.FrostWidth(rank),laneLength:ElementalistGeometry.FrostLength(rank));
                     if(rank==3)
                     {
                         var shards=new ProjectileVolleyBudget<EnemyController>(SkillAttack,1.8f);
                         for(int i=0;i<8;i++)
                         {
-                        Vector3 shard=Quaternion.Euler(0,i*45f,0)*Vector3.forward;
+                        Vector3 shard=Quaternion.Euler(0,Mathf.Lerp(-22f,22f,i/7f),0)*frostDirection;
                         var shardDamage=Damage(SkillDamageBudgets.OpeningImpact(HeroClass,slot,rank,2));
                         Vector3 muzzle=transform.position+shard*.5f;
-                        if(CombatProjectile.CanLaunchFromMuzzle(this,muzzle,shardDamage,castId))CombatProjectile.Friendly(this,session,muzzle,shard,shardDamage,new Color(.51f,.92f,1f),true,false,false,range,16f*range,castId:castId,volley:shards);
+                        if(CombatProjectile.CanLaunchFromMuzzle(this,muzzle,shardDamage,castId))CombatProjectile.Friendly(this,session,muzzle,shard,shardDamage,new Color(.51f,.92f,1f),true,false,false,range,ElementalistGeometry.FrostLength(rank),castId:castId,volley:shards);
                         }
                     }
                 }
