@@ -371,7 +371,7 @@ namespace Emberfall
             float contentX=x+sidebarWidth+16,bodyWidth=panelWidth-sidebarWidth-16,contentWidth=bodyWidth-18;
             string notice=string.IsNullOrEmpty(session.Notification)?"":PlatformText(session.Notification);
             float noticeHeight=string.IsNullOrEmpty(notice)?0:Mathf.Max(32,Style(TouchFont(11),false,true).CalcHeight(new GUIContent(notice),contentWidth*TouchRatio)/TouchRatio+8);
-            float contentHeight=mobilePausePage==0?174+noticeHeight:mobilePausePage==2?174:132+MobileGraphicsSettingsHeight(contentWidth);
+            float contentHeight=mobilePausePage==0?174+noticeHeight:mobilePausePage==2?174:190+MobileGraphicsSettingsHeight(contentWidth);
             mobilePauseScroll[mobilePausePage]=BeginTouchScroll("mobile-pause-"+mobilePausePage,TouchRect(contentX,bodyY,bodyWidth,bodyHeight),mobilePauseScroll[mobilePausePage],new Rect(0,0,contentWidth*TouchRatio,Mathf.Max(bodyHeight,contentHeight)*TouchRatio));
             try { DrawMobilePauseBody(contentWidth,notice,noticeHeight); }
             finally { EndTouchScroll(); }
@@ -402,7 +402,9 @@ namespace Emberfall
                         else if (i == 2) EffectPreferences.CameraShake = !EffectPreferences.CameraShake;
                         else if (i == 3) EffectPreferences.EffectsScale = EffectPreferences.ReducedEffects ? 1f : .35f;
                     }
-                DrawMobileGraphicsSettings(0,132,contentWidth);
+                if(Button(TouchRect(0,116,contentWidth,48),"技能语音："+GameAudio.SkillVoiceVersionName+"  ›",jade))
+                    GameAudio.SkillVoiceVersion=(GameAudio.SkillVoiceVersion+1)%4;
+                DrawMobileGraphicsSettings(0,190,contentWidth);
                 return;
             }
         }

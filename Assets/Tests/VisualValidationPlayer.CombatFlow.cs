@@ -93,11 +93,11 @@ namespace Emberfall
             quote=service.PrepareRevivalPurchase(true,2);
             Check(service.BuyAtMerchant(quote,true)&&service.Profile.gold==90000&&service.Profile.revivalStones==stones+2,"Revival merchant charges exactly 5000 gold per stone");
             Check(!service.BuyAtMerchant(quote,true),"Stale purchase cannot grant duplicate stones");
-            service.Profile.chapterDifficultyBestTiers[2]=2;
+            service.Profile.chapterBestTiers[0]=2;
             stones=service.Profile.revivalStones;
             Check(service.ClaimAchievement("revival/0")&&service.Profile.revivalStones==stones+6,"Two first-clear tiers grant six stones including historical saves");
             Check(!service.ClaimAchievement("revival/0"),"Repeated tier claim cannot grant stones twice");
-            service.Profile.chapterDifficultyBestTiers[2]=3;
+            service.Profile.chapterBestTiers[0]=3;
             Check(service.ClaimAchievement("revival/0")&&service.Profile.revivalStones==stones+9,"Next new tier grants three more stones");
             int gearCount=service.Profile.inventory.Count;int goldBefore=service.Profile.gold;
             Check(service.ClaimAchievement("level/100")&&service.Profile.gold==goldBefore+15000&&service.Profile.inventory.Count==gearCount+1,"Hard achievement grants increased gold and real equipment atomically");
@@ -244,7 +244,7 @@ namespace Emberfall
             yield return Capture("ghost-end-battle-settlement",.2f);
             foreach(ChapterNode node in new[]{ChapterNode.ForestCourt,ChapterNode.Redrock,ChapterNode.StarPlatform})
             {
-                var run=new ChapterCombatRun(node,ChapterDifficulty.Heroic,1);
+                var run=new ChapterCombatRun(node,1);
                 typeof(ChapterCombatRun).GetProperty("RoomIndex").SetValue(run,ChapterDefinition.RoomCount(node)-1);run.BindRoom(9);
                 for(int i=0;i<run.EnemyCount;i++)run.Register(run.RoomIndex,9,i);
                 for(int i=0;i<run.EnemyCount;i++)run.Defeat(run.RoomIndex,9,i);

@@ -1174,7 +1174,7 @@ namespace Emberfall
                 bool locked = empty || potion && (session.ChallengeRun && session.InDungeon ? session.HealingCharges : p.potions) <= 0;
                 float cost = skill < 0 ? 0 : GameBalance.SkillEnergyCost(p.heroClass, skill);
                 bool lacksEnergy = !locked && session.Player != null && session.Player.Energy < cost;
-                float cooldown = skill < 0 || session.Player == null ? 0 : session.Player.CooldownRemaining(slotIndex);
+                float cooldown = session.Player == null ? 0 : potion ? session.Player.PotionCooldownRemaining : skill < 0 ? 0 : session.Player.CooldownRemaining(slotIndex);
                 bool actionable=false;
                 string actionCaption=mobile?"":DesktopSkillOpportunityCaption(skill,locked,lacksEnergy,cooldown,out actionable);
                 Rect slot = hotbarSlots[slotIndex];
@@ -1184,7 +1184,7 @@ namespace Emberfall
 
                 Color accent = empty ? muted : potion ? gold : UIIconAtlas.SkillColor(p.heroClass, skill);
                 Fill(slot,new Color(accent.r*.15f,accent.g*.15f,accent.b*.15f,locked?.35f:.5f));
-                bool ready=session.Player!=null&&(potion?!session.InputBlocked&&!session.Player.IsDead&&!locked&&session.Player.Health<session.Player.MaxHealth-.5f:skill>=0&&HudSkillAvailable(skill));
+                bool ready=session.Player!=null&&(potion?!session.InputBlocked&&!session.Player.IsDead&&!locked&&cooldown<=0&&session.Player.Health<session.Player.MaxHealth-.5f:skill>=0&&HudSkillAvailable(skill));
                 if (!empty)
                 {
                     // Artwork fills the slot; counts are drawn on top of it.
@@ -1439,7 +1439,7 @@ namespace Emberfall
 
         private string PotionTooltip(GameProfile profile)
         {
-            return "恢复 50% 最大生命\n" + (session.ChallengeRun && session.InDungeon ? "治疗充能 " + session.HealingCharges + "/3" : "数量 " + profile.potions);
+            return "恢复 50% 最大生命 · 冷却 60 秒\n" + (session.ChallengeRun && session.InDungeon ? "治疗充能 " + session.HealingCharges + "/3" : "数量 " + profile.potions);
         }
 
         private static int AssignedSlot(GameProfile profile, int skill)
@@ -1817,8 +1817,10 @@ namespace Emberfall
             {
                 if (ToggleButton(new Rect(w.x + 212, w.y + 210, 260, 42), GameAudio.Muted ? "声音：已静音" : "声音：已开启", !GameAudio.Muted))
                 { GameAudio.Muted = !GameAudio.Muted; if (!GameAudio.Muted) GameAudio.Play(SoundCue.UI); }
-                DrawAccessibilityStrip(new Rect(w.x + 212, w.y + 280, 536, 35));
-                DrawDesktopGraphicsSettings(new Rect(w.x + 212, w.y + 335, 536, 188));
+                if (Button(new Rect(w.x+212,w.y+262,536,42),"技能语音："+GameAudio.SkillVoiceVersionName+"  ›",jade))
+                    GameAudio.SkillVoiceVersion=(GameAudio.SkillVoiceVersion+1)%4;
+                DrawAccessibilityStrip(new Rect(w.x + 212, w.y + 308, 536, 35));
+                DrawDesktopGraphicsSettings(new Rect(w.x + 212, w.y + 350, 536, 188));
             }
             else
             {

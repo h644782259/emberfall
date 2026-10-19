@@ -153,7 +153,7 @@ namespace Emberfall
             // Keep navigation hidden until the chest reward is saved and revealed.
             if(!SettlementNavigationReady)return;
             float gap=8*u,bw=(footer.width-gap*2)/3;
-            if(Button(new Rect(footer.x,footer.y,bw,footer.height),"挑战下一阶",gold,CanNavigateSettlement(1)))
+            if(Button(new Rect(footer.x,footer.y,bw,footer.height),session.TierBasedDungeon?"挑战下一阶":"挑战下一等级",gold,CanNavigateSettlement(1)))
             {NavigateSettlement(1);return;}
             if(Button(new Rect(footer.x+bw+gap,footer.y,bw,footer.height),"返回营地",jade,CanNavigateSettlement(2)))
             {NavigateSettlement(2);return;}
@@ -180,6 +180,7 @@ namespace Emberfall
         private bool HasLegendaryChestReward(ChestReward reward)
         {
             if(reward==null)return false;
+            if(reward.HasLegendaryMaterial)return true;
             if(reward.Rarity==Rarity.Legendary&&reward.Slot.HasValue&&!reward.Duplicate)return true;
             if(reward.gemMechanic!=EquipmentMechanic.None&&reward.gemRarity==Rarity.Legendary&&!reward.duplicateGem)return true;
             if(reward.equipmentIds!=null)foreach(string id in reward.equipmentIds)
@@ -372,7 +373,7 @@ namespace Emberfall
             int titleSize=Mathf.RoundToInt((mobile?23:28)*unit);
             while(titleSize>8){Vector2 measured=Style(titleSize,true).CalcSize(new GUIContent(title));if(measured.x<=titleRect.width&&measured.y<=titleRect.height)break;titleSize--;}
             Text(titleRect,title,titleSize,pale,true,false,TextAnchor.MiddleLeft);
-            string location=snapshot==null?"":snapshot.InDungeon?(snapshot.ModeName.Length>0?snapshot.ModeName+"  ·  ":"")+(session.ChapterActive?("第 "+snapshot.Tier+" 阶"):"Lv"+AdventureRewardRules.DungeonLevel(snapshot.Tier))+"  ·  "+snapshot.Wave+" / "+snapshot.TotalWaves+(snapshot.ModeName.Length>0?" 阶段":" 波"):"原野探索";
+            string location=snapshot==null?"":snapshot.InDungeon?(snapshot.ModeName.Length>0?snapshot.ModeName+"  ·  ":"")+(session.TierBasedDungeon?("第 "+snapshot.Tier+" 阶"):"Lv"+AdventureRewardRules.DungeonLevel(snapshot.Tier))+"  ·  "+snapshot.Wave+" / "+snapshot.TotalWaves+(snapshot.ModeName.Length>0?" 阶段":" 波"):"原野探索";
             Text(new Rect(header.x+(iconSize+12)*unit,titleRect.yMax+2*unit,header.width-(iconSize+20)*unit,26*unit),location,Mathf.RoundToInt(13*unit),muted);
             Rule(frame.x+16*unit,layout.Viewport.Y*unit-6*unit,frame.width-32*unit,accent*.5f);
             Rect viewport=RecapRect(layout.Viewport,unit);

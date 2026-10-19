@@ -37,17 +37,16 @@ namespace Emberfall
             if(skillSection!=0)return;
             float u=TouchRatio,bodyHeight=(RouteSkillReturnAvailable?layout.Body.Height:layout.Height-layout.Body.Y-12)-64;
             DrawBasicAttackNode(TouchRect(layout.Body.X,layout.Body.Y,layout.Body.Width,54),u);
-            bool stacked=!MobileControls.IsIPad||layout.Body.Width<700;
-            float leftWidth=stacked?layout.Body.Width:layout.Body.Width*.44f;
-            float treeHeight=stacked?bodyHeight*.46f:bodyHeight;
+            float leftWidth=layout.Body.Width*(MobileControls.IsIPad?.44f:.36f);
+            float treeHeight=bodyHeight;
             var listArea=new MobilePanelLayout.Area(layout.Body.X,layout.Body.Y+64,leftWidth,treeHeight);
             float listWidth=listArea.Width-16;
-            mobileSkillTreeStep=stacked?52:Mathf.Clamp((bodyHeight-8)/7,44,108);
+            mobileSkillTreeStep=Mathf.Clamp((bodyHeight-8)/7,44,108);
             float listHeight=DrawMobileSkillTree(listWidth,false);
             mobileSkillListScroll=BeginTouchScroll("mobile-skill-list",MobilePanelRect(listArea),mobileSkillListScroll,new Rect(0,0,listWidth*u,Mathf.Max(listArea.Height,listHeight)*u));
             DrawMobileSkillTree(listWidth,true);EndTouchScroll();
             if(RouteSkillReturnAvailable&&NavigationButton(MobilePanelRect(layout.FooterButton(0,1)),"返回职业路线",jade)){ClosePanel();BlockUITransition();return;}
-            Rect r=stacked?TouchRect(listArea.X,listArea.YMax+12,layout.Body.Width,bodyHeight-treeHeight-12):TouchRect(listArea.XMax+12,listArea.Y,layout.Body.Width-leftWidth-12,bodyHeight);
+            Rect r=TouchRect(listArea.XMax+12,listArea.Y,layout.Body.Width-leftWidth-12,bodyHeight);
             Surface(r,new Color(.012f,.024f,.038f,.99f));SurfaceFrame(r,new Color(jade.r,jade.g,jade.b,.28f));
             if(basicAttackSelected){DrawBasicAttackDetail(r,u);return;}
             if(blinkFollowupSelected){DrawBlinkFollowupDetail(r,u);return;}
@@ -74,6 +73,7 @@ namespace Emberfall
         }
         private float DrawMobileSkillTree(float width,bool draw)
         {
+            if(!MobileControls.IsIPad)return DrawPhoneSkillList(width,draw);
             if(!draw)return 7*mobileSkillTreeStep+70;
             var p=session.Progression.Profile;
             float branchWidth=width/3;
@@ -120,6 +120,30 @@ namespace Emberfall
                 {basicAttackSelected=false;blinkFollowupSelected=false;selectedSkill=skill;mobileSkillDetailScroll=Vector2.zero;mobileSkillStatus=null;CancelMobileScroll();}
             }
             return 7*mobileSkillTreeStep+70;
+        }
+
+        private float DrawPhoneSkillList(float width,bool draw)
+        {
+            const float rowHeight=64;
+            float height=GameBalance.SkillCount*rowHeight+90;
+            if(!draw)return height;
+            var p=session.Progression.Profile;
+            for(int skill=0;skill<GameBalance.SkillCount;skill++)
+            {
+                int rank=p.skillRanks[skill];bool selected=!basicAttackSelected&&!blinkFollowupSelected&&selectedSkill==skill;
+                bool learnable=Attention.LearnableSkills.Contains(skill);
+                Color accent=selected?gold:rank>0?jade:muted;
+                Rect row=TouchRect(2,skill*rowHeight+2,width-4,58);
+                Surface(row,new Color(.018f,.036f,.054f,.99f));SurfaceFrame(row,new Color(accent.r,accent.g,accent.b,selected?.9f:.35f));
+                Rect icon=new Rect(row.x+6*TouchRatio,row.y+10*TouchRatio,36*TouchRatio,36*TouchRatio);
+                DrawSkillIdentity(icon,p.heroClass,skill,rank,rank>0||learnable,48);Badge(icon,learnable);
+                Text(new Rect(row.x+48*TouchRatio,row.y+4*TouchRatio,row.width-54*TouchRatio,30*TouchRatio),GameBalance.SkillName(p.heroClass,skill),TouchFont(12),rank>0?pale:muted,true,true,TextAnchor.MiddleLeft);
+                Text(new Rect(row.x+48*TouchRatio,row.y+35*TouchRatio,row.width-54*TouchRatio,19*TouchRatio),"Lv."+GameBalance.SkillRequiredLevels[skill]+" · "+(rank>0?GameBalance.SkillRankName(rank):"锁定"),TouchFont(10),accent,false,false,TextAnchor.MiddleLeft);
+                if(MobileSkillRowClicked(row)&&!selected)
+                {basicAttackSelected=false;blinkFollowupSelected=false;selectedSkill=skill;mobileSkillDetailScroll=Vector2.zero;mobileSkillStatus=null;CancelMobileScroll();}
+            }
+            DrawBlinkFollowupNode(TouchRect(2,GameBalance.SkillCount*rowHeight+2,width-4,84),TouchRatio);
+            return height;
         }
 
         // Remove every node footprint from a connector, including nodes skipped by

@@ -285,7 +285,7 @@ namespace Emberfall
             var hero=session.Player;
             ActionCircle(VisualRect(Attack),targeting!=null&&targeting.IsTargeting?"confirm":"attack",hero!=null&&hero.BasicActionReady);
             ActionCircle(VisualRect(Dodge),hero.BlinkFollowupRemaining>0?"followup":"blink",hero.BlinkFollowupRemaining>0||!hero.IsJumping&&hero.DodgeCooldown<=0);
-            ActionCircle(PotionVisualRect(),"potion",hero!=null&&PotionCount>0&&hero.Health<hero.MaxHealth-.5f);
+            ActionCircle(PotionVisualRect(),"potion",hero!=null&&PotionCount>0&&hero.PotionCooldownRemaining<=0&&hero.Health<hero.MaxHealth-.5f);
             if(CanCancel)ActionCircle(VisualRect(Cancel),"cancel",true);
             else ActionCircle(VisualRect(Jump),"jump",hero!=null&&!hero.IsJumping);
             DrawAvailability();

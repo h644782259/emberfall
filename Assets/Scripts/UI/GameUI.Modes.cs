@@ -295,19 +295,37 @@ namespace Emberfall
    public int BagSlot=-1,PreviewBagSlot=-1;public ItemData Equipment;public string Key,Name,Description;public Texture2D Icon;public Color Tint;public Color QualityColor {get{return GameBalance.RarityColor(Rarity);}}public Rarity Rarity;public bool Clear;public bool UnenhancedReward;public bool AllowActions;public int Quantity=1;public ItemSlot? GearSlot;public FashionSlot? AppearanceSlot;
   }
   private readonly System.Collections.Generic.Dictionary<string,System.Collections.Generic.List<EntryRewardPreview>> entryPreviewCache = new System.Collections.Generic.Dictionary<string,System.Collections.Generic.List<EntryRewardPreview>>();
+  private void PrioritizeEntryPity(System.Collections.Generic.List<EntryRewardPreview> items,int mode,bool chapter)
+  {
+   int target=SpecialtyChestPity.Target(chapter,chapter?(int)session.SelectedChapterNode:mode);
+   bool gems=chapter&&session.SelectedChapterNode==ChapterNode.StarPlatform;
+   System.Predicate<EntryRewardPreview> first=item=>item.Clear&&(target==8?item.Key=="basic-attack":target==7?item.Key=="affix-reforge":target==2?item.AppearanceSlot.HasValue:gems?item.Key.StartsWith("gem:"):item.GearSlot.HasValue&&item.Rarity==Rarity.Legendary);
+   var guaranteed=items.FindAll(first);items.RemoveAll(first);items.InsertRange(0,guaranteed);
+  }
   private System.Collections.Generic.List<EntryRewardPreview> EntryRewardPreviews(int mode,int tier,bool chapter)
   {
-   string cacheKey=session.Progression.CurrentSlotId+":"+session.Progression.Profile.heroClass+":"+session.Progression.Profile.level+":"+mode+":"+tier+":"+chapter+":"+session.SelectedChapterNode+":"+session.SelectedChapterDifficulty+":"+session.SelectedChapterTier;
+   string cacheKey=session.Progression.CurrentSlotId+":"+session.Progression.Profile.heroClass+":"+session.Progression.Profile.level+":"+mode+":"+tier+":"+chapter+":"+session.SelectedChapterNode+":"+session.SelectedChapterTier;
    System.Collections.Generic.List<EntryRewardPreview> cached;
    if(entryPreviewCache.TryGetValue(cacheKey,out cached))return cached;
    var result=new System.Collections.Generic.List<EntryRewardPreview>();
    if(chapter&&session.SelectedChapterNode==ChapterNode.ForestCourt)
-   {var material=ResourceItemPreview("basic-attack",1);material.Clear=true;result.Add(material);entryPreviewCache[cacheKey]=result;return result;}
+   {
+    int rewardTier=session.SelectedChapterTier;
+    foreach(string key in new[]{"basic-attack","refinement","shard"})
+    {
+     bool crystal=key=="basic-attack",stones=key=="refinement";
+     int minimum=crystal?1:ProgressionService.ChestStackMinimum(stones,rewardTier),maximum=crystal?1:ProgressionService.ChestStackMaximum(stones,rewardTier);
+     var material=ResourceItemPreview(key,minimum);material.Clear=true;
+     material.Description=material.Name+"\n数量  "+(crystal?"1":minimum+"～"+maximum)+"\n掉落概率  "+(crystal?BasicAttackGrowth.DropChance(rewardTier):stones?BasicAttackGrowth.RefinementChance(rewardTier):BasicAttackGrowth.FragmentChance(rewardTier))+"%"+(crystal?"\n"+SpecialtyChestPity.Rules(8):"");
+     result.Add(material);
+    }
+    PrioritizeEntryPity(result,mode,chapter);if(entryPreviewCache.Count>=64)entryPreviewCache.Clear();entryPreviewCache[cacheKey]=result;return result;
+   }
    int level=chapter?ProgressionService.EquipmentGenerationLevel(session.Progression.Profile.level):AdventureRewardRules.DungeonLevel(tier);
    int enemyTier=chapter?session.SelectedChapterTier:tier;
    bool hasBoss=chapter?session.SelectedChapterNode==ChapterNode.StarPlatform:mode==-1||mode==2||mode==3;
    // Each reachable quality has its own identity and graphic. Slot count comes from the completed-tier table.
-   for(int slotIndex=0;slotIndex<3&&!(chapter&&session.SelectedChapterNode==ChapterNode.StarPlatform);slotIndex++)
+   for(int slotIndex=0;slotIndex<3&&!(chapter&&session.SelectedChapterNode==ChapterNode.StarPlatform)&&!( !chapter&&(mode==2||mode==3));slotIndex++)
    {
     var slot=(ItemSlot)slotIndex;int count=DropPreviewRules.SlotCount(mode,tier,slot);if(count==0)continue;
     foreach(var rarity in DropPreviewRules.ClearRarities(mode,tier))
@@ -321,6 +339,7 @@ namespace Emberfall
    if(AdventureRewardRules.ChestFashion(mode,chapter))foreach(var rarity in new[]{Rarity.Legendary})foreach(var slot in new[]{FashionSlot.Weapon,FashionSlot.Wings})
     result.Add(new EntryRewardPreview{Key="fashion:"+slot+":"+rarity,AppearanceSlot=slot,Clear=true,Rarity=rarity,Name=ProgressionService.FashionName(slot,rarity,session.Progression.Profile.heroClass),Icon=UIIconAtlas.FashionCardIcon(slot,(int)rarity,session.Progression.Profile.heroClass),Tint=GameBalance.RarityColor(rarity),Description=ProgressionService.FashionName(slot,rarity,session.Progression.Profile.heroClass)+"\n"+(slot==FashionSlot.Weapon?"兵装":"羽翼")+" · "+GameBalance.RarityName(rarity)+"\n"+ProgressionService.FashionBonus(slot,rarity)});
    if(AdventureRewardRules.ChestAffixReforge(chapter?(int)session.SelectedChapterNode:mode,chapter)){var reforge=ResourceItemPreview("affix-reforge",1);reforge.Clear=true;result.Add(reforge);}
+   PrioritizeEntryPity(result,mode,chapter);
    if(entryPreviewCache.Count>=64)entryPreviewCache.Clear();
    entryPreviewCache[cacheKey]=result;return result;
   }
@@ -347,9 +366,10 @@ namespace Emberfall
   }
   private float DrawEntryRewardPreviews(float available,float u,int mode,int tier,bool chapter,bool draw,bool compact=false)
   {
-   string context=chapter?"chapter"+session.SelectedChapterNode+":"+session.SelectedChapterDifficulty+":"+session.SelectedChapterTier:mode+":"+tier;
+   string context=chapter?"chapter"+session.SelectedChapterNode+":"+session.SelectedChapterTier:mode+":"+tier;
    if(entryRewardContext!=context){entryRewardContext=context;entryRewardSelection=null;entryRewardHoverKey=null;entryRewardPopupScroll=Vector2.zero;}
    bool gemChest=chapter&&session.SelectedChapterNode==ChapterNode.StarPlatform;
+   int pityTarget=SpecialtyChestPity.Target(chapter,chapter?(int)session.SelectedChapterNode:mode);
    var groups=GroupEntryRewards(EntryRewardPreviews(mode,tier,chapter));int columns=Mathf.Max(1,Mathf.FloorToInt(available/(compact?68:88)));float cell=available/columns,end=0;
    float iconSize=compact?28:40,labelY=iconSize+(compact?2:4);int labelFont=compact?10:11;
    for(int section=0;section<2;section++)
@@ -362,13 +382,13 @@ namespace Emberfall
      {
       Rect odds=new Rect((available-90)*u,end*u,82*u,(compact?16:22)*u);
       Text(odds,"概率说明 ⓘ",Mathf.RoundToInt((compact?9:10)*u),muted,false,false,TextAnchor.MiddleRight);
-      var info=new EntryRewardPreview{Key="chest-odds",Name="通关宝箱概率",Rarity=Rarity.Legendary,Icon=UIIconAtlas.Utility("inventory"),Description=gemChest?"每箱1颗宝石\n史诗80% · 传说20%\n重复宝石转为碎片。":"通关宝箱概率\n传说装备概率  "+AdventureRewardRules.LegendaryChance(tier)+"%\n每箱获得一件物品或一组材料。\n连续未获得传说装备时，第30箱必出；获得后重新计数。"};
+      var info=new EntryRewardPreview{Key="chest-odds",Name="通关宝箱概率",Rarity=Rarity.Legendary,Icon=UIIconAtlas.Utility("inventory"),Description=gemChest?"每箱1颗宝石\n史诗80% · 传说20%\n重复宝石转为碎片。":pityTarget!=0?(pityTarget==8?BasicAttackGrowth.DropSummary(tier)+"\n":"每箱获得一件物品或一组材料。\n")+SpecialtyChestPity.Rules(pityTarget):"通关宝箱概率\n传说装备概率  "+AdventureRewardRules.LegendaryChance(tier)+"%\n每箱获得一件物品或一组材料。\n连续未获得传说装备时，第30箱必出；获得后重新计数。"};
       InspectRewardItem(MobileControls.Active?new Rect(odds.x,odds.y,odds.width,44*u):odds,info);
       int remaining=Mathf.Max(1,AdventureRewardRules.LegendaryPityChests-session.Progression.Profile.legendaryEquipmentMisses);
       Rect pity=new Rect(8*u,(end+(compact?18:26))*u,(available-16)*u,(compact?26:34)*u);
       Fill(pity,new Color(.22f,.12f,.025f));Border(pity,gold,u);
       Fill(new Rect(pity.x,pity.y,3*u,pity.height),gold);
-      Text(new Rect(pity.x+8*u,pity.y,pity.width-16*u,pity.height),gemChest?"每箱1颗宝石 · 史诗80% · 传说20%":remaining==1?"下一箱必出传说装备":"再开 "+remaining+" 箱内必出传说装备",Mathf.RoundToInt((compact?11:14)*u),new Color(1f,.82f,.35f),true,true,TextAnchor.MiddleCenter);
+      Text(new Rect(pity.x+8*u,pity.y,pity.width-16*u,pity.height),gemChest?"每箱1颗宝石 · 史诗80% · 传说20%":pityTarget!=0?SpecialtyChestPity.Caption(session.Progression.Profile,pityTarget,chapter):remaining==1?"下一箱必出传说装备":"再开 "+remaining+" 箱内必出传说装备",Mathf.RoundToInt((compact?11:14)*u),new Color(1f,.82f,.35f),true,true,TextAnchor.MiddleCenter);
      }
     }
     end+=clear?(compact?50:68):(compact?22:24);
@@ -451,7 +471,7 @@ namespace Emberfall
     return;
    }
    int mode=session.SelectedArenaMode,tier=session.SelectedDungeonTier;float contentWidth=l.Details.Width-18;
-   string detail=names[mode+1]+" · Lv"+AdventureRewardRules.DungeonLevel(tier);
+   string detail=names[mode+1]+" · "+AdventureRewardRules.DifficultyName(mode,tier);
    float rewardHeight=DrawEntryRewardPreviews(contentWidth,u,mode,tier,false,false),rewardY=52;
    Rect detailBody=AdventureRect(l.Details,u);bool overflow=(rewardY+rewardHeight)*u>detailBody.height;
    if(overflow)adventureDetailScroll=BeginTouchScroll("adventure-detail",detailBody,adventureDetailScroll,new Rect(0,0,contentWidth*u,(rewardY+rewardHeight)*u));
@@ -465,7 +485,7 @@ namespace Emberfall
 
    bool normal=!adventureChapterSelected;
    if(Button(new Rect(x*u,y*u,selectorButton*u,48*u),"−",jade,normal&&tier>1))session.SelectedDungeonTier--;
-   Text(new Rect((x+selectorButton)*u,y*u,selectorLabel*u,48*u),"Lv"+AdventureRewardRules.DungeonLevel(tier),Mathf.RoundToInt(13*u),gold,true,false,TextAnchor.MiddleCenter);
+   Text(new Rect((x+selectorButton)*u,y*u,selectorLabel*u,48*u),AdventureRewardRules.DifficultyName(mode,tier),Mathf.RoundToInt(13*u),gold,true,false,TextAnchor.MiddleCenter);
    if(Button(new Rect((x+selectorButton+selectorLabel)*u,y*u,selectorButton*u,48*u),"+",jade,normal&&tier<session.MaximumDungeonTier))session.SelectedDungeonTier++;
    if(PrimaryButton(new Rect(l.Details.X*u,y*u,l.Details.Width*u,48*u),"进入挑战",gold))
    {session.ConfirmDungeonSelection();}

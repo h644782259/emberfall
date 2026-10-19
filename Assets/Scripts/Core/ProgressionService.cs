@@ -212,7 +212,7 @@ namespace Emberfall
                 // Migration is written before selecting/publishing the loaded role.
                 // A failed save leaves the active role and durable reward flags intact.
                 string migrationFailure;
-                bool migrationRequired=ChapterProgression.BackfillDifficultyRewards(loaded)||loaded.enhancementMigrationPending||loaded.chapterTierMigrationPending;
+                bool migrationRequired=loaded.enhancementMigrationPending||loaded.chapterTierMigrationPending;
                 if(loaded.fashionQualityRevision<1){loaded.fashionQualityRevision=1;migrationRequired=true;}
                 if(loaded.rewardInventoryRevision<1){loaded.rewardInventoryRevision=1;migrationRequired=true;}
                 if(loaded.skillStockVersion<1){SkillStockRules.Normalize(loaded);loaded.skillStockVersion=1;migrationRequired=true;}
@@ -1781,7 +1781,7 @@ namespace Emberfall
 
         public string ChestOpenCaption {get{return pendingChestRoll!=null||Profile.pendingChestDraw!=null?"继续开启":"开启宝箱";}}
         public string ActiveDungeonChestRules {
-            get {if(Profile.pendingChestChapterSource&&Profile.pendingChestMode==0&&Profile.pendingChestRulesRevision>=3)return "每箱固定获得传说材料 · 战技源晶 ×1 · 用于普通攻击升级";if(Profile.pendingChestGemSource)return "每箱1颗宝石 · 史诗80% · 传说20%（重复宝石转为碎片）";if(Profile.pendingChestRulesRevision>=3)return "开启获得一件物品或一组材料；传说装备"+AdventureRewardRules.LegendaryChance(Profile.pendingChestTier)+"%，第30箱保底。";if(!Profile.pendingAdventureChest)return DungeonChestRules(Profile.pendingChestTier,LastChestReward);
+            get {if(Profile.pendingChestChapterSource&&Profile.pendingChestMode==0&&Profile.pendingChestRulesRevision>=3)return BasicAttackGrowth.DropSummary(Profile.pendingChestTier)+"\n"+SpecialtyChestPity.Rules(8);if(Profile.pendingChestGemSource)return "每箱1颗宝石 · 史诗80% · 传说20%（重复宝石转为碎片）";if(Profile.pendingChestRulesRevision>=3&&SpecialtyChestPity.Target(Profile)!=0)return "每箱获得一件物品或一组材料。\n"+SpecialtyChestPity.Caption(Profile,SpecialtyChestPity.Target(Profile))+"\n"+SpecialtyChestPity.Rules(SpecialtyChestPity.Target(Profile));if(Profile.pendingChestRulesRevision>=3)return "开启获得一件物品或一组材料；传说装备"+AdventureRewardRules.LegendaryChance(Profile.pendingChestTier)+"%，第30箱保底。";if(!Profile.pendingAdventureChest)return DungeonChestRules(Profile.pendingChestTier,LastChestReward);
                 int mode=Profile.pendingChestMode,tier=Profile.pendingChestTier;
                 return AdventureRewardRules.EquipmentSummary(mode,tier)+"\n装备 × "+AdventureRewardRules.EquipmentCount(mode,tier)+" · 等级匹配角色\n星烬碎片 × "+AdventureRewardRules.MaterialsMinimum(mode,tier)+"～"+AdventureRewardRules.MaterialsMaximum(mode,tier)+"\n"+
                 (mode==-1?"时装：史诗保底 · 史诗 "+AdventureRewardRules.UpgradeChance(-1,tier)+"% · 传说 "+AdventureRewardRules.LegendaryChance(tier)+"%\n":"")+"金币随阶数增长 · 开箱调整后入背包";
@@ -1835,11 +1835,21 @@ namespace Emberfall
             if(qualityRoll<0||qualityRoll>=100)throw new ArgumentOutOfRangeException("qualityRoll");
             var r=new ChestReward{rulesRevision=3,rewardKind=ChestRewardKind.SingleChest,id=id,choice=-1,materialKind=RewardMaterialKind.StarAshFragment,primaryCount=1};
             if(profile.pendingChestChapterSource&&profile.pendingChestMode==0)
-            {r.primaryKind=8;r.primaryRarity=Rarity.Legendary;return r;}
-            bool legendary=qualityRoll<AdventureRewardRules.LegendaryChance(profile.pendingChestTier)||profile.legendaryEquipmentMisses>=AdventureRewardRules.LegendaryPityChests-1;
+            {
+                int chance=BasicAttackGrowth.DropChance(profile.pendingChestTier);
+                r.primaryKind=qualityRoll<chance||SpecialtyChestPity.Misses(profile,8)>=SpecialtyChestPity.Limit-1?8:qualityRoll<chance+BasicAttackGrowth.RefinementChance(profile.pendingChestTier)?5:3;
+                r.primaryRarity=r.primaryKind==8?Rarity.Legendary:r.primaryKind==5?Rarity.Epic:Rarity.Rare;
+                if(r.primaryKind!=8)r.primaryCount=ChestStackMinimum(r.primaryKind==5,profile.pendingChestTier)+quantityRoll%(ChestStackMaximum(r.primaryKind==5,profile.pendingChestTier)-ChestStackMinimum(r.primaryKind==5,profile.pendingChestTier)+1);
+                return r;
+            }
+            int pityTarget=SpecialtyChestPity.Target(profile);
+            bool legendary=qualityRoll<AdventureRewardRules.LegendaryChance(profile.pendingChestTier)||pityTarget==0&&profile.legendaryEquipmentMisses>=AdventureRewardRules.LegendaryPityChests-1;
             bool fashion=AdventureRewardRules.ChestFashion(profile.pendingChestMode,profile.pendingChestChapterSource);
             bool reforge=AdventureRewardRules.ChestAffixReforge(profile.pendingChestMode,profile.pendingChestChapterSource);
             r.primaryKind=profile.pendingChestGemSource?4:legendary||qualityRoll<40?1:qualityRoll>=95&&reforge?7:qualityRoll<70?3:qualityRoll<85&&fashion?2:5;
+            // Arena and corridor clear chests contain specialty rewards/materials only.
+            if(!profile.pendingChestChapterSource&&(profile.pendingChestMode==2||profile.pendingChestMode==3)&&r.primaryKind==1)r.primaryKind=3;
+            if(pityTarget!=0&&SpecialtyChestPity.Misses(profile,pityTarget)>=SpecialtyChestPity.Limit-1)r.primaryKind=pityTarget;
             r.primaryRarity=legendary?Rarity.Legendary:Rarity.Epic;
             if(r.primaryKind==1)r.primarySlot=(int)AdventureRewardRules.EquipmentSlot(profile.pendingChestMode,profile.pendingChestMode==3?slotRoll:0);
             else if(r.primaryKind==2)
@@ -1944,7 +1954,8 @@ namespace Emberfall
                 else if(receipt.primaryKind==5){candidate.refinementStones+=receipt.primaryCount;receipt.refinementStonesDelta=receipt.primaryCount;receipt.name="装备洗练石";}
                 else {candidate.fashionThreads+=receipt.primaryCount;receipt.threadsDelta=receipt.primaryCount;receipt.name="星纹";}
             }
-            if(receipt.primaryKind!=8&&!candidate.pendingChestGemSource)candidate.legendaryEquipmentMisses=receipt.primaryKind==1&&receipt.primaryRarity==Rarity.Legendary?0:Math.Min(AdventureRewardRules.LegendaryPityChests-1,candidate.legendaryEquipmentMisses+1);
+            SpecialtyChestPity.Record(candidate,draw.primaryKind);
+            if(SpecialtyChestPity.Target(candidate)==0&&!candidate.pendingChestGemSource)candidate.legendaryEquipmentMisses=receipt.primaryKind==1&&receipt.primaryRarity==Rarity.Legendary?0:Math.Min(AdventureRewardRules.LegendaryPityChests-1,candidate.legendaryEquipmentMisses+1);
             // Reflect duplicate conversions in the chosen slot; keep the other saved contents.
             if(receipt.contents!=null&&receipt.contents.Length==3&&receipt.selectedChest>=0&&receipt.selectedChest<3)
                 receipt.contents[receipt.selectedChest]=ChestContent(candidate,receipt);
@@ -2122,7 +2133,7 @@ namespace Emberfall
             if(!CommitCandidate(candidate))return false;
             PublishSuppliesCollected(receivedGold,receivedPotions);return true;
         }
-        public int UnlockedChapterTier(ChapterNode node,ChapterDifficulty difficulty=ChapterDifficulty.Heroic){return ChapterProgression.CanEnter(Profile,node,difficulty)?ChapterProgression.AvailableTier(Profile,node,difficulty):0;}
+        public int UnlockedChapterTier(ChapterNode node){return ChapterProgression.CanEnter(Profile,node)?ChapterProgression.AvailableTier(Profile,node):0;}
         public int UnlockedAdventureTier(int mode) { int i=Clamp(mode+1,0,4); return Math.Min(100,1+(Profile.adventureBestTiers!=null && Profile.adventureBestTiers.Length==5?Profile.adventureBestTiers[i]:0)); }
         public int HighestUnlockedAdventureTier {get{return Math.Min(AdventureRewardRules.MaximumDungeonIndex(Profile.level),HighestAdventureTier+1);}}
         public bool RecordTutorialEvidence(int bit)
@@ -2979,7 +2990,7 @@ namespace Emberfall
 
         private static GameProfile CreateProfile(HeroClass heroClass)
         {
-            var profile = new GameProfile { chapterTierRevision=1,equipmentEnhancementRevision=1,heroClass = heroClass,chestRulesRevision=2, chapterDifficultyRewardRevision = 1, variantKnowledgeRevision = 1, fashionQualityRevision = 1 };
+            var profile = new GameProfile { chapterTierRevision=2,equipmentEnhancementRevision=1,heroClass = heroClass,chestRulesRevision=2, variantKnowledgeRevision = 1, fashionQualityRevision = 1 };
             SkillStockRules.Normalize(profile);profile.skillStockVersion=1;
             profile.skillRanks[0] = 1;
             for (int slot = 0; slot < 3; slot++) AddStarterItem(profile, (ItemSlot)slot);
@@ -3102,7 +3113,7 @@ namespace Emberfall
                 if (frozenRecord && !emptyChestDraw && (data == null || data.profile == null || data.profile.pendingChestDraw == null))
                     throw new ArgumentException("冻结奖励内容不是有效对象；原文件保留。");
                 frozenRecord=frozenRecord||(data!=null&&data.profile!=null&&data.profile.pendingChestDraw!=null);
-                if(data!=null&&data.format==SaveFormat&&(data.version>8||data.profile!=null&&(data.profile.dungeonRewardRevision>1||data.profile.independentTierRevision>1||data.profile.adventureRewardRevision>1||data.profile.version>1||data.profile.rewardInventoryRevision>1||data.profile.attachmentRevision>1||data.profile.equipmentEnhancementRevision>1||data.profile.chapterTierRevision>1||data.profile.growthRevision>1||data.profile.classStateRevision>1||data.profile.chestRulesRevision>3||data.profile.pendingChestRulesRevision>3||data.profile.pendingChestDraw!=null&&data.profile.pendingChestDraw.rulesRevision>3)))
+                if(data!=null&&data.format==SaveFormat&&(data.version>8||data.profile!=null&&(data.profile.dungeonRewardRevision>1||data.profile.independentTierRevision>1||data.profile.adventureRewardRevision>1||data.profile.version>1||data.profile.rewardInventoryRevision>1||data.profile.attachmentRevision>1||data.profile.equipmentEnhancementRevision>1||data.profile.chapterTierRevision>2||data.profile.growthRevision>1||data.profile.classStateRevision>1||data.profile.chestRulesRevision>3||data.profile.pendingChestRulesRevision>3||data.profile.pendingChestDraw!=null&&data.profile.pendingChestDraw.rulesRevision>3)))
                 {error="future format";return false;}
                 if (data == null || data.format != SaveFormat || (data.version != 1 && data.version != 2 && data.version != 3 && data.version != 4 && data.version != 5 && data.version != 6 && data.version != 7 && data.version != 8) || data.profile == null || data.profile.version != 1)
                 { error = frozenRecord?FrozenRewardReadFailure+" unsupported format":"unsupported format"; return false; }
@@ -3221,8 +3232,12 @@ namespace Emberfall
             if(profile.gemBagSeed==0)profile.gemBagSeed=Guid.NewGuid().GetHashCode();
             profile.gemBagsOpened=Math.Max(0,profile.gemBagsOpened);
             if(profile.revivalClaimedTiers==null||profile.revivalClaimedTiers.Length!=3)profile.revivalClaimedTiers=new int[3];
-            for(int n=0;n<3;n++)profile.revivalClaimedTiers[n]=Clamp(profile.revivalClaimedTiers[n],0,ChapterProgression.CompletedTier(profile,(ChapterNode)n,ChapterDifficulty.Heroic));
+            for(int n=0;n<3;n++)profile.revivalClaimedTiers[n]=Clamp(profile.revivalClaimedTiers[n],0,ChapterProgression.CompletedTier(profile,(ChapterNode)n));
             profile.basicAttackMaterials=Clamp(profile.basicAttackMaterials,0,999999);
+            profile.forestCrystalMisses=SpecialtyChestPity.Misses(profile,8);
+            profile.redrockReforgeMisses=SpecialtyChestPity.Misses(profile,7,true);
+            profile.arenaReforgeMisses=SpecialtyChestPity.Misses(profile,7,false);
+            profile.corridorFashionMisses=SpecialtyChestPity.Misses(profile,2);
             if(profile.basicAttackTiers==null||profile.basicAttackTiers.Length!=4)System.Array.Resize(ref profile.basicAttackTiers,4);
             for(int basic=0;basic<4;basic++)profile.basicAttackTiers[basic]=Clamp(profile.basicAttackTiers[basic],1,4);
             profile.affixReforgeStones=Clamp(profile.affixReforgeStones,0,999999);profile.affixReforgeCount=Math.Max(0,profile.affixReforgeCount);

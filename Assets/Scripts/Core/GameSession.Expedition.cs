@@ -25,7 +25,7 @@ namespace Emberfall
             try {if(!ChangeZone(true)){SelectedDungeonTier=previous;return false;}}
             catch(System.Exception error){if(RoomChainRun!=null)FailRoomGeneration("下一阶构建异常",error);else Notify("下一阶生成异常："+error.GetType().Name);return false;}
             if(RoomChainRun!=null&&RoomChainRun.Failed)return false;
-            Notify("挑战 Lv"+AdventureRewardRules.DungeonLevel(DungeonTier)+" · "+ModeName);return true;
+            Notify("挑战 "+DungeonDifficultyName+" · "+ModeName);return true;
         }
         public bool CanRepeatCurrentDungeon {get{return !SceneLoading&&HasStarted&&InDungeon&&!IsDead&&DungeonResultsReady&&!changingZone&&!ModeRewardPending&&!ChapterRewardPending;}}
         public bool RepeatCurrentDungeon()
@@ -46,10 +46,10 @@ namespace Emberfall
         private void ResetAdventureEntryTiers()
         {
             for(int i=0;i<selectedAdventureTiers.Length;i++)
-                selectedAdventureTiers[i]=Mathf.Max(1,Mathf.Min(AdventureRewardRules.MaximumDungeonIndex(Progression.Profile.level),Progression.UnlockedAdventureTier(i-1)));
+                selectedAdventureTiers[i]=AdventureRewardRules.MaximumSelection(i-1,Progression.Profile.level,Progression.UnlockedAdventureTier(i-1));
         }
         public int SelectedDungeonTier { get { return Progression==null?1:Mathf.Clamp(selectedAdventureTiers[Mathf.Clamp(SelectedArenaMode+1,0,4)],1,MaximumDungeonTier); } set { selectedAdventureTiers[Mathf.Clamp(SelectedArenaMode+1,0,4)]=value; } }
-        public int MaximumDungeonTier { get { return Mathf.Min(AdventureRewardRules.MaximumDungeonIndex(Progression.Profile.level),Progression.UnlockedAdventureTier(SelectedArenaMode)); } }
+        public int MaximumDungeonTier { get { return AdventureRewardRules.MaximumSelection(SelectedArenaMode,Progression.Profile.level,Progression.UnlockedAdventureTier(SelectedArenaMode)); } }
         public bool SelectedChallengeMode { get { return false; } set { } }
         // Compatibility accessors cannot re-enable the removed healing restriction.
         public bool ChallengeRun { get { return false; } private set { } }
@@ -173,7 +173,7 @@ namespace Emberfall
             if(!ChangeZone(true)){ChallengeRun=previousChallengeRun;DungeonSelectionOpen=true;UpdateTimeScale();Notify(Progression.LastError);return;}
             UpdateTimeScale();
             if(RoomChainRun!=null&&RoomChainRun.Failed)return;
-            Notify(ModeName+" · Lv" + AdventureRewardRules.DungeonLevel(DungeonTier) + " · " + (RoomChainRun!=null?RoomTactics.Name(RoomChainRun.Room.Objective):DungeonLayout == 0 ? "双廊" : "断柱"));
+            Notify(ModeName+" · " + DungeonDifficultyName + " · " + (RoomChainRun!=null?RoomTactics.Name(RoomChainRun.Room.Objective):DungeonLayout == 0 ? "双廊" : "断柱"));
         }
 
         private void ResetExpedition(bool dungeon)
@@ -186,7 +186,7 @@ namespace Emberfall
             if (dungeon)
             {
                 // Freeze chapter level on entry; tier independently controls stat multipliers.
-                DungeonEntryLevel = enteringChapter?ChapterProgression.EnemyLevel(Progression.Profile.level):AdventureRewardRules.DungeonLevel(DungeonTier);
+                DungeonEntryLevel = enteringChapter?ChapterProgression.EnemyLevel(Progression.Profile.level):AdventureRewardRules.EntryEnemyLevel(SelectedArenaMode,DungeonTier,Progression.Profile.level);
                 runSeed = retryingRoomChain ? roomRetrySeed : Random.Range(0, 1000000);
                 DungeonLayout = runSeed % 2;
                 HealingCharges = 3;

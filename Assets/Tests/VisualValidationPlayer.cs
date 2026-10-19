@@ -1,4 +1,4 @@
-#if EMBERFALL_VISUAL_VALIDATION
+﻿#if EMBERFALL_VISUAL_VALIDATION
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -514,7 +514,7 @@ namespace Emberfall
             Invoke("SetChapterLimitedHealing",true);yield return Capture("chapter-desktop-limited");
             Invoke("SetChapterLimitedHealing",false);ResetPanels();
             var profile=session.Progression.Profile;profile.chapterCompletedMask=3;
-            profile.chapterHighestDifficulties=new[]{2,1,0};profile.highestAdventureTier=12;
+            profile.chapterBestTiers=new[]{2,1,0};profile.highestAdventureTier=12;
             session.SelectedChapterNode=ChapterNode.Redrock;Invoke("OpenChapterSelection");
             yield return SetResolution(1600,900);yield return Capture("chapter-desktop-unlocked");
             SetField("chapterStoryExpanded",true);yield return Capture("chapter-desktop-story");

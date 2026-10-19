@@ -16,7 +16,6 @@ namespace Emberfall
         private Vector3 phaseCenter;
         private float startAngle;
         private bool chapterConfigured;
-        private ChapterDifficulty chapterDifficulty;
         private int ownerEpoch,ownerRoom,ownerSeed;
         private PlayerController owner;
         private float sweepSign=1;
@@ -37,14 +36,14 @@ namespace Emberfall
             boss.ConfigureLargeExpedition(value);
             return value;
         }
-        public static LargeExpeditionBoss ConfigureChapter(EnemyController boss,int tier,int seed,ChapterDifficulty difficulty)
+        public static LargeExpeditionBoss ConfigureChapter(EnemyController boss,int tier,int seed)
         {
             var value=Configure(boss,tier,seed);
             if(value==null||value.chapterConfigured)return value;
             // Explicit chapter opt-in only, before the first threshold; legacy Configure stays unchanged.
             if(value.State.PhaseNumber!=0)return value;
-            value.chapterConfigured=true;value.chapterDifficulty=difficulty;
-            value.State=new LargeBossPhaseState(difficulty!=ChapterDifficulty.Normal,
+            value.chapterConfigured=true;
+            value.State=new LargeBossPhaseState(true,
                 value.game!=null&&value.game.ActiveChapterNode==ChapterNode.StarPlatform);
             value.owner=value.game==null?null:value.game.Player;
             value.ownerEpoch=value.owner==null?-1:value.owner.CombatEpoch;
@@ -91,9 +90,9 @@ namespace Emberfall
         {
             boss.BeginLargeBossMechanic();phaseCenter=CombatFx.Flat(transform.position);
             Vector3 toward=CombatFx.Flat(game.Player.transform.position-phaseCenter);
-            bool heroic=chapterConfigured&&chapterDifficulty==ChapterDifficulty.Heroic;
-            sweepSign=ChapterBossPattern.SweepSign(heroic,seed,State.PhaseNumber);
-            startAngle=Mathf.Atan2(toward.x,toward.z)*Mathf.Rad2Deg+ChapterBossPattern.StartOffset(heroic,seed,State.PhaseNumber);
+            bool seededPattern=chapterConfigured;
+            sweepSign=ChapterBossPattern.SweepSign(seededPattern,seed,State.PhaseNumber);
+            startAngle=Mathf.Atan2(toward.x,toward.z)*Mathf.Rad2Deg+ChapterBossPattern.StartOffset(seededPattern,seed,State.PhaseNumber);
             if(State.IsFollowup) { sweepSign=1; startAngle=Mathf.Atan2(toward.x,toward.z)*Mathf.Rad2Deg-48f; }
             else CreateAnchors();
             EnsureBeam();
@@ -115,7 +114,7 @@ namespace Emberfall
         internal void InterruptWindup()
         {
             if(stopped||State==null||!State.Interruptible)return;
-            if(chapterConfigured&&chapterDifficulty!=ChapterDifficulty.Normal) CombatImpactBatch.Resolve(ResolveInterrupt);
+            if(chapterConfigured) CombatImpactBatch.Resolve(ResolveInterrupt);
             else ResolveInterrupt();
         }
         private void ResolveInterrupt()
@@ -153,7 +152,7 @@ namespace Emberfall
                 for(int attempt=0;attempt<6;attempt++)
                 {
                     float angle=startAngle+i*120f+attempt*13f+((seed&15)-7)+
-                        ChapterBossPattern.AnchorOffset(chapterConfigured&&chapterDifficulty==ChapterDifficulty.Heroic,seed,State.PhaseNumber);
+                        ChapterBossPattern.AnchorOffset(chapterConfigured,seed,State.PhaseNumber);
                     point=phaseCenter+Quaternion.Euler(0,angle,0)*Vector3.forward*(2.6f*boss.BodyScale);
                     if(DestructibleProp.CanPlace(point,.55f)&&WorldTraversal.HasGroundPath(phaseCenter,point,.15f)&&
                         CombatFx.Flat(point-game.Player.transform.position).magnitude>1.2f){safe=true;break;}

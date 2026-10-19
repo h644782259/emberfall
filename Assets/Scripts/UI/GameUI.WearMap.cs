@@ -127,7 +127,6 @@ namespace Emberfall
                 if(item!=null)DrawFashionSlotFlow(r,tint,u);
                 if(item!=null)
                 {
-                    Text(new Rect(r.xMax-18*u,r.y+2*u,16*u,16*u),"✓",Mathf.RoundToInt(11*u),jade,true);
                     DesktopInventoryGesture(r,r,"@fashion:"+item.id);
                     if(QuietAction(r,"",!MobileControls.Active||!inventoryComparisonOpen,""))WornSlotClick("@fashion:"+item.id,r);
                 }
@@ -178,7 +177,7 @@ namespace Emberfall
 
         private string ResourceDescription(string key)
         {
-            if(key=="basic-attack")return "传说材料，用于战技中的普通攻击升级；林庭复明通关宝箱固定产出1个。";
+            if(key=="basic-attack")return "传说材料，用于战技中的普通攻击升级；林庭复明宝箱概率掉落，每次1个；1阶10%，每升1阶增加1个百分点，最高30%。";
             if(key=="revival")return "副本中倒下时消耗1个，原地恢复生命并获得3秒保护。";
             if(key.Contains("affix-reforge"))return "重新生成装备随机词条的种类、数量和数值。";
             if(key.Contains("refinement"))return "用于铁匠处洗练装备属性。";

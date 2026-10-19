@@ -10,7 +10,7 @@ namespace Emberfall
         private void CheckPotionFeedback()
         {
             var hero=session.Player;if(hero==null)return;
-            string reason=MobileCombatPresentation.Potion(PotionCount,LimitedHealing,hero.Health>=hero.MaxHealth-.5f);
+            string reason=hero.PotionCooldownRemaining>0?"冷却 "+Mathf.CeilToInt(hero.PotionCooldownRemaining)+"秒":MobileCombatPresentation.Potion(PotionCount,LimitedHealing,hero.Health>=hero.MaxHealth-.5f);
             if(reason.Length>0)session.ReportControlFailure("potion",reason);
         }
         private void CheckDodgeFeedback()
@@ -26,7 +26,7 @@ namespace Emberfall
             controlLabel.fontSize=Mathf.RoundToInt(12*EffectPreferences.InterfaceTextScale);
             controlLabel.normal.textColor=Color.white;
             var hero=session.Player;
-            string potionState=MobileCombatPresentation.Potion(PotionCount,LimitedHealing,hero.Health>=hero.MaxHealth-.5f);
+            string potionState=hero.PotionCooldownRemaining>0?"冷却 "+Mathf.CeilToInt(hero.PotionCooldownRemaining)+"秒":MobileCombatPresentation.Potion(PotionCount,LimitedHealing,hero.Health>=hero.MaxHealth-.5f);
             string dodgeState=MobileCombatPresentation.Dodge(hero.DodgeCooldown,hero.IsJumping);
             // The bottle remains visible even at full health; state is outside its icon.
             Rect potionVisual=PotionVisualRect();

@@ -1,7 +1,7 @@
-using UnityEngine;
+﻿using UnityEngine;
 namespace Emberfall
 {
-    // One optional floor hazard per heroic room. It never registers navigation obstacles.
+    // One optional floor hazard per chapter room. It never registers navigation obstacles.
     public sealed class ChapterHazards:MonoBehaviour
     {
         private GameSession game;
@@ -15,9 +15,9 @@ namespace Emberfall
         private Mesh bodyMesh;private Transform[] bodies;private bool hasPulsed;
         private bool retired;
         private readonly Vector3[] outline=new Vector3[48];
-        public static ChapterHazards Configure(GameSession owner,ChapterNode node,ChapterDifficulty difficulty,int roomIndex,int seed,ChapterRoomPlan plan)
+        public static ChapterHazards Configure(GameSession owner,ChapterNode node,int roomIndex,int seed,ChapterRoomPlan plan)
         {
-            if(owner==null||owner.Player==null||plan==null||difficulty!=ChapterDifficulty.Heroic||node==ChapterNode.StarPlatform)return null;
+            if(owner==null||owner.Player==null||plan==null||node==ChapterNode.StarPlatform)return null;
             Vector3 start=plan.HazardStart,end=plan.HazardEnd,center=plan.HazardCenter;
             if(node==ChapterNode.ForestCourt&&!WorldTraversal.IsWalkable(center,.2f))return null;
             if(node==ChapterNode.Redrock)
@@ -28,11 +28,11 @@ namespace Emberfall
                 if(CombatFx.Flat(end-start).sqrMagnitude<.25f)return null;
                 center=(start+end)*.5f;
             }
-            var go=new GameObject(node==ChapterNode.ForestCourt?"Heroic thorn pulse":"Heroic single heat line");
+            var go=new GameObject(node==ChapterNode.ForestCourt?"Chapter thorn pulse":"Chapter single heat line");
             var value=go.AddComponent<ChapterHazards>();value.game=owner;value.owner=owner.Player;
             value.node=node;value.room=roomIndex;value.seed=seed;value.epoch=owner.Player.CombatEpoch;
             value.start=start;value.end=end;value.center=center;value.CreateVisuals();
-            owner.LogSystem(node==ChapterNode.ForestCourt?"英雄林庭 · 荆棘脉冲：橙红圈与计时弧预告，可从外侧绕行":"英雄赤岩 · 单线热涌：橙红边界与计时弧预告，可绕线端，岩墙阻断热涌");
+            owner.LogSystem(node==ChapterNode.ForestCourt?"林庭 · 荆棘脉冲：橙红圈与计时弧预告，可从外侧绕行":"赤岩 · 单线热涌：橙红边界与计时弧预告，可绕线端，岩墙阻断热涌");
             return value;
         }
         private bool ValidOwner
@@ -59,7 +59,7 @@ namespace Emberfall
                 CombatFx.SegmentDistance(position,start,end)<=ChapterHazardGeometry.HeatHalfWidth&&CombatSight.Area(ClosestLinePoint(position),position);
             if(!contains)return;
             hitCycle=cycle;
-            owner.TakeDamageFrom(Mathf.Max(3,owner.MaxHealth*.065f),node==ChapterNode.ForestCourt?"英雄林庭 · 荆棘脉冲":"英雄赤岩 · 单线热涌");
+            owner.TakeDamageFrom(Mathf.Max(3,owner.MaxHealth*.065f),node==ChapterNode.ForestCourt?"林庭 · 荆棘脉冲":"赤岩 · 单线热涌");
         }
         private Vector3 ClosestLinePoint(Vector3 point)
         {

@@ -15,7 +15,7 @@ namespace Emberfall
         }
         private static Mesh identityBlade,identityFork,identityContract,identityProtection;
         private static Mesh icePrimary,firePrimary,energyCore,poisonRoot;
-        private static Mesh crescent, crystal, flame, sword, lightning, arcane, rupture, arcaneShard, arrow, vine;
+        private static Mesh stompWind, crescent, crystal, flame, sword, lightning, arcane, rupture, arcaneShard, arrow, vine;
         private static Material sharedMaterial,bodyMaterial;
         private SkillFlowVolume flowVolume;
         private static bool assetsReady;
@@ -100,6 +100,7 @@ namespace Emberfall
             if(energyCore!=null)Destroy(energyCore);energyCore=null;
             if(poisonRoot!=null)Destroy(poisonRoot);poisonRoot=null;
             if(icePrimary!=null)Destroy(icePrimary);if(firePrimary!=null)Destroy(firePrimary);icePrimary=firePrimary=null;
+            if(stompWind!=null)Destroy(stompWind);stompWind=null;
             if(crescent!=null)Destroy(crescent);if(crystal!=null)Destroy(crystal);if(flame!=null)Destroy(flame);
             if(sword!=null)Destroy(sword);if(lightning!=null)Destroy(lightning);if(arcane!=null)Destroy(arcane);
             if(arrow!=null)Destroy(arrow);if(vine!=null)Destroy(vine);arrow=vine=null;
@@ -145,6 +146,7 @@ namespace Emberfall
             yield return null;
             if(arcane==null)arcane=AuthoredSpellBases.Load("Crystal");
             yield return null;
+            if(stompWind==null)stompWind=Mesh(FilledVfxRecipes.Crescent(),"Ranger landing / curved wind volume");
             if(rupture==null)rupture=HeroSkillBodyAssets.GroundBreak;
             yield return null;
             if(arcaneShard==null)arcaneShard=HeroSkillBodyAssets.Rock;
@@ -174,6 +176,7 @@ namespace Emberfall
             if(sword==null)sword=AuthoredSpellBases.Load("Sword")??Mesh(FilledVfxRecipes.Sword(),"Ridged sword blade guard and grip");
             if(lightning==null)lightning=AuthoredSpellBases.Load("Lightning")??Mesh(FilledVfxRecipes.Lightning(),"Angular branched lightning volume");
             if(arcane==null)arcane=AuthoredSpellBases.Load("Crystal");
+            if(stompWind==null)stompWind=Mesh(FilledVfxRecipes.Crescent(),"Ranger landing / curved wind volume");
             if(rupture==null)rupture=HeroSkillBodyAssets.GroundBreak;
             if(arcaneShard==null)arcaneShard=HeroSkillBodyAssets.Rock;
             if(arrow==null)arrow=AuthoredSpellBases.Load("Arrow")??Mesh(FilledVfxRecipes.Arrow(),"Narrow arrow shaft head and fletching");
@@ -251,6 +254,26 @@ namespace Emberfall
                 0,15,swingSide,fx.size*.8f,"Forged swinging blade",true);
             for(int i=0;i<3;i++)fx.Add(arcaneShard,new Vector3((i-1)*.25f,.1f,.6f)*fx.size,
                 new Vector3(.11f,.1f,.14f),Quaternion.Euler(85,i*33,0),.025f,4,i);
+        }
+        internal static void RangerStomp(PlayerController hero,Vector3 at,float radius)
+        {
+            // One bounded landing body per real vault; decorative pressure cannot
+            // erase the stomp. Geometry follows terrain, with no damage colliders.
+            var fx=Create(hero,at,Vector3.forward,FilledVfxKind.Fault,radius,new Color(.62f,1f,.87f),1.5f,
+                priority:CombatVisualPriority.ActionBody,essentialBody:true);
+            if(fx==null)return;
+            fx.gameObject.name="Ranger vault / fractured landing and outward gusts";
+            fx.Add(rupture,Vector3.up*.05f,new Vector3(radius*.85f,.85f,radius*.85f),Quaternion.identity,
+                0,12,0,radius,"Stomp ground fracture",true);
+            int gusts=EffectPreferences.ReducedEffects?2:4;
+            for(int i=0;i<gusts;i++)
+            {
+                float angle=i*Mathf.PI*2/gusts;
+                Vector3 radial=new Vector3(Mathf.Cos(angle),0,Mathf.Sin(angle));
+                fx.Add(stompWind,radial*radius*.24f+Vector3.up*.25f,new Vector3(radius*.6f,.32f,radius*.6f),
+                    Quaternion.Euler(8,i*360f/gusts,0),i*.025f,28,i,radius*.7f,"Outward landing wind");
+            }
+            PhysicalSkillVfx.Impact(at,Vector3.down,new Color(.48f,.41f,.31f),radius,priority:CombatVisualPriority.RealContact);
         }
         public static void Impact(PlayerController hero,Vector3 at,float radius,FilledVfxKind type,Color color,CombatVisualPriority priority=CombatVisualPriority.ActionBody,int castId=0,bool elementalist=false,bool monumentalSword=false)
         {
@@ -628,6 +651,10 @@ namespace Emberfall
                     scale.x*=1-Mathf.Clamp01(local/.8f)*.35f;scale.z*=1-Mathf.Clamp01(local/.8f)*.35f;break;
                 case 24: // Roots emerge vertically without expanding their certified footprint.
                     scale.y*=local<.18f?Mathf.Lerp(.2f,1,Mathf.SmoothStep(0,1,local/.18f)):1-Mathf.SmoothStep(0,1,(local-.65f)/.4f)*.6f;break;
+                case 28: // Fast expanding, rising air; the stone contact outlives it.
+                    float gust=Mathf.Clamp01(local/.65f);
+                    at.x*=.5f+.5f*gust;at.z*=.5f+.5f*gust;at.y+=gust*.65f;
+                    scale*=.5f+.5f*gust;rotation*=Quaternion.Euler(0,gust*32,0);break;
                 case 27: scale.y*=.94f+.06f*Mathf.Sin(local*5+p.Phase);break; // Rooted fuel flickers below the mount.
                 case 26: break; // Wet soil rests on the floor throughout the actual contact pulse.
                 case 25: // Spirited creatures emerge with a continuous upward/outward impulse.
@@ -665,6 +692,7 @@ namespace Emberfall
             if(sculpted&&p.Motion==18)color.a*=.3f;
             if(p.Motion==23)color.a*=local<.09f?1:local<.18f?.3f:local<.27f?.95f:.5f;
             float opacity=contactTrack?Mathf.Min(.35f+.65f*Mathf.Clamp01(age/.12f),Mathf.Clamp01(trackRemaining/.24f)):f.Opacity;
+            if(p.Motion==28)opacity*=Mathf.Clamp01((.75f-local)/.25f);
             if(p.Motion==20)
             {
                 // Protective armor remains fitted to the shoulders and chest. State

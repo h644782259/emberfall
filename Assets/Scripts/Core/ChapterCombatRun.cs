@@ -5,7 +5,6 @@ namespace Emberfall
     public sealed class ChapterCombatRun
     {
         public ChapterNode Node {get;private set;}
-        public ChapterDifficulty Difficulty {get;private set;}
         public int Seed {get;private set;}
         public int RoomIndex {get;private set;}
         public int Epoch {get;private set;}
@@ -24,8 +23,8 @@ namespace Emberfall
         public int LivingRegisteredEnemies {get{return registered-kills;}}
         private int registered,kills;
         private readonly bool[] spawned=new bool[30],defeated=new bool[30];
-        public ChapterCombatRun(ChapterNode node,ChapterDifficulty difficulty,int seed)
-        {ChapterDefinition.Get(node);if((int)difficulty<0||(int)difficulty>2)throw new ArgumentOutOfRangeException(nameof(difficulty));Node=node;Difficulty=difficulty;Seed=seed;Epoch=-1;}
+        public ChapterCombatRun(ChapterNode node,int seed)
+        {ChapterDefinition.Get(node);Node=node;Seed=seed;Epoch=-1;}
         public void BindRoom(int epoch)
         {if(Finished)return;Epoch=epoch;registered=kills=Seals=0;progress=0;Array.Clear(sealProgress,0,sealProgress.Length);DoorUnlocked=Objective==RoomObjective.Rest;Array.Clear(spawned,0,spawned.Length);Array.Clear(defeated,0,defeated.Length);}
         public bool Register(int room,int epoch,int index)

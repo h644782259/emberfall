@@ -4,7 +4,7 @@ import importlib.util, tempfile, subprocess, os, sys
 root=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('cv',root/'Tools/cloud-validation.py');cv=importlib.util.module_from_spec(spec);spec.loader.exec_module(cv)
 program=r'''using System;using System.IO;using System.Reflection;using Emberfall;
-class Program{static int n;static void C(bool v,string why){n++;if(!v)throw new Exception(why);}static void Main(){
+class Program{sealed class ZeroRoll:Random{public override int Next(int max){return 0;}}static int n;static void C(bool v,string why){n++;if(!v)throw new Exception(why);}static void Main(){
 var p=new ProgressionService(Path.Combine(Path.GetTempPath(),Guid.NewGuid().ToString("N")));C(p.CreateNewSlot(HeroClass.Arcanist),"create");
 C(BasicAttackGrowth.Tier(p.Profile,HeroClass.Arcanist)==1,"old/new default tier");
 C(!p.UpgradeBasicAttack(),"no free upgrade");p.Profile.basicAttackMaterials=7;p.Save();
@@ -15,9 +15,17 @@ C(BasicAttackGrowth.Tier(p.Profile,HeroClass.Ranger)==1,"class independence");
 var q=new ProgressionService(p.SaveDirectory);C(q.LoadSlot(p.CurrentSlotId)&&BasicAttackGrowth.Tier(q.Profile,HeroClass.Arcanist)==4,"reload persistence");
 var build=typeof(ProgressionService).GetMethod("BuildOneItemChestRoll",BindingFlags.NonPublic|BindingFlags.Static);
 p.Profile.pendingChestChapterSource=true;p.Profile.pendingChestMode=0;p.Profile.pendingChestTier=1;
-for(int roll=0;roll<100;roll++){var chest=(ChestReward)build.Invoke(null,new object[]{p.Profile,roll,0,0,Guid.NewGuid().ToString("N")});C(chest.primaryKind==8&&chest.primaryCount==1&&chest.primaryRarity==Rarity.Legendary,"all rolls fixed legendary material");}
+foreach(int tier in new[]{1,2,5,10,20,21,40,100}){
+p.Profile.pendingChestTier=tier;int crystals=0,stones=0,shards=0;
+for(int roll=0;roll<100;roll++){var chest=(ChestReward)build.Invoke(null,new object[]{p.Profile,roll,0,0,Guid.NewGuid().ToString("N")});
+if(chest.primaryKind==8){crystals++;C(chest.primaryCount==1&&chest.primaryRarity==Rarity.Legendary,"legendary material once");}
+else if(chest.primaryKind==5)stones++;else if(chest.primaryKind==3)shards++;else C(false,"no armor in forest pool");}
+C(crystals==Math.Min(30,9+tier)&&stones==(100-crystals)/2&&shards==100-crystals-stones,"exact tier chances total 100");}
+p.Profile.pendingChestTier=1;typeof(ProgressionService).GetField("random",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(p,new ZeroRoll());
+
 p.Profile.pendingFashionChest=true;p.Profile.pendingChestRulesRevision=3;p.Save();int items=p.Profile.inventory.Count;
-C(p.OpenDungeonChest()!=null&&p.Profile.basicAttackMaterials==1&&p.Profile.inventory.Count==items,"chest one material no armor");C(p.Profile.lastChestReward.basicAttackMaterialsDelta==1,"receipt");
+C(p.OpenDungeonChest()!=null&&p.Profile.basicAttackMaterials==1&&p.Profile.inventory.Count==items,"chest one material no armor");C(p.Profile.lastChestReward.basicAttackMaterialsDelta==1&&p.Profile.lastChestReward.HasLegendaryMaterial,"legendary material receipt enables existing VFX");
+C(!new ChestReward{materialsDelta=3}.HasLegendaryMaterial,"ordinary fragments do not enable legendary VFX");
 C(p.OpenDungeonChest()==null&&p.Profile.basicAttackMaterials==1,"cannot duplicate reward");
 for(int t=1;t<=4;t++)C(BasicAttackGrowth.Shots(t)==new[]{1,2,4,8}[t-1],"shot tiers");
 for(int t=1;t<=4;t++){
@@ -33,6 +41,18 @@ var budget=new BasicAttackHitBudget(t);int claims=0;for(int hit=0;hit<BasicAttac
 C(claims==1&&!budget.TryClaim(),"shared first hit only including delayed hit");
 C(new BasicAttackHitBudget().TryClaim(),"next attack independent");}
 C(BasicAttackGrowth.Range(4)>BasicAttackGrowth.Range(1)&&BasicAttackGrowth.Angle(4)>BasicAttackGrowth.Angle(1),"sword range grows");
+p.AcknowledgeChestReward();p.Profile.level=100;p.Profile.chapterTierRevision=1;p.Profile.chapterBestTiers=new[]{2,3,0};p.Profile.chapterDifficultyBestTiers=new[]{1,7,4,2,3,9,0,0,0};
+int materialBefore=p.Profile.mechanicMaterials;p.Save();C(p.LoadSlot(p.CurrentSlotId),"reload migrated tiers");
+C(p.Profile.chapterTierRevision==2&&p.Profile.chapterDifficultyBestTiers==null&&p.Profile.chapterBestTiers[0]==7&&p.Profile.chapterBestTiers[1]==9,"legacy max tiers migrate without losing progress");
+C(p.Profile.mechanicMaterials==materialBefore,"migration grants no retired difficulty bonuses");
+C(ChapterProgression.AvailableTier(p.Profile,ChapterNode.ForestCourt)==8,"single next-tier gate");
+ChapterRunReceipt run;C(!p.TryBeginChapterNode(ChapterNode.ForestCourt,9,out run),"cannot skip tier");
+C(p.TryBeginChapterNode(ChapterNode.ForestCourt,8,out run),"enter next tier");
+for(int room=0;room<2;room++)for(int enemy=0;enemy<30;enemy++)C(p.RegisterChapterEnemy(run,room,enemy,false),"register chapter enemies");
+Directory.CreateDirectory(p.SaveFilePath+".tmp");C(!p.TryCompleteChapterNode(run)&&p.Profile.chapterBestTiers[0]==7,"failed settlement does not advance");Directory.Delete(p.SaveFilePath+".tmp");
+C(p.TryCompleteChapterNode(run)&&p.Profile.chapterBestTiers[0]==8,"settlement advances tier");
+int paid=p.Profile.mechanicMaterials;C(p.TryCompleteChapterNode(run)&&p.Profile.mechanicMaterials==paid,"settlement retry is idempotent");
+C(p.LoadSlot(p.CurrentSlotId)&&p.Profile.chapterBestTiers[0]==8,"new tier persists");
 Directory.Delete(p.SaveDirectory,true);Console.WriteLine("PASS "+n+" basic attack progression assertions");}}
 '''
 with tempfile.TemporaryDirectory(prefix='fashion-refinement-') as tmp:

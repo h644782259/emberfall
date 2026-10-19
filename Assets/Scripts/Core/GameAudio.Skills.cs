@@ -23,6 +23,29 @@ namespace Emberfall
         private int chantEpoch;
         private bool chantPaused;
         private float nextChant;
+        private static readonly string[] ChantFolders = { "", "Cantonese/", "English/", "Mandarin/" };
+        private static readonly string[] ChantLabels = { "原版（虚构咒语）", "粤语", "English", "普通话" };
+        public static int SkillVoiceVersion
+        {
+            get { int value=PlayerPrefs.GetInt("Emberfall.SkillVoiceVersion",0);return value>=0&&value<4?value:0; }
+            set
+            {
+                if(value<0||value>=4||value==SkillVoiceVersion)return;
+                PlayerPrefs.SetInt("Emberfall.SkillVoiceVersion",value);PlayerPrefs.Save();
+                if(instance==null)return;
+                if(instance.chantSource!=null)instance.chantSource.Stop();
+                instance.chantOwner=null;instance.chantPaused=false;instance.nextChant=0;
+                for(int hero=0;hero<4;hero++)for(int skill=0;skill<10;skill++)
+                    instance.chants[hero*10+skill]=skill==3||skill==8?null:LoadChant(hero,skill);
+            }
+        }
+        public static string SkillVoiceVersionName { get { return ChantLabels[SkillVoiceVersion]; } }
+        private static AudioClip LoadChant(int hero,int skill)
+        {
+            string name=hero+"-"+skill;
+            var clip=Resources.Load<AudioClip>("Audio/Chants/"+ChantFolders[SkillVoiceVersion]+name);
+            return clip!=null?clip:Resources.Load<AudioClip>("Audio/Chants/"+name);
+        }
 
         public static IEnumerator PrewarmSkillAudio()
         {
@@ -37,7 +60,7 @@ namespace Emberfall
                 if(skill==3||skill==8)continue;
                 int index=hero*10+skill;
                 if(instance.chants[index]!=null&&instance.skillClips[index]!=null)continue;
-                if(instance.chants[index]==null)instance.chants[index]=Resources.Load<AudioClip>("Audio/Chants/"+hero+"-"+skill);
+                if(instance.chants[index]==null)instance.chants[index]=LoadChant(hero,skill);
                 if(instance.skillClips[index]==null)instance.skillClips[index]=SynthesizeSkill((HeroClass)hero,skill);
                 yield return null;
             }

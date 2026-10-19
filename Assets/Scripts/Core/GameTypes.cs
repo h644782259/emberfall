@@ -11,7 +11,7 @@ namespace Emberfall
         public string Id;
         public int Gold,Experience,Materials,RefinementStones;
         public bool FirstCompletion,FirstCoreAvailable;
-        public int UnlockedNode=-1,UnlockedDifficulty=-1,SharedBefore,SharedAfter;
+        public int UnlockedNode=-1,SharedBefore,SharedAfter;
     }
     public static class MasteryProgressionRules
     {
@@ -298,6 +298,7 @@ namespace Emberfall
     {
         public ChestContentPreview[] contents;
         public int primaryKind,primaryCount,primarySlot,refinementStonesDelta,affixReforgeStonesDelta,basicAttackMaterialsDelta;
+        public bool HasLegendaryMaterial {get{return basicAttackMaterialsDelta>0||affixReforgeStonesDelta>0;}}
         public Rarity primaryRarity;
         public string[] equipmentIds;
         public EquipmentMechanic gemMechanic;
@@ -519,14 +520,11 @@ namespace Emberfall
         public int[] chapterMasteryTiers = new int[4];
         public int chapterRevision;
         public int chapterTierRevision;
-        public int[] chapterDifficultyBestTiers=new int[9];
+        // Legacy deserialize-only field; normalized into chapterBestTiers and cleared.
+        public int[] chapterDifficultyBestTiers;
         [System.NonSerialized] internal bool chapterTierMigrationPending;
         public int chapterCompletedMask;
         public int chapterFirstRewardMask;
-        // Six independent node/difficulty first rewards; revision gates legacy backfill.
-        public int chapterDifficultyRewardMask;
-        public int chapterDifficultyRewardRevision;
-        public int[] chapterHighestDifficulties = new int[3];
         public long chapterRewardSequence;
         public string lastChapterRewardId;
         public int chapterHighestAdventureTier;
@@ -548,6 +546,7 @@ namespace Emberfall
         public int mechanicMaterials;
         public int affixReforgeStones,affixReforgeCount;
         public int basicAttackMaterials;
+        public int forestCrystalMisses,redrockReforgeMisses,arenaReforgeMisses,corridorFashionMisses;
         public int[] basicAttackTiers = new int[4];
         public int refinementStones,refinementCount,refinementMaxCount;
         public bool pendingChestGemSource;
@@ -861,6 +860,10 @@ namespace Emberfall
     public static class BasicAttackGrowth
     {
         public const string MaterialName="战技源晶";
+        public static int DropChance(int tier){return 10+System.Math.Min(20,System.Math.Max(1,tier)-1);}
+        public static int RefinementChance(int tier){return (100-DropChance(tier))/2;}
+        public static int FragmentChance(int tier){return 100-DropChance(tier)-RefinementChance(tier);}
+        public static string DropSummary(int tier){return "战技源晶 ×1 · "+DropChance(tier)+"% / 装备洗练石 · "+RefinementChance(tier)+"% / 星烬碎片 · "+FragmentChance(tier)+"%";}
         public static int Tier(GameProfile p,HeroClass hero)
         {int i=(int)hero;return p.basicAttackTiers==null||i<0||i>=p.basicAttackTiers.Length?1:System.Math.Max(1,System.Math.Min(4,p.basicAttackTiers[i]));}
         public static int Cost(int tier){return tier>=4?0:1<<(System.Math.Max(1,tier)-1);}

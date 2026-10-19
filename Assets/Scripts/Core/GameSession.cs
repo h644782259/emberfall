@@ -20,7 +20,7 @@ namespace Emberfall
         public float ArenaRadius { get { return ArenaSizeRules.Radius(InDungeon?ZoneKind.Dungeon:ZoneKind.Wilderness,DungeonLayout,CurrentHub); } }
         public bool DungeonCleared { get; private set; }
         public int PendingLootCount { get { return pendingLoot.Count; } }
-        public string ZoneName { get { return InDungeon ? ModeName + (ChapterActive?(ActiveChapterDifficulty==ChapterDifficulty.Heroic?" · 第 "+DungeonTier+" 阶":""):" · Lv"+AdventureRewardRules.DungeonLevel(DungeonTier)) : HubTravelRules.Name(CurrentHub); } }
+        public string ZoneName { get { return InDungeon ? ModeName + (" · "+DungeonDifficultyName) : HubTravelRules.Name(CurrentHub); } }
         public string Notification
         {
             get
@@ -669,7 +669,7 @@ namespace Emberfall
             }
             else Progression.GrantEnemyKillReward(gold,experience,deferSave:true);
             if(!InDungeon)LogSystem("+"+gold+" 金币 · +"+experience+" 经验");
-            if (Random.Range(0,100)<AdventureRewardRules.EnemyEquipmentChance(boss,enemy.Tier!=EnemyController.ThreatTier.Normal))
+            if (!(InDungeon&&!ChapterActive&&AdventureRewardRules.UsesTierDifficulty(ActiveAdventureMode))&&Random.Range(0,100)<AdventureRewardRules.EnemyEquipmentChance(boss,enemy.Tier!=EnemyController.ThreatTier.Normal))
             {
                 ItemData loot = Progression.RollLoot(InDungeon&&!ChapterActive?DungeonEntryLevel:Progression.Profile.level, boss, InDungeon ? DungeonTier : 0, !InDungeon&&enemy.Tier==EnemyController.ThreatTier.Normal);
                 DeliverEnemyLoot(loot, position);
@@ -795,9 +795,11 @@ namespace Emberfall
         {
             if(PracticeActive&&(InputBlocked||PracticeRecord==null||!PracticeRecord.Started||PracticeRecord.Finished))return;
             if (!HasStarted || IsDead || Player == null) return;
+            if (Player.PotionCooldownRemaining > 0) { Notify("药剂冷却中，还需 " + Mathf.CeilToInt(Player.PotionCooldownRemaining) + " 秒。"); return; }
             if (Player.Health >= Player.MaxHealth - .5f) { Notify("生命已满，无需使用药水。"); return; }
             if (ChallengeRun && InDungeon) { if (!TrySpendHealingCharge()) return; }
             else if (!Progression.UsePotion()) { Notify(Progression.LastError); return; }
+            Player.StartPotionCooldown();
             Player.Heal(Player.MaxHealth * .5f);
             SpawnFloatingText(Player.transform.position + Vector3.up * 2, "+50% HP", new Color(.4f, 1, .68f));
             // Normal potion consumption already committed once; challenge charges are run-only.

@@ -20,6 +20,30 @@ namespace Emberfall
         }
     }
 
+    public static class SpecialtyChestPity
+    {
+        public const int Limit=10;
+        public static int Target(bool chapter,int mode)
+        {return chapter?(mode==0?8:mode==1?7:0):mode==3?2:mode==2?7:0;}
+        public static int Target(GameProfile p)
+        {return p.pendingChestGemSource?0:Target(p.pendingChestChapterSource,p.pendingChestMode);}
+        public static int Misses(GameProfile p,int target){return Misses(p,target,p.pendingChestChapterSource);}
+        public static int Misses(GameProfile p,int target,bool chapter)
+        {return Math.Max(0,Math.Min(Limit-1,target==8?p.forestCrystalMisses:target==7?(chapter?p.redrockReforgeMisses:p.arenaReforgeMisses):target==2?p.corridorFashionMisses:0));}
+        public static string Name(int target){return target==8?"战技源晶":target==7?"词条重铸石":"时装";}
+        public static string Caption(GameProfile p,int target){return Caption(p,target,p.pendingChestChapterSource);}
+        public static string Caption(GameProfile p,int target,bool chapter)
+        {int left=Limit-Misses(p,target,chapter);return left==1?"下一箱必出"+Name(target):"再开 "+left+" 箱内必出"+Name(target);}
+        public static string Rules(int target)
+        {return "连续未获得"+Name(target)+"时，第10箱必出；获得后重新计数。"+(target==2?"重复时装转为星纹。":"");}
+        public static void Record(GameProfile p,int drawnKind)
+        {
+            int target=Target(p);if(target==0)return;
+            int next=drawnKind==target?0:Math.Min(Limit-1,Misses(p,target)+1);
+            if(target==8)p.forestCrystalMisses=next;else if(target==7){if(p.pendingChestChapterSource)p.redrockReforgeMisses=next;else p.arenaReforgeMisses=next;}else p.corridorFashionMisses=next;
+        }
+    }
+
     // One authoritative clear-loot table shared by previews and committed rewards.
     public static class AdventureRewardRules
     {
@@ -30,6 +54,14 @@ namespace Emberfall
         // Keep the stored difficulty index for save compatibility; gameplay uses its fixed level.
         public static int DungeonLevel(int index){return Math.Max(1,Math.Min(10,index))*10;}
         public static int MaximumDungeonIndex(int characterLevel){return Math.Max(1,Math.Min(10,(Math.Max(1,characterLevel)+10)/10));}
+        public static bool UsesTierDifficulty(int mode){return mode==2||mode==3;}
+        public static int MaximumSelection(int mode,int level,int unlocked)
+        {return Math.Max(1,Math.Min(UsesTierDifficulty(mode)?100:MaximumDungeonIndex(level),unlocked));}
+        public static string DifficultyName(int mode,int tier)
+        {return UsesTierDifficulty(mode)?"第 "+TierRewardBand.Clamp(tier)+" 阶":"Lv"+DungeonLevel(tier);}
+        public static int EntryEnemyLevel(int mode,int tier,int characterLevel)
+        {return UsesTierDifficulty(mode)?((Math.Max(1,Math.Min(100,characterLevel))+9)/10)*10:DungeonLevel(tier);}
+
         public static EquipmentMechanic ExclusiveGem(int mode)
         {
             Validate(mode);

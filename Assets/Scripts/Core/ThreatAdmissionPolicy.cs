@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 namespace Emberfall
 {
@@ -18,8 +18,6 @@ namespace Emberfall
         public int WaitingCount {get{return waiting.Count;}}
         public float LastGap {get;private set;}
         public ThreatAdmissionPolicy(int seed){random=unchecked((uint)seed)^0x9e3779b9u;}
-        public static bool IsPilot(bool chapterActive, int node, int difficulty, int room)
-        {return chapterActive && node==1 && difficulty==1 && room==0;}
         public void Advance(float delta, bool paused=false)
         {
             if(paused){ClearWaiting();return;}

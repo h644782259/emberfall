@@ -15,11 +15,9 @@ namespace Emberfall
             return false;
         }
         public ChapterNode SelectedChapterNode {get;set;}
-        private readonly int[] selectedChapterTiers=new int[9];
-        public ChapterDifficulty SelectedChapterDifficulty
-        {get{return ChapterDifficulty.Heroic;}set{}}
+        private readonly int[] selectedChapterTiers=new int[3];
         public int SelectedChapterTier
-        {get{int index=(int)SelectedChapterNode*3+(int)SelectedChapterDifficulty;int maximum=ChapterProgression.AvailableTier(Progression.Profile,SelectedChapterNode,SelectedChapterDifficulty);return selectedChapterTiers[index]==0?maximum:Mathf.Clamp(selectedChapterTiers[index],1,maximum);}set{selectedChapterTiers[(int)SelectedChapterNode*3+(int)SelectedChapterDifficulty]=value;}}
+        {get{int index=(int)SelectedChapterNode;int maximum=ChapterProgression.AvailableTier(Progression.Profile,SelectedChapterNode);return selectedChapterTiers[index]==0?maximum:Mathf.Clamp(selectedChapterTiers[index],1,maximum);}set{selectedChapterTiers[(int)SelectedChapterNode]=value;}}
         public bool SelectedChapterLimitedHealing {get{return false;}set{}}
         public int SelectedChapterTactic {get;set;}=-1;
         public ChapterCombatRun ChapterRun {get;private set;}
@@ -34,7 +32,6 @@ namespace Emberfall
         public bool ChapterFinished {get{return ChapterActive&&ChapterRun.Finished;}}
         public bool ChapterRewardPending {get{return ChapterFinished&&!ChapterRun.Failed&&!ChapterRun.RewardClaimed;}}
         public ChapterNode ActiveChapterNode {get{return ChapterActive?ChapterRun.Node:SelectedChapterNode;}}
-        public ChapterDifficulty ActiveChapterDifficulty {get{return ChapterActive?ChapterRun.Difficulty:ChapterDifficulty.Normal;}}
         public int ChapterRoomIndex {get{return ChapterActive?ChapterRun.RoomIndex:-1;}}
         public int ChapterSeed {get{return ChapterActive?ChapterRun.Seed:0;}}
         public bool OpenChapterSelectionAllowed {get{return !SceneLoading&&HasStarted&&!InDungeon&&!IsDead&&!Paused&&!BackgroundPaused&&(IsInCamp||IsNearChapterEntrance);}}
@@ -48,19 +45,19 @@ namespace Emberfall
         public bool CanRetryChapter {get{return !SceneLoading&&HasStarted&&InDungeon&&ChapterFinished&&ChapterRun.Failed&&Player!=null&&chapterReceipt!=null&&chapterReceipt.SavePath==Progression.SaveFilePath&&!enteringChapter&&!changingZone&&lastChapterRetryFrame!=Time.frameCount;}}
         public bool RetryFailedChapter()
         {return CanRetryChapter&&RestartChapterAttempt();}
-        private bool CanAdvanceChapterTier {get{return ChapterFinished&&ChapterRun.Difficulty==ChapterDifficulty.Heroic&&!ChapterRun.Failed&&!ChapterRewardPending&&chapterReceipt!=null&&chapterReceipt.SavePath==Progression.SaveFilePath&&!enteringChapter&&chapterRetryTier<int.MaxValue&&ChapterProgression.CanEnter(Progression.Profile,ChapterRun.Node,ChapterRun.Difficulty,chapterRetryTier+1);}}
+        private bool CanAdvanceChapterTier {get{return ChapterFinished&&!ChapterRun.Failed&&!ChapterRewardPending&&chapterReceipt!=null&&chapterReceipt.SavePath==Progression.SaveFilePath&&!enteringChapter&&chapterRetryTier<int.MaxValue&&ChapterProgression.CanEnter(Progression.Profile,ChapterRun.Node,chapterRetryTier+1);}}
         private bool RestartChapterAttempt(int? targetTier=null)
         {
             if(SceneLoading)return false;
             if(!SaveBeforeLeaving())return false;
             ChapterRunReceipt receipt;
-            if(!Progression.TryBeginChapterNode(ChapterRun.Node,ChapterRun.Difficulty,targetTier??chapterRetryTier,out receipt))
+            if(!Progression.TryBeginChapterNode(ChapterRun.Node,targetTier??chapterRetryTier,out receipt))
             {Notify(Progression.LastError);return false;}
             // A new receipt invalidates all callbacks from the failed attempt. Seed and
             // the admitted tactic are frozen, independent of mutable selection controls.
             lastChapterRetryFrame=Time.frameCount;
             chapterRetryTier=receipt.Tier;
-            chapterReceipt=receipt;ChapterRun=new ChapterCombatRun(receipt.Node,receipt.Difficulty,chapterRetrySeed);
+            chapterReceipt=receipt;ChapterRun=new ChapterCombatRun(receipt.Node,chapterRetrySeed);
             chapterEntryPotions=Progression.Profile.potions;chapterFirstSealSeconds=chapterSecondSealSeconds=0;
             ChapterResult=null;chapterBossDeathFrame=-1;chapterResultSkipped=false;
             enteringChapter=true;ChallengeRun=chapterRetryLimited;
@@ -78,19 +75,10 @@ namespace Emberfall
         private GameObject chapterExit,chapterObjective;
         private readonly GameObject[] chapterObjectives=new GameObject[2];
         private EnemyController chapterSupplier;
-        private int previousForestLineup=-1;
-        private string forestLineupOwner;
         // Session-only history of the last successfully admitted eligible Redrock replay.
         // Another owner's eligible replay or a new host starts split; other visits do not replace history.
         private string redrockRouteOwner;
         private bool previousRedrockSplit;
-
-        public bool SelectedForestLineupB {get{return SelectedChapterNode==ChapterNode.ForestCourt&&SelectedChapterDifficulty==ChapterDifficulty.Hard&&forestLineupOwner==Progression.SaveFilePath&&previousForestLineup==0;}}
-        public string SelectedChapterLineupPreview {get{return SelectedChapterNode!=ChapterNode.ForestCourt||SelectedChapterDifficulty!=ChapterDifficulty.Hard?"":SelectedForestLineupB?
-            "编队 B · 守坛卫兵，护援者与两名哥布林结伴争夺；黏液游荡。先切断移动护援，再占领封印。":
-            "编队 A · 近侧卫兵受护援，远侧卫兵独立。先走无护援一侧，或引开/击败护援者。";}}
-        private bool ForestMobileLineup {get{return ChapterActive&&ActiveChapterNode==ChapterNode.ForestCourt&&ActiveChapterDifficulty==ChapterDifficulty.Hard&&ChapterRoomIndex==0&&(ChapterSeed&2)!=0;}}
-
 
         private sealed class ChapterEnemyReceipt {public ChapterCombatRun Run;public int Room,Epoch,Index;}
         private readonly Dictionary<EnemyController,ChapterEnemyReceipt> chapterEnemies=new Dictionary<EnemyController,ChapterEnemyReceipt>();
@@ -125,22 +113,20 @@ namespace Emberfall
             if(SceneLoading||!OpenChapterSelectionAllowed||Player==null)return false;
             if(!SaveBeforeLeaving())return false;
             ChapterRunReceipt receipt;
-            if(!Progression.TryBeginChapterNode(SelectedChapterNode,SelectedChapterDifficulty,SelectedChapterTier,out receipt)){Notify(Progression.LastError);return false;}
+            if(!Progression.TryBeginChapterNode(SelectedChapterNode,SelectedChapterTier,out receipt)){Notify(Progression.LastError);return false;}
             chapterEntryPotions=Progression.Profile.potions;chapterFirstSealSeconds=chapterSecondSealSeconds=0;ChapterResult=null;chapterBossDeathFrame=-1;chapterResultSkipped=false;
             int seed=Random.Range(0,1000000);
-            if(receipt.Node==ChapterNode.ForestCourt&&receipt.Difficulty==ChapterDifficulty.Hard)seed=(seed&~2)|(SelectedForestLineupB?2:0);
-            bool redrockReplay=receipt.Node==ChapterNode.Redrock&&receipt.Difficulty!=ChapterDifficulty.Normal&&
+            bool redrockReplay=receipt.Node==ChapterNode.Redrock&&
                 (Progression.Profile.chapterCompletedMask&(1<<(int)ChapterNode.Redrock))!=0;
             if(redrockReplay)seed=ChapterRoomGeometry.RedrockReplaySeed(seed,redrockRouteOwner!=Progression.SaveFilePath||!previousRedrockSplit);
             chapterRetrySeed=seed;chapterRetryTier=receipt.Tier;chapterRetryLimited=SelectedChapterLimitedHealing;chapterRetryTactic=SelectedChapterTactic>=0&&SelectedChapterTactic<3&&RunChoices.ChapterTacticsAvailable(Progression.Profile,receipt.Node)?(RunBlessing?)RunChoices.ChapterTactic(Progression.Profile,MobileControls.Active,SelectedChapterTactic):null;
-            chapterReceipt=receipt;ChapterRun=new ChapterCombatRun(receipt.Node,receipt.Difficulty,seed);
+            chapterReceipt=receipt;ChapterRun=new ChapterCombatRun(receipt.Node,seed);
             enteringChapter=true;ChallengeRun=SelectedChapterLimitedHealing;
             try {if(!ChangeZone(true)){ResetChapterRun();return false;}}
             catch(System.Exception error){FailChapter("房间 "+(ChapterRoomIndex+1)+" 生成异常："+error.Message);return InDungeon;}
             finally {enteringChapter=false;changingZone=false;}
             if(redrockReplay&&ChapterRun!=null&&!ChapterRun.Finished&&!ChapterRun.Failed)
             {redrockRouteOwner=Progression.SaveFilePath;previousRedrockSplit=ChapterRoomGeometry.RedrockSplitRoute(seed);}
-            if(receipt.Node==ChapterNode.ForestCourt&&receipt.Difficulty==ChapterDifficulty.Hard){forestLineupOwner=Progression.SaveFilePath;previousForestLineup=(seed&2)==0?0:1;}
             if(ChapterRun!=null&&!ChapterRun.Finished&&!ChapterRun.Failed&&SelectedChapterTactic>=0)RunChoices.ChooseChapterTactic(Progression.Profile,receipt.Node,MobileControls.Active,SelectedChapterTactic);
             foreach(var tactic in RunChoices.Active)chapterRetryTactic=tactic;
             UpdateTimeScale();Notify(ChapterDefinition.Get(receipt.Node).Story+" · "+ChapterObjectiveStatus);return true;
@@ -156,7 +142,7 @@ namespace Emberfall
         private void BeginChapterRoom()
         {
             if(chapterThreatAdmission!=null)chapterThreatAdmission.Reset();
-            chapterThreatAdmission=ThreatAdmissionPolicy.IsPilot(ChapterActive,(int)ActiveChapterNode,(int)ActiveChapterDifficulty,ChapterRoomIndex)?new ThreatAdmissionPolicy(ChapterSeed):null;
+            chapterThreatAdmission=null;
             ChapterRun.BindRoom(Player.CombatEpoch);chapterEnemies.Clear();chapterSupplier=null;
             DungeonWave=ChapterRoomIndex+1;wavePopulation=Mathf.Max(1,ChapterRun.EnemyCount);objectiveHealedThisWave=false;
             chapterExit=WorldBuilder.MakeRoomExitPortal(world.transform,chapterPlan.Exit);chapterExit.transform.SetParent(world.transform,true);chapterExit.SetActive(ChapterRun.DoorUnlocked);
@@ -177,7 +163,7 @@ namespace Emberfall
             for(int index=0;index<ChapterRun.EnemyCount;index++)
             {
                 bool boss=ChapterRun.Objective==RoomObjective.Boss&&index==0;
-                bool crossfire=ActiveChapterNode==ChapterNode.Redrock&&ActiveChapterDifficulty!=ChapterDifficulty.Normal;
+                bool crossfire=ActiveChapterNode==ChapterNode.Redrock;
                 EnemyKind kind=crossfire?(index<2?EnemyKind.Wisp:index<4?EnemyKind.Guardian:index==4?EnemyKind.Goblin:EnemyKind.Slime):
                     boss?EnemyKind.Guardian:index==0?EnemyKind.Wisp:index%3==1?EnemyKind.Guardian:index%3==2?EnemyKind.Goblin:EnemyKind.Slime;
                 Vector3 point;float radius=boss?BossSpawnRadius:kind==EnemyKind.Guardian?.65f:.5f;
@@ -193,23 +179,16 @@ namespace Emberfall
                 if(index==0&&!boss)chapterSupplier=enemy;
                 if(crossfire)
                     enemy.ConfigureEscapePost(index==0?EscapeRole.GateSupplier:index==1||index==5?EscapeRole.SideFlanker:index<4?EscapeRole.GateGuard:EscapeRole.Pursuer,point);
-                if(ActiveChapterNode==ChapterNode.ForestCourt&&ChapterRoomIndex==0&&(index==4||ForestMobileLineup&&index==1))
+                if(ActiveChapterNode==ChapterNode.ForestCourt&&ChapterRoomIndex==0&&(index==4))
                     enemy.ConfigureEscapePost(EscapeRole.GateGuard,point);
                 TacticalEnemyVisual.Attach(enemy,this);
-                if(boss)LargeExpeditionBoss.ConfigureChapter(enemy,DungeonTier,ChapterSeed,ActiveChapterDifficulty);
+                if(boss)LargeExpeditionBoss.ConfigureChapter(enemy,DungeonTier,ChapterSeed);
             }
-            if(ForestMobileLineup)
-            {
-                EnemyController first=null,second=null;
-                foreach(var pair in chapterEnemies){if(pair.Value.Index==2)first=pair.Key;if(pair.Value.Index==5)second=pair.Key;}
-                if(first!=null&&second!=null){chapterSupplier.ConfigureMobileSupport(null,first,second);first.ConfigureMobileSupport(chapterSupplier,null,null);second.ConfigureMobileSupport(chapterSupplier,null,null);}
-            }
-            ChapterHazards.Configure(this,ActiveChapterNode,ActiveChapterDifficulty,ChapterRoomIndex,ChapterSeed,chapterPlan);
+            ChapterHazards.Configure(this,ActiveChapterNode,ChapterRoomIndex,ChapterSeed,chapterPlan);
         }
         private bool TryChapterSpawn(int index,bool crossfire,List<Vector3> occupied,float radius,out Vector3 point)
         {
             if(index>=6)return ChapterRoomGeometry.TrySpawn(chapterPlan,index,occupied,radius,out point);
-            if(ForestMobileLineup)return ChapterRoomGeometry.TrySpawnAt(chapterPlan,ChapterRoomGeometry.ForestMobileSpawn(ChapterSeed,index),occupied,radius,out point);
             if(!crossfire)return ChapterRoomGeometry.TrySpawn(chapterPlan,index,occupied,radius,out point);
             // The hunt target remains receipt index zero. Two existing casters occupy
             // opposite branches; stone guardians hold the exit rather than chasing across both lanes.
@@ -269,7 +248,7 @@ namespace Emberfall
             if(ChapterActive&&ChapterRun.Objective==RoomObjective.Purify)return IsChapterContestingPoint(enemy,0)||IsChapterContestingPoint(enemy,1);
             return ChapterActive&&!ChapterFinished&&chapterObjective!=null&&!ChapterRun.DoorUnlocked&&LiveRoomEnemy(enemy)&&RoomTacticalRegion.Contests(CombatFx.Flat(enemy.transform.position-ChapterObjectivePoint).sqrMagnitude,enemy.NavigationRadius,true)&&WorldTraversal.HasLineOfSight(enemy.transform.position,ChapterObjectivePoint);
         }
-        private bool ChapterHasSupport {get{return ChapterActive&&!ChapterFinished&&ActiveChapterNode==ChapterNode.ForestCourt&&ActiveChapterDifficulty!=ChapterDifficulty.Normal&&chapterSupplier!=null&&!chapterSupplier.IsDead&&chapterSupplier.isActiveAndEnabled;}}
+        private bool ChapterHasSupport {get{return ChapterActive&&!ChapterFinished&&ActiveChapterNode==ChapterNode.ForestCourt&&chapterSupplier!=null&&!chapterSupplier.IsDead&&chapterSupplier.isActiveAndEnabled;}}
         public bool IsChapterSupplier(EnemyController enemy){return ChapterHasSupport&&enemy==chapterSupplier;}
         public float ChapterSupportMultiplier(EnemyController enemy)
         {return ChapterHasSupport&&enemy!=null&&enemy!=chapterSupplier&&!enemy.IsBoss&&!enemy.IsDead&&enemy.isActiveAndEnabled&&RoomTacticalRegion.ReceivesSupport(CombatFx.Flat(enemy.transform.position-chapterSupplier.transform.position).sqrMagnitude,true)&&WorldTraversal.HasLineOfSight(enemy.transform.position,chapterSupplier.transform.position)?.7f:1;}
@@ -297,7 +276,7 @@ namespace Emberfall
         }
         private void FinalizeChapterBoss(){if(ChapterActive&&(ChapterRun.FinishBoss()||ChapterRun.FinishClearedFinalRoom()))FinalizeChapter();}
         private ChapterResultSnapshot CaptureChapterResult(bool failed,string reason)
-        {return new ChapterResultSnapshot(ActiveChapterNode,ActiveChapterDifficulty,chapterReceipt==null?DungeonTier:chapterReceipt.Tier,chapterEntryPotions,ChallengeRun,ChapterRoomIndex,(chapterFirstSealSeconds>=2?1:0),chapterFirstSealSeconds,chapterSecondSealSeconds,failed,reason,lastDamageSource,lastDamageAmount,Progression.ChapterKillExperienceEarned,MechanismEvidence.Snapshot());}
+        {return new ChapterResultSnapshot(ActiveChapterNode,chapterReceipt==null?DungeonTier:chapterReceipt.Tier,chapterEntryPotions,ChallengeRun,ChapterRoomIndex,(chapterFirstSealSeconds>=2?1:0),chapterFirstSealSeconds,chapterSecondSealSeconds,failed,reason,lastDamageSource,lastDamageAmount,Progression.ChapterKillExperienceEarned,MechanismEvidence.Snapshot());}
         private void FailChapter(string reason)
         {if(!ChapterActive||ChapterFinished)return;ChapterResult=CaptureChapterResult(true,reason);ChapterRun.Fail();RunChoices.Reset();Progression.CancelChapterRun();if(!Progression.FinishDungeonRewards())Notify(Progression.LastError);Notify(reason);SuspendInputs();UpdateTimeScale();}
         private void FinalizeChapter()
@@ -313,7 +292,7 @@ namespace Emberfall
             ApplyRewardPresentation(receipt.Id);
             var detail=source.GetRewardPresentation(receipt.Id);
             if(detail==null)ChapterResult.RecordSavedUnavailable();
-            else ChapterResult.RecordSaved(detail.Materials,detail.FirstCompletion,detail.UnlockedNode,detail.UnlockedDifficulty,detail.SharedBefore,detail.SharedAfter,detail.Experience,detail.FirstCoreAvailable);
+            else ChapterResult.RecordSaved(detail.Materials,detail.FirstCompletion,detail.UnlockedNode,detail.SharedBefore,detail.SharedAfter,detail.Experience,detail.FirstCoreAvailable);
             LastRunSummary=BuildRunSummary(true);
             Notify(detail==null?"章节节点已保存 · 旧回执缺少奖励明细，无法恢复准确数额（不会重复发放）":"章节节点已保存 · 碎片 +"+ChapterResult.Materials);return true;
         }

@@ -151,7 +151,7 @@ namespace Emberfall
                 BlockUITransition();return;
             }
             y+=54*u;
-            bool showNextTier=!session.ChapterActive||session.ActiveChapterDifficulty==ChapterDifficulty.Heroic;
+            bool showNextTier=true;
             if(showNextTier&&Button(new Rect(x,y,bw,44*u),"挑战下一阶",gold,session.CanChallengeNextTier))
             {
                 session.SetUIBlocking(false);

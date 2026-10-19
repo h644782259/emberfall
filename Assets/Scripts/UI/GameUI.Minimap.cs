@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections.Generic;
 
 namespace Emberfall
@@ -80,7 +80,7 @@ namespace Emberfall
             get
             {
                 if(session.ChapterActive)return ChapterDefinition.Get(session.ActiveChapterNode).Name+" 第"+session.DungeonTier+"阶";
-                if(session.InDungeon)return session.ModeName+" Lv"+AdventureRewardRules.DungeonLevel(session.DungeonTier);
+                if(session.InDungeon)return session.ModeName+" "+session.DungeonDifficultyName;
                 return HubTravelRules.Name(session.CurrentHub);
             }
         }

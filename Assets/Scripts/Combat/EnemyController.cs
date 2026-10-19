@@ -107,13 +107,13 @@ namespace Emberfall
                 (boss ? "星蚀巨像" : new[] { "森林史莱姆", "盗宝哥布林", "幽光魔灵", "遗迹守卫" }[(int)kind]);
             gameObject.name = DisplayName;
             float[] moveSpeed = { 2.05f, 3.1f, 2.5f, 2.1f };
-            int challengeTier = game.InDungeon&&game.ChapterActive ? game.DungeonTier : 1;
+            int challengeTier = game.InDungeon&&game.TierBasedDungeon ? game.DungeonTier : 1;
             MaxHealth = CombatBalance.EnemyHealth(level, challengeTier, boss, kind);
             if(game.InDungeon)MaxHealth*=boss?1.6f:kind==EnemyKind.Guardian?1.35f:1.15f;
             damage = CombatBalance.EnemyDamage(level, challengeTier, boss);
             if(game.InDungeon){MaxHealth*=CombatBalance.DungeonHealthMultiplier(level,boss);damage*=CombatBalance.DungeonDamageMultiplier(level);}
-            if(game.ChapterActive)
-            {MaxHealth*=ChapterDefinition.HealthMultiplier(game.ActiveChapterDifficulty)*ChapterProgression.TierHealthMultiplier(challengeTier)/CombatBalance.TierHealthMultiplier(challengeTier);damage*=ChapterDefinition.DamageMultiplier(game.ActiveChapterDifficulty)*ChapterProgression.TierDamageMultiplier(challengeTier)/CombatBalance.TierDamageMultiplier(challengeTier);}
+            if(game.InDungeon&&game.TierBasedDungeon)
+            {MaxHealth*=(game.ChapterActive?ChapterDefinition.BaseHealthMultiplier:1)*ChapterProgression.TierHealthMultiplier(challengeTier)/CombatBalance.TierHealthMultiplier(challengeTier);damage*=(game.ChapterActive?ChapterDefinition.BaseDamageMultiplier:1)*ChapterProgression.TierDamageMultiplier(challengeTier)/CombatBalance.TierDamageMultiplier(challengeTier);}
             Health = MaxHealth;
             speed = boss ? 2.35f : moveSpeed[(int)kind];
             transform.position = WorldTraversal.NearestWalkable(transform.position, NavigationRadius);

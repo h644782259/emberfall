@@ -6,6 +6,10 @@ namespace Emberfall
  public sealed partial class GameSession
  {
   public int SelectedArenaMode {get;set;}=-1;
+  public int ActiveAdventureMode {get{return RoomChainRun!=null?3:ModeRun!=null?(int)ModeRun.Mode:-1;}}
+  public bool TierBasedDungeon {get{return ChapterActive||AdventureRewardRules.UsesTierDifficulty(ActiveAdventureMode);}}
+  public string DungeonDifficultyName {get{return ChapterActive?"第 "+DungeonTier+" 阶":AdventureRewardRules.DifficultyName(ActiveAdventureMode,DungeonTier);}}
+
   public ExpeditionModeState ModeRun {get;private set;}
   public bool ModeFinished {get{return ChapterActive?ChapterFinished:RoomChainRun!=null?RoomChainRun.Finished:ModeRun!=null&&ModeRun.IsTerminal&&ModeRun.Status!=ExpeditionModeStatus.Disposed;}}
   public bool ModeRewardPending {get{return ChapterActive?ChapterRewardPending:RoomChainRun!=null?RoomChainRun.Finished&&!RoomChainRun.Failed&&!RoomChainRun.RewardClaimed:ModeRun!=null&&ModeRun.RewardPending;}}

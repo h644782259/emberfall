@@ -399,6 +399,7 @@ namespace Emberfall
             if (session.BackgroundPaused) suppressBasicUntilReleased = true;
             float dt = Time.deltaTime;
             if (dt <= 0) return;
+            TickPotionCooldown(dt);
             attackCooldown = Mathf.Max(0,attackCooldown - dt);
             skillBasicRecovery.Advance(dt);
             attackAnimation = Mathf.Max(0,attackAnimation - dt * 4f);
@@ -839,7 +840,7 @@ namespace Emberfall
                 {
                     float angle=-30f+60f*shot/(BasicAttackGrowth.Shots(tier)-1);
                     Vector3 spread=Quaternion.AngleAxis(angle,Vector3.up)*direction.normalized;
-                    CombatProjectile.BasicShot(this,session,muzzle,muzzle+spread*18f,damage,color,ranger,null,hitBudget);
+                    CombatProjectile.BasicShot(this,session,muzzle,BasicAttackRayTarget(muzzle,spread),damage,color,ranger,null,hitBudget);
                 }
             }
 
@@ -852,7 +853,26 @@ namespace Emberfall
             yield return new WaitForSeconds(.12f);
             if(IsDead||session==null||session.Player!=this||!session.HasStarted||session.CombatEffectsEnded||session.InputBlocked||CombatEpoch!=epoch||HeroClass!=hero)yield break;
             Vector3 muzzle=BasicAttackMuzzle(ranger);
-            CombatProjectile.BasicShot(this,session,muzzle,muzzle+direction*18f,damage,color,ranger,null,hitBudget);
+            CombatProjectile.BasicShot(this,session,muzzle,BasicAttackRayTarget(muzzle,direction),damage,color,ranger,null,hitBudget);
+        }
+
+        // Preserve each fan ray in the horizontal plane; only aim its elevation at
+        // the nearest body it can actually intersect. No target homing or extra width.
+        private Vector3 BasicAttackRayTarget(Vector3 muzzle,Vector3 direction)
+        {
+            direction=CombatFx.Flat(direction).normalized;
+            Vector3 target=muzzle+direction*18f;float nearest=18f;
+            foreach(var enemy in session.Enemies)
+            {
+                if(!ValidAimTarget(enemy))continue;
+                Vector3 body=EnemyBodyPoint(enemy),delta=CombatFx.Flat(body-muzzle);
+                float along=Vector3.Dot(delta,direction);
+                float width=enemy.ProjectileHitRadius+.22f;
+                if(along<=0||along>nearest||(delta-direction*along).sqrMagnitude>width*width)continue;
+                if(!CombatSight.Direct(muzzle,body))continue;
+                nearest=along;target=muzzle+direction*along;target.y=body.y;
+            }
+            return target;
         }
 
         private Vector3 BasicAttackMuzzle(bool arrow)
@@ -1348,9 +1368,12 @@ namespace Emberfall
                     rangerVault=false;
                     HitArea(transform.position,3.2f*rangerVaultRange,rangerVaultDamage,2.4f,.45f,rangerVaultCast,strictRadius:true);
                     foreach(var enemy in session.Enemies)
-                        if(enemy!=null&&!enemy.IsDead&&(enemy.transform.position-transform.position).sqrMagnitude<=Mathf.Pow(3.2f*rangerVaultRange,2)&&CombatSight.Area(transform.position,enemy.transform.position))
+                        if(enemy!=null&&!enemy.IsDead&&CombatFx.Flat(enemy.transform.position-transform.position).sqrMagnitude<=Mathf.Pow(3.2f*rangerVaultRange,2)&&CombatSight.Area(transform.position,enemy.transform.position))
+                        {
+                            enemy.StatusEffects?.Knockup(.9f,1.35f);
                             enemy.StatusEffects?.Knockdown(1.5f,true);
-                    FilledSkillVfx.Impact(this,transform.position,3.2f*rangerVaultRange,SkillVisualRecipes.Filled(SkillVisualRecipe.Neutral),new Color(1f,.66f,.24f),CombatVisualPriority.ActionBody);
+                        }
+                    FilledSkillVfx.RangerStomp(this,transform.position,3.2f*rangerVaultRange);
                     MobilityBuff(rangerVaultRank);
                 }
             }

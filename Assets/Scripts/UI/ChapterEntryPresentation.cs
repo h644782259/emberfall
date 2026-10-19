@@ -1,10 +1,8 @@
-using System.Globalization;
+﻿using System.Globalization;
 namespace Emberfall
 {
     public static class ChapterEntryPresentation
     {
-        public static string DifficultyName(ChapterDifficulty difficulty)
-        {return difficulty==ChapterDifficulty.Hard?"困难":difficulty==ChapterDifficulty.Heroic?"英雄":"普通";}
         public static string Story(ChapterNode node)
         {
             var definition=ChapterDefinition.Get(node);
@@ -14,18 +12,15 @@ namespace Emberfall
         {return "通关当前阶后解锁下一阶，阶数持续提升。";}
         public static string UnlockHint(ChapterNode node)
         {return node==ChapterNode.Redrock?"通关林庭复明后解锁":node==ChapterNode.StarPlatform?"通关赤岩断供后解锁":"第一段星路 · 随时出发";}
-        public static string DifficultyHint(ChapterDifficulty difficulty,bool unlocked)
-        {return unlocked?(difficulty==ChapterDifficulty.Normal?"标准敌人强度":"生命 ×"+ChapterDefinition.HealthMultiplier(difficulty).ToString("0.##",CultureInfo.InvariantCulture)+" · 伤害 ×"+ChapterDefinition.DamageMultiplier(difficulty).ToString("0.##",CultureInfo.InvariantCulture)):
-            "先解锁本节点";}
-        public static string RewardBreakdown(GameProfile profile,ChapterNode node,ChapterDifficulty difficulty,int tier)
+        public static string RewardBreakdown(GameProfile profile,ChapterNode node,int tier)
         {
             int repeat=ChapterProgression.MaterialReward(node,tier),total=ChapterProgression.CompletionMaterials(profile,node,tier);
-            int bonus=RewardMaterials(profile,node,difficulty,tier)-total;
-            return "通关 "+repeat+(total>repeat?"  +  首次通关 1":"")+(bonus>0?"  +  难度首通 "+bonus:"")+"\n完成挑战后获得奖励";
+
+            return "通关 "+repeat+(total>repeat?"  +  首次通关 1":"")+"\n完成挑战后获得奖励";
         }
-        public static string MasteryProgress(GameProfile profile,ChapterNode node,ChapterDifficulty difficulty)
+        public static string MasteryProgress(GameProfile profile,ChapterNode node)
         {
-            if(profile==null||difficulty==ChapterDifficulty.Normal||(profile.chapterCompletedMask&(1<<(int)node))==0)return "";
+            if(profile==null||(profile.chapterCompletedMask&(1<<(int)node))==0)return "";
             int mask=profile.chapterMasteryMask,required=node==ChapterNode.ForestCourt?1:node==ChapterNode.Redrock?2:12;
             string goal=node==ChapterNode.ForestCourt?"首房至少2敌仍存活时完成封印占领":node==ChapterNode.Redrock?"首房其余5敌仍存活时击败断供目标，再成功撤离":
                 "真实打断首领 "+((mask&4)!=0?"✓":"○")+" / 亲自破锚制造暴露 "+((mask&8)!=0?"✓":"○")+"（可分局）";
@@ -35,26 +30,15 @@ namespace Emberfall
             return "\n可选精通 · "+goal+"。本次节点成功保存才记录；无战斗加成，不影响节点通关。"+
                 (earned?"\n徽记 / 称号「"+badge+"」 · 记录第 "+tier+" 阶":"\n徽记 / 称号「"+badge+"」尚未取得");
         }
-        public static int RewardMaterials(GameProfile profile,ChapterNode node,ChapterDifficulty difficulty,int tier)
+        public static int RewardMaterials(GameProfile profile,ChapterNode node,int tier)
         {
-            int bit=ChapterProgression.DifficultyRewardBit(node,difficulty);
-            return ChapterProgression.CompletionMaterials(profile,node,tier)+(bit!=0&&(profile.chapterDifficultyRewardMask&bit)==0?ChapterProgression.DifficultyFirstRewardMaterials:0);
+            return ChapterProgression.CompletionMaterials(profile,node,tier);
         }
-        public static string Preview(GameProfile profile,ChapterNode node,ChapterDifficulty difficulty,int tier,bool limited)
+        public static string Preview(GameProfile profile,ChapterNode node,int tier,bool limited)
         {
-            string health=ChapterDefinition.HealthMultiplier(difficulty).ToString("0.##",CultureInfo.InvariantCulture);
-            string damage=ChapterDefinition.DamageMultiplier(difficulty).ToString("0.##",CultureInfo.InvariantCulture);
-            int repeat=ChapterProgression.MaterialReward(node,tier),total=ChapterProgression.CompletionMaterials(profile,node,tier);
-            int rewardBit=ChapterProgression.DifficultyRewardBit(node,difficulty);
-            int firstDifficulty=rewardBit!=0&&(profile.chapterDifficultyRewardMask&rewardBit)==0?ChapterProgression.DifficultyFirstRewardMaterials:0;
-            return "敌人生命 ×"+health+" / 伤害 ×"+damage+"\n"+
-                ChapterDefinition.DifficultyMechanic(node,difficulty)+"\n"+
-                "通关当前阶后解锁下一阶。\n"+
+            return "第 "+tier+" 阶\n"+ChapterDefinition.CombatMechanic(node)+"\n通关碎片 "+ChapterProgression.CompletionMaterials(profile,node,tier)+"\n"+TierEffect(node)+MasteryProgress(profile,node);
+        }
 
-                "完成奖励 "+(total+firstDifficulty)+" 碎片（重复 "+repeat+(total>repeat?" + 节点首次1":"")+(firstDifficulty>0?" + 首次4":"")+"）；每节点一次额外奖励；不发旧副本宝箱。\n"+
-                "旧档按合法逐档完成记录一次补领；缺失或非法记录不推断，实际通关后领取。\n"+
-                (!profile.firstClearRewardClaimed?(profile.pendingFirstClearReward?"共享一次首通宝石已待领取；本次不重复。\n":(node==ChapterNode.StarPlatform?"星台通关完成整章，可领取共享一次首通宝石。\n":"首通宝石需完成整章：通关星台；本节点不授予资格。\n")):"")+TierEffect(node)+MasteryProgress(profile,node,difficulty);
-        }
         private static string MechanismReport(ChapterResultSnapshot result)
         {
             if(result.EmberCreated+result.FrostCreated==0)return "";
@@ -78,7 +62,7 @@ namespace Emberfall
             if(result.FirstCoreAvailable)text+="\n首通宝石已可领取（共享一次）";
             if(result.UnlockedNode>=0)text+="\n新节点："+ChapterDefinition.Get((ChapterNode)result.UnlockedNode).Name;
 
-            if(result.Difficulty==ChapterDifficulty.Heroic)text+="\n可挑战第 "+(result.Tier==int.MaxValue?int.MaxValue:result.Tier+1)+" 阶";
+            text+="\n可挑战第 "+(result.Tier==int.MaxValue?int.MaxValue:result.Tier+1)+" 阶";
             if(result.FirstCompletion)text+="\n下一线索 · "+ChapterDefinition.Get(result.Node).NextClue;
             return text+MechanismReport(result);
         }

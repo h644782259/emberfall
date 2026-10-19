@@ -8,7 +8,7 @@ namespace Emberfall
         private ProgressionService smithUpgradeNoticeOwner;
         private bool smithUpgradeNoticeSuccess,smithUpgradeResultOpen,smithReforgeResult;
         private string[] smithReforgeLines=System.Array.Empty<string>();
-        private float smithReforgeStarted,smithUpgradeStarted;
+        private float smithReforgeStarted;
         private void ShowAffixReforgeResult(bool saved,string id)
         {
             var p=session.Progression;var item=p.Profile.inventory.Find(v=>v!=null&&v.id==id);
@@ -61,18 +61,12 @@ namespace Emberfall
             Color accent=smithUpgradeNoticeSuccess?jade:new Color(1f,.43f,.35f);
             Fill(new Rect(0,0,width,height),new Color(0,0,0,.72f));
             blockedRects.Add(new Rect(0,0,width,height));
-            float w=Mathf.Min(420*u,width-24*u),h=Mathf.Min(290*u,height-24*u);
+            float w=Mathf.Min(360*u,width-24*u),h=Mathf.Min(190*u,height-24*u);
             Rect box=new Rect((width-w)*.5f,(height-h)*.5f,w,h);
             Fill(box,card);Border(box,accent,2*u);
             Fill(new Rect(box.x,box.y,w,7*u),accent);
-            Rect badge=new Rect(box.center.x-26*u,box.y+23*u,52*u,52*u);
-            Fill(badge,new Color(accent.r,accent.g,accent.b,.16f));Border(badge,accent);
-            if(smithUpgradeNoticeSuccess&&!EffectPreferences.ReducedEffects)
-                DrawRewardRadiance(badge,accent,Mathf.Clamp01((Time.unscaledTime-smithUpgradeStarted)/1.1f));
-            Text(badge,smithUpgradeNoticeSuccess?"↑":"×",Mathf.RoundToInt(30*u),accent,true,false,TextAnchor.MiddleCenter);
-            Text(new Rect(box.x+20*u,box.y+84*u,w-40*u,32*u),smithUpgradeNoticeSuccess?"强化成功":"强化失败",Mathf.RoundToInt(24*u),accent,true,false,TextAnchor.MiddleCenter);
-            Text(new Rect(box.x+20*u,box.y+122*u,w-40*u,24*u),smithUpgradeNoticeItem,Mathf.RoundToInt(14*u),pale,true,false,TextAnchor.MiddleCenter);
-            Text(new Rect(box.x+20*u,box.y+152*u,w-40*u,h-214*u),smithUpgradeNotice,Mathf.RoundToInt(14*u),pale,false,true,TextAnchor.MiddleCenter);
+            Text(new Rect(box.x+20*u,box.y+30*u,w-40*u,32*u),smithUpgradeNoticeSuccess?"强化成功":"强化失败",Mathf.RoundToInt(24*u),accent,true,false,TextAnchor.MiddleCenter);
+            Text(new Rect(box.x+20*u,box.y+78*u,w-40*u,32*u),smithUpgradeNotice,Mathf.RoundToInt(18*u),pale,true,false,TextAnchor.MiddleCenter);
             if(NavigationButton(new Rect(box.x+24*u,box.yMax-54*u,w-48*u,38*u),"知道了",accent))CloseSmithUpgradeResult();
             if(PopupCloseButton(new Rect(box.xMax-44*u,box.y+10*u,32*u,32*u)))CloseSmithUpgradeResult();
         }
@@ -210,9 +204,9 @@ namespace Emberfall
                             int attempts=p.Profile.equipmentUpgradeAttempts;int oldRank=p.SlotUpgradeRank(slot);
                             bool success=p.UpgradeAtSmith(quote,SmithServiceActive);
                             bool paid=p.Profile.equipmentUpgradeAttempts>attempts;
-                            smithUpgradeNotice=success?"强化等级  +"+oldRank+" → +"+p.SlotUpgradeRank(slot)+"\n消耗 "+cost+" 金币":paid?"强化等级保持 +"+p.SlotUpgradeRank(slot)+"\n消耗 "+cost+" 金币":(string.IsNullOrEmpty(p.LastError)?"本次未执行强化，请检查条件后重试。":p.LastError);
+                            smithUpgradeNotice="等级变化  +"+oldRank+" → +"+p.SlotUpgradeRank(slot);
                             smithUpgradeNoticeOwner=p;smithUpgradeNoticeSlot=p.CurrentSlotId;smithUpgradeNoticeItem=ItemTitle(item);
-                            smithReforgeResult=false;smithUpgradeNoticeSuccess=success;smithUpgradeResultOpen=true;smithUpgradeStarted=Time.unscaledTime;
+                            smithReforgeResult=false;smithUpgradeNoticeSuccess=success;smithUpgradeResultOpen=true;
                             GameAudio.Play(success?SoundCue.ForgeSuccess:paid?SoundCue.ForgeFailure:SoundCue.UI);
                             BlockUITransition();
                         }

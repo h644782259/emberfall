@@ -24,7 +24,7 @@ namespace Emberfall
             if(Id.StartsWith("fashion/"))return p.fashions==null?0:p.fashions.Count;
             if(Id.StartsWith("gear/")){int best=0;if(p.slotUpgradeRanks!=null)foreach(int rank in p.slotUpgradeRanks)best=Math.Max(best,rank);return best;}
             var parts=Id.Split('/');int key;if(parts.Length<2||!int.TryParse(parts[1],out key))return 0;
-            if(parts[0]=="revival")return ChapterProgression.CompletedTier(p,(ChapterNode)key,ChapterDifficulty.Heroic);
+            if(parts[0]=="revival")return ChapterProgression.CompletedTier(p,(ChapterNode)key);
             if(parts[0]=="chapter-unlock")return p.level;
             if(parts[0]=="chapter-clear")return key>=0&&key<3&&(p.chapterCompletedMask&(1<<key))!=0?1:0;
             if(parts[0]=="chapter-band")return p.chapterBestLevels!=null&&key>=0&&key<p.chapterBestLevels.Length?p.chapterBestLevels[key]:0;
