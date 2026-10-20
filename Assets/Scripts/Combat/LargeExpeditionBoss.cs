@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 namespace Emberfall
 {
@@ -75,8 +75,7 @@ namespace Emberfall
             if (beamVisible)
             {
                 Vector3 direction=Quaternion.Euler(0,BeamWorldAngle,0)*Vector3.forward;
-                Vector3 from=phaseCenter+direction*(1.5f*boss.BodyScale),to=ClipBeam(from,phaseCenter+direction*(State.CurrentBeamLength*ArenaSizeRules.LayoutScale(game.DungeonLayout)));
-                if(!WorldTraversal.HasClearSweepCapsule(from,from,BeamDangerRadius)){beamRoot.SetActive(false);return State.OwnsAttacks;}
+                Vector3 from=phaseCenter+direction*(1.5f*boss.BodyScale),to=phaseCenter+direction*(State.CurrentBeamLength*ArenaSizeRules.LayoutScale(game.DungeonLayout));
                 DrawBeam(from,to,direction);
                 if (State.DamagePulse && !game.InputBlocked && !boss.IsDead && !game.Player.IsDead &&
                     BeamContains(game.Player.transform.position,from,to))
@@ -192,13 +191,7 @@ namespace Emberfall
             if (sweepVisual != null) sweepVisual.Draw(from, to, progress, live, boss.CanBeSkillInterrupted);
         }
         private bool BeamContains(Vector3 point,Vector3 from,Vector3 to)
-        {return CombatFx.SegmentDistance(point,from,to)<=BeamDangerRadius&&WorldTraversal.HasClearSweepCapsule(from,to,BeamDangerRadius);}
-        private Vector3 ClipBeam(Vector3 from,Vector3 to)
-        {
-            if(WorldTraversal.HasClearSweepCapsule(from,to,BeamDangerRadius))return to;
-            float low=0,high=1;for(int i=0;i<10;i++){float mid=(low+high)*.5f;if(WorldTraversal.HasClearSweepCapsule(from,Vector3.Lerp(from,to,mid),BeamDangerRadius))low=mid;else high=mid;}
-            return Vector3.Lerp(from,to,low);
-        }
+        {return sweepVisual!=null&&sweepVisual.Contains(point);}
         internal void StopEncounter()
         {
             if(stopped)return;stopped=true;if(State!=null)State.Dispose();ReleaseAnchors();

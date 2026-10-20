@@ -44,6 +44,8 @@ namespace Emberfall
         private readonly AudioClip[] basicAttackClips = new AudioClip[4];
         private int musicTheme=-1,requestedTheme=-1;
         private float musicFade=1f;
+        private bool simulatorPlayback, musicWaitingForLoad;
+        private float musicReadyAt;
         private static readonly string[] MusicNames={"营火微光","荒野行旅","沉星残响","林庭守望","烬河疾行","蚀星战鼓","回廊迷途","林庭复明","赤岩炉心","星台封印","巨影交锋","城镇夜曲"};
         private AudioListener listener;
         private float[] lastPlayed;
@@ -108,6 +110,21 @@ namespace Emberfall
         private static void Bootstrap()
         {
             if (quitting) return;
+            // The simulator shares the host audio scheduler with compilation and
+            // rendering. Give it more headroom before any sources start playing.
+            // Physical devices retain their low-latency audio configuration.
+            if (Application.platform == RuntimePlatform.IPhonePlayer &&
+                SystemInfo.graphicsDeviceName.IndexOf("simulator", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                var configuration = AudioSettings.GetConfiguration();
+                if (configuration.dspBufferSize < 2048)
+                {
+                    configuration.dspBufferSize = 2048;
+                    bool applied = AudioSettings.Reset(configuration);
+                    Debug.Log("Simulator audio buffer: " + AudioSettings.GetConfiguration().dspBufferSize +
+                        " samples; reset=" + applied);
+                }
+            }
             // These are this player's Unity audio controls, never OS mixer settings.
             // Do not overwrite Muted here: an isolated test may mute before scene load.
             AudioListener.pause = false;
@@ -173,6 +190,11 @@ namespace Emberfall
         {
             if (instance != null && instance != this) { Destroy(gameObject); return; }
             instance = this;
+            simulatorPlayback=Application.platform==RuntimePlatform.IPhonePlayer&&
+                SystemInfo.graphicsDeviceName.IndexOf("simulator",StringComparison.OrdinalIgnoreCase)>=0;
+            musicWaitingForLoad=simulatorPlayback;
+            musicReadyAt=Time.realtimeSinceStartup+2f;
+            if(simulatorPlayback)musicFade=0;
             DontDestroyOnLoad(gameObject);
             EnsurePool();
         }
@@ -238,6 +260,25 @@ namespace Emberfall
                 nextListenerCheck = Time.unscaledTime + .5f;
                 EnsureListener();requestedTheme=CurrentMusicTheme();
             }
+            if(simulatorPlayback)
+            {
+                var game=GameSession.Instance;
+                if(game==null||game.SceneLoading)
+                {
+                    musicWaitingForLoad=true;
+                    musicReadyAt=Time.realtimeSinceStartup+1f;
+                    musicFade=0;
+                    if(ambientSource!=null&&ambientSource.isPlaying)
+                    {ambientResumeSample=ambientSource.timeSamples;ambientSource.Stop();}
+                }
+                // Only gate startup/loading recovery, not ordinary gameplay hitches.
+                if(musicWaitingForLoad)
+                {
+                    if(Time.unscaledDeltaTime>.1f)musicReadyAt=Mathf.Max(musicReadyAt,Time.realtimeSinceStartup+1f);
+                    if(game==null||game.SceneLoading||Time.realtimeSinceStartup<musicReadyAt)return;
+                    musicWaitingForLoad=false;
+                }
+            }
             if(!muted&&ambientSource!=null)
             {
                 bool changing=requestedTheme>=0&&requestedTheme!=musicTheme;
@@ -275,6 +316,9 @@ namespace Emberfall
             EnsurePool();EnsureListener();
             ambientSource.enabled=true;
             if (ambientClip == null){musicTheme=requestedTheme=CurrentMusicTheme();ambientClip=MusicClip(musicTheme);}
+            // Prepare the clip silently during bootstrap; play only after loading
+            // has settled, then let Update fade the music in.
+            if(simulatorPlayback&&(musicWaitingForLoad||GameSession.Instance==null||GameSession.Instance.SceneLoading))return;
             ambientSource.clip = ambientClip;
             ambientSource.volume = BackgroundVolume * masterVolume * musicFade;
             ambientSource.mute = false;

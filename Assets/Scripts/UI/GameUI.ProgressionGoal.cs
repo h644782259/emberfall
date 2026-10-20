@@ -46,10 +46,12 @@ namespace Emberfall
             achievementCachedCategory=achievementCategory;visibleAchievementRows.Clear();
             foreach(var row in achievementRows)if(achievementCategory<0||row.Definition.Category==achievementCategory)visibleAchievementRows.Add(row);
         }
-        private float AchievementTileHeight(AchievementDefinition a)
+        private float AchievementTitleHeight(AchievementDefinition a,float width,float u)
+        {return Mathf.Max(26,Style(Mathf.RoundToInt(14*u),true,true).CalcHeight(new GUIContent(a.Title),width-20*u)/u);}
+        private float AchievementTileHeight(AchievementDefinition a,float width,float u)
         {
             int rewards=(a.Gold>0?1:0)+(a.Shards>0?1:0)+(a.Refinement>0?1:0)+(a.Reforge>0?1:0)+(a.RevivalStones>0?1:0)+(a.GearSlot>=0?1:0)+(a.FashionSlotIndex>=0?1:0);
-            return 76+Mathf.Max(1,Mathf.CeilToInt(rewards/3f))*32;
+            return 76+AchievementTitleHeight(a,width,u)-26+Mathf.Max(1,Mathf.CeilToInt(rewards/3f))*32;
         }
         private void DrawAchievements(Rect area,float u)
         {
@@ -65,30 +67,31 @@ namespace Emberfall
             RefreshAchievementCache();var entries=visibleAchievementRows;
             Rect viewport=new Rect(area.x,area.y+42*u,area.width,area.height-42*u);
             int columns=area.width/u>=720?2:1;float gap=10*u,cw=(viewport.width-18*u-(columns-1)*gap)/columns,total=0;
-            for(int i=0;i<entries.Count;i+=columns){float height=0;for(int col=0;col<columns&&i+col<entries.Count;col++)height=Mathf.Max(height,AchievementTileHeight(entries[i+col].Definition));total+=(height+8)*u;}
+            for(int i=0;i<entries.Count;i+=columns){float height=0;for(int col=0;col<columns&&i+col<entries.Count;col++)height=Mathf.Max(height,AchievementTileHeight(entries[i+col].Definition,cw,u));total+=(height+8)*u;}
             achievementScroll=BeginTouchScroll("achievements",viewport,achievementScroll,new Rect(0,0,viewport.width-18*u,Mathf.Max(viewport.height,total)));
             float tileTop=0,rowSize=0;
             for(int i=0;i<entries.Count;i++)
             {
-                if(i%columns==0){if(i>0)tileTop+=rowSize+8*u;rowSize=0;for(int col=0;col<columns&&i+col<entries.Count;col++)rowSize=Mathf.Max(rowSize,AchievementTileHeight(entries[i+col].Definition)*u);}
+                if(i%columns==0){if(i>0)tileTop+=rowSize+8*u;rowSize=0;for(int col=0;col<columns&&i+col<entries.Count;col++)rowSize=Mathf.Max(rowSize,AchievementTileHeight(entries[i+col].Definition,cw,u)*u);}
                 Rect tile=new Rect((i%columns)*(cw+gap),tileTop,cw,rowSize);
                 if(tile.yMax<achievementScroll.y||tile.y>achievementScroll.y+viewport.height)continue;
                 var row=entries[i];var a=row.Definition;bool claimed=row.Claimed,ready=row.Ready;int progress=row.Progress;
                 Fill(tile,card);Border(tile,ready?gold:muted*.3f);
-                Text(new Rect(tile.x+10*u,tile.y+6*u,cw-20*u,26*u),a.Title,Mathf.RoundToInt(14*u),claimed?muted:pale,true);
+                float titleHeight=AchievementTitleHeight(a,cw,u),titleExtra=titleHeight-26;
+                Text(new Rect(tile.x+10*u,tile.y+6*u,cw-20*u,titleHeight*u),a.Title,Mathf.RoundToInt(14*u),claimed?muted:pale,true,true);
                 float barWidth=cw-136*u;
-                Fill(new Rect(tile.x+10*u,tile.y+43*u,barWidth,5*u),muted*.3f);Fill(new Rect(tile.x+10*u,tile.y+43*u,barWidth*progress/a.Target,5*u),jade);
-                Text(new Rect(tile.x+10*u,tile.y+49*u,barWidth,18*u),progress+" / "+a.Target,Mathf.RoundToInt(10*u),muted);
+                Fill(new Rect(tile.x+10*u,tile.y+(43+titleExtra)*u,barWidth,5*u),muted*.3f);Fill(new Rect(tile.x+10*u,tile.y+(43+titleExtra)*u,barWidth*progress/a.Target,5*u),jade);
+                Text(new Rect(tile.x+10*u,tile.y+(49+titleExtra)*u,barWidth,18*u),progress+" / "+a.Target,Mathf.RoundToInt(10*u),muted);
                 var rewards=row.Rewards??(row.Rewards=AchievementRewardPreviews(a));
                 float rw=(cw-20*u)/3;
                 for(int reward=0;reward<rewards.Count;reward++)
                 {
-                    var item=rewards[reward];Rect hit=new Rect(tile.x+10*u+(reward%3)*rw,tile.y+72*u+(reward/3)*32*u,rw-4*u,30*u);
+                    var item=rewards[reward];Rect hit=new Rect(tile.x+10*u+(reward%3)*rw,tile.y+(72+titleExtra)*u+(reward/3)*32*u,rw-4*u,30*u);
                     DrawEntryRewardIcon(new Rect(hit.x,hit.y,26*u,26*u),item,u);
                     Text(new Rect(hit.x+33*u,hit.y,rw-37*u,30*u),item.Quantity>0?item.Quantity.ToString():"×1",Mathf.RoundToInt(11*u),item.QualityColor,true);
                     InspectRewardItem(hit,item,inspectionKey:"achievement:"+a.Id+":"+reward);
                 }
-                if(PrimaryButton(new Rect(tile.xMax-110*u,tile.y+35*u,100*u,32*u),claimed?"已领取":ready?"领取":"未完成",gold,ready))
+                if(PrimaryButton(new Rect(tile.xMax-110*u,tile.y+(35+titleExtra)*u,100*u,32*u),claimed?"已领取":ready?"领取":"未完成",gold,ready))
                     Feedback(p.ClaimAchievement(a.Id),"成就奖励已领取");
             }
             EndTouchScroll();
@@ -126,7 +129,8 @@ namespace Emberfall
             blockedRects.Add(new Rect(0,0,width,height));
             Box(BuildPlanRect(l.Frame,u),jade,false);
             RefreshAchievementCache();
-            Text(BuildPlanRect(l.Header,u),"成就  ·  已达成 "+achievementCompleted+" / "+achievementRows.Count,Mathf.RoundToInt(18*u),pale,true);
+            Rect heading=BuildPlanRect(l.Header,u);heading.width=Mathf.Min(heading.width,(l.Frame.X+l.Frame.Width-234)*u-heading.x);
+            Text(heading,"成就  ·  已达成 "+achievementCompleted+" / "+achievementRows.Count,Mathf.RoundToInt(18*u),pale,true);
             int available=achievementClaimable;
             if(DrawButton(new Rect((l.Frame.X+l.Frame.Width-222)*u,(l.Frame.Y+12)*u,154*u,32*u),"一键领取"+(available>0?" · "+available:""),ButtonRole.Primary,available>0,fontSize:Mathf.RoundToInt(15*u)))Feedback(session.Progression.ClaimAllAchievements(),"成就奖励已领取");
             DrawAchievements(new Rect(l.Body.X*u,l.Body.Y*u,l.Body.Width*u,(l.Frame.YMax-l.Body.Y-16)*u),u);

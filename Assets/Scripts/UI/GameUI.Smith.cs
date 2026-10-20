@@ -278,7 +278,10 @@ namespace Emberfall
                 Fill(new Rect(8*u,(top+rowHeight-8)*u,(w-16)*u,1*u),muted*.18f);
                 for(int variant=0;variant<2;variant++)
                 {
-                    Rect option=new Rect((mechanismX+(stacked?0:variant*(formWidth+8)))*u,(mechanismTop+36+(stacked?variant*66:0))*u,(stacked?right-24:formWidth-8)*u,60*u);
+                    // In the mobile two-column layout, extend the description to
+                    // the same bottom edge as the upgrade/ascension buttons (94+40).
+                    float formHeight=MobileControls.Active&&!stacked?94+40-36:60;
+                    Rect option=new Rect((mechanismX+(stacked?0:variant*(formWidth+8)))*u,(mechanismTop+36+(stacked?variant*66:0))*u,(stacked?right-24:formWidth-8)*u,formHeight*u);
                     bool active=gem.variantUnlocked&&gem.variant==variant;Fill(option,active?new Color(.055f,.19f,.18f):card);Border(option,active?gold:muted*.4f);
                     DrawIcon(new Rect(option.x+5*u,option.y+5*u,16*u,16*u),UIIconAtlas.Utility(active?"confirm":variant==0?"core":"attack"),active?gold:jade);
                     Text(new Rect(option.x+25*u,option.y+2*u,option.width-30*u,22*u),SmithVariantName(gem.mechanic,variant),Mathf.RoundToInt(11*u),active?gold:pale,true,false,TextAnchor.MiddleLeft);

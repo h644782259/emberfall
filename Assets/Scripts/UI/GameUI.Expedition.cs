@@ -34,27 +34,6 @@ namespace Emberfall
 
         private void DrawDungeonSelection(){DrawArenaSelection();}
 
-        private Vector2 branchScroll;
-        private void DrawRoomBranchChoice()
-        {
-            float u=MobileControls.Active?TouchRatio:1;
-            Rect w=Modal(Mathf.Min(width-24,900*u),Mathf.Min(height-24,520*u),"第三房 · 选择侧廊","只进入所选路线；第四房星泉汇合，第五房首领。无额外材料奖励。");
-            Rect viewport=new Rect(w.x+20*u,w.y+105*u,w.width-40*u,Mathf.Max(60*u,w.height-175*u));
-            float cw=(viewport.width-16*u)*.5f;
-            branchScroll=BeginTouchScroll("room-branch",viewport,branchScroll,new Rect(0,0,viewport.width,280*u));
-            for(int i=0;i<2;i++)
-            {
-                RoomBranch branch=i==0?RoomBranch.Seal:RoomBranch.Supply;
-                Rect c=new Rect(i*(cw+16*u),0,cw,270*u);Fill(c,card);Border(c,jade);
-                Text(new Rect(c.x+12*u,c.y+12*u,c.width-24*u,196*u),GameSession.RoomBranchDescription(branch),Mathf.RoundToInt(16*u),pale,false,true);
-                if(PrimaryButton(new Rect(c.x+12*u,c.y+218*u,c.width-24*u,42*u), "进入这条侧廊", gold))
-                {session.ConfirmRoomBranch(branch);BlockUITransition();}
-            }
-            EndTouchScroll();
-            if(NavigationButton(new Rect(w.x+20*u,w.yMax-58*u,w.width-40*u,40*u), "返回第二房 · 暂不选择", jade))
-            {session.CancelRoomBranchChoice();BlockUITransition();}
-        }
-
         private void DrawBlessingChoice()
         {
             if(MobileControls.Active){DrawMobileBlessingChoice();return;}

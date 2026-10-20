@@ -93,8 +93,16 @@ namespace Emberfall
             }
             int size = fontSize > 0 ? fontSize : MobileControls.Active && (rect.height >= 44f * unit || tab) ? TouchFont(15) : 15;
             Rect label = new Rect(rect.x + inset + leading, rect.y, Mathf.Max(0, rect.width - inset * 2f - trailing - leading), rect.height);
-            // Respect the text-size preference; exceptionally long actions wrap rather than clip.
-            bool wrap = Style(size,true).CalcSize(new GUIContent(caption ?? "")).x > label.width;
+            // Prefer the requested size and wrapping. Only compact actions whose
+            // wrapped caption exceeds the hit area need a smaller label.
+            var content=new GUIContent(caption ?? "");
+            bool wrap=Style(size,true).CalcSize(content).x>label.width;
+            int minimum=Mathf.Max(1,Mathf.RoundToInt(8*unit));
+            while(size>minimum&&Style(size,true,wrap).CalcHeight(content,Mathf.Max(1,label.width))>label.height-4*unit)
+            {
+                size--;
+                wrap=Style(size,true).CalcSize(content).x>label.width;
+            }
             Text(label, caption, size, foreground, true, wrap, TextAnchor.MiddleCenter);
             if (trailing > 0)
                 Text(new Rect(rect.xMax - trailing - inset, rect.y, trailing, rect.height), "›", size + 3,

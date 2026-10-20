@@ -15,13 +15,13 @@ namespace Emberfall
     }
     public static class MasteryProgressionRules
     {
-        public const int MaximumRank=35,InitialInvestment=10,EnhancedInvestment=20;
+        public const int MaximumRank=35,InitialInvestment=10;
         public static int Cap(int level)
         {return level<30?0:level<35?5:level<50?10:level<65?15:level<80?20:level<95?30:MaximumRank;}
         public static readonly int FirstUnlockLevel=FindFirstUnlockLevel();
         private static int FindFirstUnlockLevel(){for(int level=1;level<=100;level++)if(Cap(level)>0)return level;return 100;}
         public static readonly string TierSummary=BuildTierSummary();
-        public static readonly string CoreSummary=InitialInvestment+"点初阶 / "+EnhancedInvestment+"点增强 · 仅启用一个核心";
+        public static readonly string CoreSummary=InitialInvestment+"点解锁 · 仅启用一个核心";
         private static string BuildTierSummary()
         {
             string levels="",caps="";int previous=Cap(0);
@@ -180,7 +180,7 @@ namespace Emberfall
             if(IsAttributeGem(mechanic))return "基础属性："+GemAttributeLabel(mechanic)+"加成。首次升华解锁两种形态；3、6、9阶各可升华一次。变体A："+GemFormDescription(mechanic,0,1)+"变体B："+GemFormDescription(mechanic,1,1);
             switch (mechanic)
             {
-                case EquipmentMechanic.FrostEcho: return "变体A：凝霜回响 · 新星首击保留80%伤害；0.7秒后原范围回响造成60%基础伤害并再次控制。变体B：扩散霜环 · 回响范围扩大35%；首击保留65%、回响造成45%基础伤害，适合控制分散敌人。灼燃专精仅减速。";
+                case EquipmentMechanic.FrostEcho: return "变体A：凝霜回响 · 新星首击保留80%伤害；0.7秒后原范围回响造成60%基础伤害并再次控制。变体B：扩散霜环 · 回响范围扩大35%；首击保留65%、回响造成45%基础伤害，适合控制分散敌人。";
                 case EquipmentMechanic.CinderTrail: return "变体A：燎原余烬 · 陨星直伤降低20%，保留完整半径火场；每0.5秒造成首陨基础伤害的10%，共4跳、合计40%，适合覆盖敌群。变体B：凝焰火核 · 陨星直伤降低20%，火场半径缩小30%；每跳约14.3%，共4跳、合计约57.1%，适合集火首领。";
                 case EquipmentMechanic.ReturningBlade: return "普攻伤害 -8%；每1.5秒回刃弹向4米内另一个目标，造成110%基础伤害；回收后强化下一刀，击杀再弹65%。变体B：放弃全部弹射与回收强化，取消普攻-8%；真实完美闪避的反击窗口延至3秒，下次175%反击改窄刺，可沿合法地面前进最多2米。";
                 case EquipmentMechanic.VenomSpread: return "变体A：毒素引爆加成伤害 -20%；每2秒向附近最多2个目标传播1层毒素。变体B：扇形箭改为一发窄幅实体毒矢，直伤240%/360%/480%攻击，仅命中首个拦截目标；无扇形、爆炸和传播，保留普通三毒引爆，能量与冷却不变。";
@@ -229,10 +229,10 @@ namespace Emberfall
         }
         public static string MasteryDescription(MasteryType mastery)
         {
-            return new[] { "每点攻击 +0.3%；核心：技能命中后6秒内下一次普攻追加一次非暴击攻击，初阶60% / 增强100%攻击伤害；冷却6 / 4秒。",
-                "每点生命 +0.5%；核心：受到实际伤害后生命低于50%且存活时，恢复3% / 5%最大生命；冷却12 / 10秒，不会复活。",
-                "每点护甲 +0.75%；核心：完美闪避获得15% / 25%减伤，持续2 / 3秒；冷却8 / 6秒。",
-                "每点普攻回能 +0.1；核心：技能实际消耗累计60 / 45能量，回复8 / 12能量并减冷却0.4 / 0.7秒；冷却8 / 6秒，冷却中不累计。" }[(int)mastery]
+            return new[] { "每点攻击 +0.3%；核心：技能命中后6秒内下一次普攻追加一次非暴击攻击，100%攻击伤害；冷却4秒。",
+                "每点生命 +0.5%；核心：受到实际伤害后生命低于50%且存活时，恢复5%最大生命；冷却10秒，不会复活。",
+                "每点护甲 +0.75%；核心：完美闪避获得25%减伤，持续3秒；冷却6秒。",
+                "每点普攻回能 +0.1；核心：技能实际消耗累计45能量，回复12能量并减冷却0.7秒；冷却6秒，冷却中不累计。" }[(int)mastery]
                 + MasteryProgressionRules.TierSummary+"；"+MasteryProgressionRules.CoreSummary+"。营地可重置职业精通。";
         }
         public const string DamageRules = "暴击：普攻与直接技能每次施法掷骰，延迟命中继承结果；持续伤害、反应和伙伴不暴击。伙伴继承当前攻击与生命及契约阶数，数量与召唤模式影响输出。";

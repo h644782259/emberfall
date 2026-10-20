@@ -23,6 +23,9 @@ namespace Emberfall
             return result;
         }
 
+        public static Texture2D BlinkFollowup(HeroClass hero)
+        {return hero==HeroClass.Arcanist?Load("elementalist-rework/blink-followup"):Skill(hero,0);}
+
         public static Texture2D Skill(HeroClass hero, int skill)
         {
             if(hero==HeroClass.Arcanist&&(skill==0||skill==6||skill==7||skill==9||skill==10)){var revised=Load("elementalist-rework/"+skill.ToString("D2"));if(revised!=null)return revised;}

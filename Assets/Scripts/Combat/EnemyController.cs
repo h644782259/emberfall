@@ -57,7 +57,9 @@ namespace Emberfall
         private float pullUsedThisFrame;
         private BossAttackPolicy.Move previousMove;
         private int bossArchetype;
-        private bool ringVolley, distantSlam;
+        private bool ringVolley, distantSlam, layeredVolley;
+        private int bossFanCount;
+        private BossLayeredStrikes layeredStrikes;
         private int FanCount => ringVolley?12:bossArchetype==2?7:5;
         private float FanAngle(int index) => ringVolley?index*30f:(index-(FanCount-1)*.5f)*(bossArchetype==2?13f:17f);
         private Vector3 walkingDisplacement;
@@ -363,6 +365,7 @@ namespace Emberfall
                 stunTime=Mathf.Max(0,stunTime-dt);hurtTime=Mathf.Max(0,hurtTime-dt);
                 AnimateModel(0,0,hurtTime>0);return;
             }
+            if(layeredStrikes!=null){AnimateModel(0,0,hurtTime>0);return;}
             if (largeBoss != null && largeBoss.Tick(dt))
             {
                 stunTime = Mathf.Max(0, stunTime - dt); hurtTime = Mathf.Max(0, hurtTime - dt);
@@ -666,6 +669,7 @@ namespace Emberfall
             attackNumber++;
             if (IsBoss) { BossAttackPolicy.Move move = ToMove(type); repeatedMove = repeatedMove > 0 && previousMove == move ? repeatedMove+1 : 1; previousMove = move; }
             attackType = type;
+            layeredVolley=IsBoss&&type==AttackType.Fan&&++bossFanCount%2==0;
             ringVolley=IsBoss&&type==AttackType.Fan&&(bossArchetype==4||attackNumber%3==0);
             distantSlam=IsBoss&&type==AttackType.Slam&&bossArchetype==2;
             preparing = true;
@@ -707,12 +711,13 @@ namespace Emberfall
         private Vector3 BoltMuzzle(Vector3 origin,Vector3 flatForward)
         {
             Vector3 at=origin+flatForward*((attackType==AttackType.Fan?1f:.7f)*BodyScale);
-            if(IsBoss)at.y=bossBoltSocket!=null?bossBoltSocket.position.y:origin.y+(largeBoss==null?1.43f*1.48f:2.1f)*BodyScale;
+            if(IsBoss&&attackType==AttackType.Fan)at.y=WorldTraversal.SurfaceHeight(at)+1.1f;
+            else if(IsBoss)at.y=bossBoltSocket!=null?bossBoltSocket.position.y:origin.y+(largeBoss==null?1.43f*1.48f:2.1f)*BodyScale;
             return at;
         }
         private Vector3 BoltDirection(Vector3 muzzle,Vector3 flatForward)
         {
-            if(!IsBoss)return flatForward;
+            if(!IsBoss||attackType==AttackType.Fan)return CombatFx.Flat(flatForward).normalized;
             float height=companionTarget!=null&&companionTarget.IsAlive?companionTarget.PhysicalBodyHeight*.45f:1.1f;
             float distance=Mathf.Max(.1f,CombatFx.Flat(targetPoint-muzzle).magnitude);
             return (flatForward*distance+Vector3.up*(targetPoint.y+height-muzzle.y)).normalized;
@@ -732,6 +737,8 @@ namespace Emberfall
                 chargeEnd = ClipPath(attackOrigin, attackOrigin + chargeDirection * length, true);
                 if(IsBoss)telegraph = EnemyAttackTelegraph.Charge(attackOrigin, chargeEnd, BossChargeHalfWidth);
             }
+            else if(layeredVolley&&attackType==AttackType.Fan)
+                telegraph=EnemyAttackTelegraph.Emitter(attackOrigin);
             else if (IsBoss && (attackType == AttackType.Fan || attackType == AttackType.Bolt))
             {
                 int count = attackType == AttackType.Fan ? FanCount : 2;
@@ -808,7 +815,8 @@ namespace Emberfall
                 {
                     if (attackType == AttackType.Fan)
                     {
-                        for (int i = 0; i < FanCount; i++) CombatProjectile.Hostile(session, muzzle, BoltDirection(muzzle,Quaternion.Euler(0,FanAngle(i),0)*attackForward), damage, BoltSpeed, sourceName: DisplayName);
+                        if(layeredVolley){layeredStrikes=BossLayeredStrikes.Spawn(this,session,attackForward,damage);comboRemaining=0;}
+                        else for (int i = 0; i < FanCount; i++) CombatProjectile.Hostile(session, muzzle, BoltDirection(muzzle,Quaternion.Euler(0,FanAngle(i),0)*attackForward), damage, BoltSpeed, sourceName: DisplayName);
                     }
                     else
                     {

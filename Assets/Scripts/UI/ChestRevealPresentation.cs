@@ -40,7 +40,7 @@ namespace Emberfall
         public static string ChoiceDetail(GameProfile profile,int choice)
         {
             if(choice==2)return "金币 ×1.5 · 无时装\n基础星纹 +1";
-            return "40% 时装 · 非必出\n"+CollectionProgress(profile,choice==0?FashionSlot.Weapon:FashionSlot.Wings);
+            return "60% 时装 · 非必出\n"+CollectionProgress(profile,choice==0?FashionSlot.Weapon:FashionSlot.Wings);
         }
         // A historical choice index is not a box type. Only revision 1 defines supply.
         public static bool IsSupplyReceipt(ChestReward reward)

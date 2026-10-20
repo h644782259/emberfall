@@ -420,7 +420,6 @@ namespace Emberfall
                 else if (chestRecoveryService && panel == Panel.Inventory) DrawInventory();
                 else if (session.IsDead) DrawDeath();
                 else if (session.DungeonSelectionOpen) DrawDungeonSelection();
-                else if (session.RoomBranchChoiceOpen) DrawRoomBranchChoice();
                 else if (session.RunChoices.AwaitingChoice) DrawBlessingChoice();
                 else if((session.ModeFinished||session.DungeonCleared)&&!session.FinishedResultDismissed){if(session.FinishedResultReady){if(DrawStructuredRunRecap(false))CloseSettlement();}else DrawVictoryTransition();}
                 else if (panel == Panel.Inventory) DrawInventory();
@@ -1468,7 +1467,14 @@ namespace Emberfall
             Rect window = new Rect((width - modalWidth) * .5f, (height - modalHeight) * .5f, modalWidth, modalHeight);
             Box(window, jade);
             Fill(new Rect(window.x, window.y, 4, window.height), jade);
-            Text(new Rect(window.x + 24, window.y + 19, modalWidth - 105, 35), title, 27, pale, true);
+            float titleWidth=Mathf.Max(1,modalWidth-105);
+            float titleRoom=string.IsNullOrEmpty(subtitle)?67:39;
+            int titleSize=27;
+            GUIContent titleContent=new GUIContent(title);
+            while(titleSize>16&&(Style(titleSize,true).CalcSize(titleContent).x>titleWidth||
+                Style(titleSize,true).CalcHeight(titleContent,titleWidth)>titleRoom-2))titleSize--;
+            float titleHeight=Mathf.Max(35,Style(titleSize,true).CalcHeight(titleContent,titleWidth)+2);
+            Text(new Rect(window.x + 24, window.y + 19, titleWidth, titleHeight), title, titleSize, pale, true);
             Text(new Rect(window.x + 24, window.y + 60, modalWidth - 100, 23), subtitle, 13, muted);
             Rule(window.x + 24, window.y + 94, modalWidth - 48, jade);
             return window;

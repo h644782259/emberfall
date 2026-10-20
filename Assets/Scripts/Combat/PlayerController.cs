@@ -601,6 +601,8 @@ namespace Emberfall
 
         // Called once for a mobile skill tap before the existing cast/charge path.
         // Selection only changes aim; it never spends energy or starts a cooldown.
+        internal bool UsesFacingSkillAim(int skill)
+        {return HeroClass==HeroClass.Arcanist&&(skill==0||skill==2||skill==9);}
         internal bool IsMobileSelfCenteredSkill(int skill)
         {return HeroClass==HeroClass.Arcanist&&(skill==7);}
         internal void PrepareMobileSkillAim(int skill)
@@ -618,10 +620,10 @@ namespace Emberfall
             var preview=SkillTargetingController.Describe(HeroClass,skill,session.Progression.Profile.skillRanks[skill]);
             if(preview.shape==SkillTargetingController.Shape.Self){enemy=null;point=transform.position;return;}
             float range=preview.distance>0?preview.distance:8f;
-            enemy=ResolveMobileForwardSkillTarget(preview);
+            enemy=UsesFacingSkillAim(skill)?null:ResolveMobileForwardSkillTarget(preview);
             if(enemy!=null){point=CombatFx.Flat(enemy.transform.position);return;}
             // Meteor is a ranged ground skill; other mobile skills keep their existing landing distance.
-            float distance=HeroClass==HeroClass.Arcanist&&skill==1?range*.9f:Mathf.Min(5f,range);
+            float distance=HeroClass==HeroClass.Arcanist&&skill==1?range*.9f:Mathf.Min(HeroClass==HeroClass.Arcanist&&skill==2?10f:5f,range);
             point=CombatFx.Flat(transform.position+transform.forward*distance);
             point=CombatSight.GroundPoint(transform.position,Vector3.ClampMagnitude(point,Mathf.Max(1,session.ArenaRadius-.65f)));
         }
@@ -1444,7 +1446,7 @@ namespace Emberfall
             if(SkillTargetingController.RequiresConfirmation(HeroClass,skill) || !CanBeginSkillTargeting(skill) || !MobilePinnedActionAllowed(skill,true)) return false;
             // Mouse aim is resolved independently of movement. Re-read a selected
             // living target's position here so immediate directional casts face it.
-            if(!IsMobileSelfCenteredSkill(skill))FaceAim();
+            if(!IsMobileSelfCenteredSkill(skill)&&!UsesFacingSkillAim(skill))FaceAim();
             if (SkillChargeController.Duration(HeroClass, skill) > 0) return charge.Begin(skill);
             int before=nextCastId;CastSkill(skill);
             return nextCastId!=before || HasPendingSkillRelease;
@@ -1456,7 +1458,7 @@ namespace Emberfall
             if(!SkillTargetingController.RequiresConfirmation(HeroClass,skill) || !CanBeginSkillTargeting(skill)) return false;
             aimPoint=CombatSight.GroundPoint(transform.position,worldPoint);
             AimTarget=null;
-            if(!IsMobileSelfCenteredSkill(skill))FaceAim();
+            if(!IsMobileSelfCenteredSkill(skill)&&!UsesFacingSkillAim(skill))FaceAim();
             if (SkillChargeController.Duration(HeroClass, skill) > 0) return charge.Begin(skill);
             int before=nextCastId;CastSkill(skill);
             return nextCastId!=before || HasPendingSkillRelease;
@@ -1530,7 +1532,7 @@ namespace Emberfall
             float range = GameBalance.SkillRangeMultiplier(HeroClass,slot,rank);
             Color color = HeroClass==HeroClass.Vanguard?CombatFx.VanguardColor(slot):GameBalance.ClassColor(HeroClass);
             // Mobile elementalist ultimate originates at the player on release, even after moving during charge.
-            Vector3 target = IsMobileSelfCenteredSkill(slot)?transform.position:ResolveSkillGroundTarget(executingChargedSkill ? charge.TargetPoint : aimPoint,range,executingChargedSkill);
+            Vector3 target = IsMobileSelfCenteredSkill(slot)?transform.position:ResolveSkillGroundTarget(executingChargedSkill ? charge.TargetPoint : aimPoint,range*(HeroClass==HeroClass.Arcanist&&slot==2?2f:1f),executingChargedSkill);
             SkillCastConduit.Begin(this,model,slot,rank,castId);
             model.SkillPerformanceBeat(slot,castId);
             ApplyRelicProc(relicGems.SkillCast(slot),target);

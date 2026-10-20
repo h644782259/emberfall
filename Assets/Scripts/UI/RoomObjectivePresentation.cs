@@ -28,7 +28,7 @@ namespace Emberfall
             string title=RoomTactics.Name(run.Room.Objective)+" "+(run.Room.Index+1)+"/5";
             if(run.Finished)return new RoomObjectivePresentation(title,run.Failed?"远征失败":"远征完成",run.Failed?"返回营地再挑战":"领取结算后返回",run.Failed?0:1);
             if(run.DoorUnlocked)return new RoomObjectivePresentation(title,"北门已开","留下清场或前往北门",1);
-            if(run.Room.Interlude)return new RoomObjectivePresentation(title,"选择一项祝福","确认后北门开启",0);
+            if(run.Room.Interlude)return new RoomObjectivePresentation(title,"休整完成","前往北门继续",0);
             if(run.Room.Boss)return new RoomObjectivePresentation(title,"击败首领与护卫","观察首领预警与锚点",0);
             if(run.Room.Objective==RoomObjective.Hunt)return new RoomObjectivePresentation(title,"击败金环魔灵","6米护援 · 遮挡可切断",0);
             bool purify=run.Room.Objective==RoomObjective.Purify;

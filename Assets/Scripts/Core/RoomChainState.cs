@@ -79,7 +79,7 @@ namespace Emberfall
         }
         public bool ChooseInterlude(){if(Finished||!Room.Interlude||DoorUnlocked)return false;DoorUnlocked=true;return true;}
         public bool Next(bool nearDoor,bool blocked)
-        {if(Finished||!DoorUnlocked||!nearDoor||blocked||Room.Index>=4||BranchChoiceOpen||Room.Index==1&&SelectedBranch==RoomBranch.None)return false;SetRoom(new RoomChainPlan(Room.Index+1,Room.Seed,SelectedBranch));return true;}
+        {if(Finished||!DoorUnlocked||!nearDoor||blocked||Room.Index>=4||BranchChoiceOpen)return false;SetRoom(new RoomChainPlan(Room.Index+1,Room.Seed,SelectedBranch));return true;}
         public bool ClaimReward(bool durable){if(!Finished||Failed||RewardClaimed||!durable)return false;RewardClaimed=true;return true;}
         public void Fail(RoomFailureReason reason=RoomFailureReason.Abandoned){if(Finished)return;Failure=reason==RoomFailureReason.None?RoomFailureReason.Abandoned:reason;Failed=Finished=true;DoorUnlocked=false;BranchChoiceOpen=false;}
         public void Dispose(){if(!Finished)Failure=RoomFailureReason.Abandoned;Failed=Finished=true;DoorUnlocked=false;BranchChoiceOpen=false;Room=null;spawned=defeated=new bool[0];}

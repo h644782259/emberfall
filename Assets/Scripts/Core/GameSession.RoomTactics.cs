@@ -4,7 +4,6 @@ namespace Emberfall
     public sealed partial class GameSession
     {
         private int previousRoomSeed=-1, beforePreviousRoomSeed=-1;
-        private readonly DeferredRoomChoice pendingRoomChoice=new DeferredRoomChoice();
         private bool RoomCaptureActive {get{return RoomChainRun!=null&&!RoomChainRun.Finished&&!RoomChainRun.DoorUnlocked&&roomObjectiveMarker!=null;}}
         private bool RoomPurifyLive {get{return RoomChainRun!=null&&!RoomChainRun.Finished&&RoomChainRun.Room.Objective==RoomObjective.Purify;}}
         private Vector3 RoomSealPoint(int index){return DungeonPoint(TacticalRoomGeometry.ExitCapturePoint);}
@@ -53,7 +52,7 @@ namespace Emberfall
             {
                 var run=RoomChainRun;
                 if(run.DoorUnlocked)return "北门已开 · 可撤离或留下获取击杀收益";
-                if(run.Room.Interlude)return "选择星泉祝福";
+                if(run.Room.Interlude)return "休整完成 · 前往北门";
                 if(run.Room.Boss)return "击败首领即可通关";
                 if(run.Room.Objective==RoomObjective.Hunt)return "击败金环供能魔灵 · "+RoomSupport.Hint;
                 if(run.Room.Objective==RoomObjective.Purify)return "净化 "+run.Seals+"/1 · "+RoomSealView(0).Label+" · "+RoomSupport.Hint;
@@ -90,7 +89,6 @@ namespace Emberfall
         private void TickRoomTactics()
         {
             if(RoomChainRun==null||RoomChainRun.Finished||InputBlocked||Player==null)return;
-            if(TryOpenPendingRoomChoice())return;
             if(!RoomChainRun.DoorUnlocked && roomObjectiveMarker!=null)
             {
                 if(RoomPurifyLive)
@@ -129,21 +127,10 @@ namespace Emberfall
         }
         public RoomObjectivePresentation RoomObjectiveView
         {get{return RoomObjectivePresentation.Create(RoomChainRun,RoomCaptureInside,RoomContestantCount,InputBlocked,RoomSupport);}}
-        private bool TryOpenPendingRoomChoice()
-        {
-            bool valid=HasStarted&&InDungeon&&!IsDead&&Player!=null&&RoomChainRun!=null&&!RoomChainRun.Finished&&
-                RoomChainRun.Room.Index==0&&RoomChainRun.DoorUnlocked&&RunChoices.CompletedWave==0;
-            if(!pendingRoomChoice.TryClaim(RoomChainRun==null?null:RoomChainRun.Room,Player==null?-1:Player.CombatEpoch,
-                Time.frameCount,valid,!InputBlocked))return false;
-            RunChoices.PrepareRoomChoice(1,Progression.Profile,MobileControls.Active,runSeed);
-            UpdateTimeScale();return RunChoices.AwaitingChoice;
-        }
         private void OpenRoomGate()
         {
-            if(RoomChainRun!=null&&RoomChainRun.Room.Index==0&&RunChoices.CompletedWave==0&&Player!=null)
-                pendingRoomChoice.Request(RoomChainRun.Room,Player.CombatEpoch,Time.frameCount);
             if(roomExitMarker!=null)roomExitMarker.SetActive(true);
-            Notify(pendingRoomChoice.Pending?"首房完成 · 选择本局打法":"目标完成 · 北门已开");
+            Notify("目标完成 · 北门已开");
         }
     }
 }

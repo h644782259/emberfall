@@ -12,8 +12,28 @@ namespace Emberfall
         public int FashionSlotIndex => Id=="clears/50"?0:Id=="clears/100"?1:-1;
         public AchievementDefinition(string id,string title,int category,int target,int gold,int shards)
         {Id=id;Title=title;Category=category;Target=target;Gold=gold==0?0:Math.Max(500,gold*10);Shards=shards;}
+        public int GemGoalProgress(GameProfile p,bool receiptsOnly)
+        {
+            if(!Id.StartsWith("gem-goal/"))return 0;
+            var goal=Id.Split('/');string kind=goal[1];int threshold=int.Parse(goal[2]);
+            var gems=new System.Collections.Generic.HashSet<int>();
+            if(!receiptsOnly&&p.attachments!=null)foreach(var gem in p.attachments)
+                if(gem!=null&&(kind=="core"||kind=="upgrade"&&gem.upgradeRank>=threshold||kind=="ascend"&&gem.ascensionRank>=threshold||kind=="variant"&&gem.variantUnlocked))gems.Add((int)gem.mechanic);
+            int collection=0;
+            if(p.achievementReceipts!=null)foreach(string receipt in p.achievementReceipts)
+            {
+                if(string.IsNullOrEmpty(receipt))continue;var parts=receipt.Split('/');int key;
+                if(parts.Length<2||!int.TryParse(parts[1],out key))continue;
+                if(kind=="core"&&parts[0]=="gems"){collection=Math.Max(collection,key);continue;}
+                if(parts[0]!=kind)continue;
+                int rank=1;if(parts.Length>2&&!int.TryParse(parts[2],out rank))continue;
+                if(rank>=threshold)gems.Add(key);
+            }
+            return Math.Max(collection,gems.Count);
+        }
         public int Progress(GameProfile p)
         {
+            if(Id.StartsWith("gem-goal/"))return GemGoalProgress(p,false);
             if(Id.StartsWith("refine-max/"))return p.refinementMaxCount;
             if(Id.StartsWith("refine/"))return p.refinementCount;
             if(Id.StartsWith("level/"))return p.level;
@@ -70,9 +90,6 @@ namespace Emberfall
             new AchievementDefinition("dungeon/80","遗迹先行者 · 通关Lv80副本",2,80,1050,12),
             new AchievementDefinition("dungeon/90","遗迹攀登者 · 通关Lv90副本",2,90,1250,14),
             new AchievementDefinition("dungeon/100","遗迹征服者 · 通关Lv100副本",2,100,1500,16),
-            new AchievementDefinition("gems/1","第一颗宝石 · 收集1种宝石",3,1,100,2),
-            new AchievementDefinition("gems/3","宝石匠 · 收集3种宝石",3,3,300,4),
-            new AchievementDefinition("gems/9","宝石收藏家 · 收集9种宝石",3,9,800,8),
             new AchievementDefinition("fashion/1","焕然一新 · 收集1件时装",3,1,100,2),
             new AchievementDefinition("fashion/3","衣橱初成 · 收集3件时装",3,3,300,4),
             new AchievementDefinition("fashion/6","风格大师 · 收集6件时装",3,6,800,8)
@@ -96,25 +113,31 @@ namespace Emberfall
                 string name=GameBalance.ClassName((HeroClass)hero);
                 string[] tasks={"普攻命中并回复能量","成功闪避一次预警攻击",new[]{"完美闪避后反击命中","碎冰命中或刷新灼烧","引爆三层毒素","召唤物命中目标"}[hero],"穿戴一件装备"};
                 for(int step=0;step<4;step++)all.Add(new AchievementDefinition("trial/"+hero+"/"+step,name+" · "+tasks[step],1,1,step==2?50:25,1));
-                foreach(var gem in hero==0?BuildCatalog.GemsFor(HeroClass.Vanguard):new EquipmentMechanic[0])
-                {
-                    string id=((int)gem).ToString(),title=BuildCatalog.GemName(gem);
-                    all.Add(new AchievementDefinition("core/"+id,"获得 "+title,3,1,50,1));
-                    all.Add(new AchievementDefinition("upgrade/"+id,title+" · 升至1阶",4,1,50,1));
-                    foreach(int rank in new[]{3,6,9})all.Add(new AchievementDefinition("upgrade/"+id+"/"+rank,title+" · 升至"+rank+"阶",4,rank,rank*50,2));
-                    foreach(int stage in new[]{2,3})all.Add(new AchievementDefinition("ascend/"+id+"/"+stage,title+" · 完成"+stage+"次升华",4,stage,stage*100,3));
-                    if(BuildCatalog.HasMechanicVariant(gem))all.Add(new AchievementDefinition("variant/"+id,title+" · 解锁机制形态",4,1,50,1));
-                    all.Add(new AchievementDefinition("ascend/"+id,title+" · 完成首次升华",4,1,50,1));
-                }
+            }
+            for(int count=1;count<=Math.Min(3,MaximumMountedGemsPerSlot*3);count++)
+            {
+                all.Add(new AchievementDefinition("gem-goal/core/1/"+count,"收集任意 "+count+" 个宝石",3,count,count*100,2));
+                foreach(int rank in new[]{1,3,6,9})all.Add(new AchievementDefinition("gem-goal/upgrade/"+rank+"/"+count,"任意 "+count+" 个宝石升至 "+rank+" 阶",4,count,rank*50,2));
+                foreach(int stage in new[]{1,2,3})all.Add(new AchievementDefinition("gem-goal/ascend/"+stage+"/"+count,"任意 "+count+" 个宝石完成 "+stage+" 次升华",4,count,stage*100,3));
+                all.Add(new AchievementDefinition("gem-goal/variant/1/"+count,"任意 "+count+" 个宝石解锁机制形态",4,count,50,1));
             }
             foreach(int rank in new[]{10,30,50})all.Add(new AchievementDefinition("gear/"+rank,"任一部位强化至 +"+rank,4,rank,rank*20,rank/5));
             return all.ToArray();
         }
+        private static bool LegacyGemAchievementReceipt(string id)
+        {
+            if(string.IsNullOrEmpty(id))return false;
+            var parts=id.Split('/');int key;
+            if(parts.Length<2||parts.Length>3||!int.TryParse(parts[1],out key))return false;
+            if(parts[0]=="gems")return parts.Length==2&&(key==1||key==3||key==9);
+            if(parts[0]!="core"&&parts[0]!="upgrade"&&parts[0]!="ascend"&&parts[0]!="variant")return false;
+            if(!Enum.IsDefined(typeof(EquipmentMechanic),key)||key==0)return false;
+            int rank;return parts.Length==2||int.TryParse(parts[2],out rank)&&rank>=1&&rank<=9;
+        }
         private static void MigrateAchievementReceipts(GameProfile p)
         {
             if(p.achievementReceipts==null)p.achievementReceipts=new System.Collections.Generic.List<string>();
-            if(p.growthRewardReceipts==null)return;
-            foreach(string receipt in p.growthRewardReceipts)
+            foreach(string receipt in p.growthRewardReceipts??new System.Collections.Generic.List<string>())
             {
                 if(string.IsNullOrEmpty(receipt))continue;var parts=receipt.Split('/');if(parts.Length<3||parts[0]!="growth")continue;
                 string id=null;
@@ -124,11 +147,15 @@ namespace Emberfall
                     if(parts[2]=="tier"){int tier;if(int.TryParse(parts[3],out tier)&&(tier==1||tier==5||tier==10))id="dungeon/"+(tier*10);}
                     else id=parts[2]+"/"+parts[3];
                 }
-                if(id!=null&&Array.Find(Achievements,a=>a.Id==id)!=null&&!p.achievementReceipts.Contains(id))p.achievementReceipts.Add(id);
+                if(id!=null&&(Array.Find(Achievements,a=>a.Id==id)!=null||id.StartsWith("core/")||id.StartsWith("upgrade/")||id.StartsWith("ascend/")||id.StartsWith("variant/"))&&!p.achievementReceipts.Contains(id))p.achievementReceipts.Add(id);
             }
         }
         public bool AchievementClaimed(string id)
-        {return Profile.achievementReceipts!=null&&Profile.achievementReceipts.Contains(id);}
+        {
+            if(Profile.achievementReceipts!=null&&Profile.achievementReceipts.Contains(id))return true;
+            var achievement=Array.Find(Achievements,a=>a.Id==id);
+            return achievement!=null&&id.StartsWith("gem-goal/")&&achievement.GemGoalProgress(Profile,true)>=achievement.Target;
+        }
         public int ClaimableAchievements
         {get{int count=0;foreach(var a in AvailableAchievements)if(!AchievementClaimed(a.Id)&&a.Progress(Profile)>=a.Target)count++;return count;}}
         public bool ClaimAllAchievements()

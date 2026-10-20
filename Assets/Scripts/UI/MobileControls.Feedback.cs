@@ -57,7 +57,6 @@ namespace Emberfall
             }
             if(hero.BlinkFollowupRemaining>0)
             {
-                LabelControl(Dodge,hero.BlinkFollowupName,false);
                 Rect action=VisualRect(Dodge);GUI.color=new Color(1f,.75f,.25f,EffectPreferences.TouchOpacity);
                 GUI.DrawTexture(new Rect(action.x,action.yMax+2,action.width*Mathf.Clamp01(hero.BlinkFollowupRemaining/1.2f),3),Texture2D.whiteTexture);GUI.color=Color.white;
             }

@@ -13,7 +13,7 @@ namespace Emberfall
   public string RoomObjectiveStatus {get{return RoomChainRun==null?"":RoomChainRun.Finished?(RoomChainRun.Failed?"远征结束 · 返回营地":"远征完成 · 领取结算"):"房间 "+(RoomChainRun.Room.Index+1)+" / 5 · "+TacticalObjectiveStatus;}}
   private void ResetRoomChain(bool dungeon)
   {
-   pendingRoomChoice.Cancel();ResetRoomGenerationDiagnostics();
+   ResetRoomGenerationDiagnostics();
    if(RoomChainRun!=null)RoomChainRun.Dispose();RoomChainRun=null;roomEnemies.Clear();roomExitMarker=null;roomObjectiveMarker=null;roomSealMarkers[0]=roomSealMarkers[1]=null;roomSupplier=null;roomResultRecorded=false;
    if(dungeon&&!ChapterActive&&SelectedArenaMode==3){if(retryingRoomChain)runSeed=roomRetrySeed;else{runSeed=RoomTactics.NextSeed(runSeed,previousRoomSeed,beforePreviousRoomSeed);beforePreviousRoomSeed=previousRoomSeed;previousRoomSeed=runSeed;}RoomChainRun=new RoomChainState(runSeed,retryingRoomChain?roomRetryBranch:RoomBranch.None);roomRetryTier=DungeonTier;roomRetryLimited=ChallengeRun;DungeonLayout=RoomChainRun.Room.Layout;modeReceipt=System.Guid.NewGuid().ToString("N");}
   }
@@ -26,7 +26,7 @@ namespace Emberfall
    BuildRoomObjective();if(RoomChainRun.Finished){FinalizeRoomChain();return;}
    if(plan.Index==RoomTactics.EventRoom(runSeed)){RoomGenerationStage("支线晶核");BuildSideEvent();}
    if(plan.Interlude)
-   {Player.Heal(Player.MaxHealth*.25f);RunChoices.PrepareRoomChoice(2,Progression.Profile,MobileControls.Active,runSeed);UpdateTimeScale();return;}
+   {Player.Heal(Player.MaxHealth*.25f);RoomChainRun.ChooseInterlude();OpenRoomGate();UpdateTimeScale();return;}
    var occupied=new List<Vector3>();
    for(int index=0;index<plan.EnemyCount;index++)
    {
@@ -75,8 +75,7 @@ namespace Emberfall
   }
   public bool EnterNextRoom()
   {
-   if(RoomChainRun==null||!NearRoomExit||InputBlocked||pendingRoomChoice.Pending)return false;
-   if(RoomChainRun.OpenBranchChoice()){SuspendInputs();UpdateTimeScale();return false;}
+   if(RoomChainRun==null||!NearRoomExit||InputBlocked)return false;
    if(!SaveBeforeLeaving())return false;
    return EnterNextRoomAfterSave();
   }
@@ -101,19 +100,8 @@ namespace Emberfall
    catch(System.Exception error){FailRoomGeneration("构建异常",error);return false;}
    finally{changingZone=false;UpdateTimeScale();}
   }
-  private bool ConfirmRoomInterlude(int index)
-  {
-   if(RoomChainRun==null||RoomChainRun.Finished||!HasStarted||!InDungeon||IsDead||Paused||pauseState.BackgroundPaused)return false;
-   bool first=RoomChainRun.Room.Index==0&&RoomChainRun.DoorUnlocked&&RunChoices.CompletedWave==1;
-   bool second=RoomChainRun.Room.Interlude&&!RoomChainRun.DoorUnlocked&&RunChoices.CompletedWave==2;
-   if((!first&&!second)||!RunChoices.Choose(index))return false;
-   if(second&&!RoomChainRun.ChooseInterlude())return false;
-   if(roomExitMarker!=null)roomExitMarker.SetActive(true);UpdateTimeScale();Notify(second?"祝福已选 · 北门通往最终首领":"祝福已选 · 继续下一间");return true;
-  }
-
   private void FinalizeRoomChain()
   {
-   if(RoomChainRun!=null&&RoomChainRun.Finished)pendingRoomChoice.Cancel();
    if(RoomChainRun==null||!RoomChainRun.Finished||roomResultRecorded)return;
    roomResultRecorded=true;DungeonCleared=!RoomChainRun.Failed;
    if(DungeonCleared){RetireRemainingEncounterEnemies();roomEnemies.Clear();TrySettleRoomReward();BeginVictoryTransition();GameAudio.Play(SoundCue.Victory);}

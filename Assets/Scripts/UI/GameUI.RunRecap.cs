@@ -63,11 +63,14 @@ namespace Emberfall
             Rect frame=new Rect((width-fw)*.5f,(height-fh)*.5f,fw,fh);
             Box(frame,gold);blockedRects.Add(frame);
             if(PopupCloseButton(new Rect(frame.xMax-48*u,frame.y+6*u,40*u,36*u)))return true;
-            Text(new Rect(frame.x+16*u,frame.y+8*u,fw-80*u,32*u),session.LastRunRecap!=null&&!session.LastRunRecap.Won?"挑战结束":"结算与奖励",Mathf.RoundToInt(22*u),gold,true);
+            string title=session.LastRunRecap!=null&&!session.LastRunRecap.Won?"挑战结束":"结算与奖励";
+            int titleSize=Mathf.RoundToInt(22*u);
+            float titleHeight=Mathf.Max(32*u,Style(titleSize,true,true).CalcHeight(new GUIContent(title),fw-80*u));
+            Text(new Rect(frame.x+16*u,frame.y+8*u,fw-80*u,titleHeight),title,titleSize,gold,true,true);
             var snapshot=session.LastRunRecap;
             var data=snapshot==null?null:new RunRecapPresentation(snapshot);
             bool spacious=fh>=460*u;
-            float contentWidth=fw-32*u,top=frame.y+48*u,metricHeight=(spacious?80:48)*u;
+            float contentWidth=fw-32*u,top=frame.y+8*u+titleHeight+16*u,metricHeight=(spacious?80:48)*u;
             if(data!=null)
             {
                 float cw=(contentWidth-16*u)/5;
@@ -75,7 +78,11 @@ namespace Emberfall
                 {
                     var metric=data.Metrics[i];Rect tile=new Rect(frame.x+16*u+i*(cw+4*u),top,cw,metricHeight);
                     Fill(tile,card);DrawIcon(new Rect(tile.x+5*u,tile.y+6*u,(spacious?24:16)*u,(spacious?24:16)*u),UIIconAtlas.Utility(RunRecapPresentation.IconFor(metric.Key)),jade);
-                    Text(new Rect(tile.x+(spacious?34:23)*u,tile.y+2*u,tile.width-(spacious?38:26)*u,(spacious?43:23)*u),metric.Value.ToString("N0"),Mathf.RoundToInt((spacious?24:15)*u),pale,true,false,TextAnchor.MiddleRight);
+                    string value=CombatNumberFormat.Compact(metric.Value);
+                    Rect numberRect=new Rect(tile.x+(spacious?34:23)*u,tile.y+2*u,tile.width-(spacious?38:26)*u,(spacious?43:23)*u);
+                    int numberSize=Mathf.RoundToInt((spacious?24:15)*u);
+                    while(numberSize>1){Vector2 measured=Style(numberSize,true).CalcSize(new GUIContent(value));if(measured.x<=numberRect.width&&measured.y<=numberRect.height)break;numberSize--;}
+                    Text(numberRect,value,numberSize,pale,true,false,TextAnchor.MiddleRight);
                     Text(new Rect(tile.x+3*u,tile.y+(spacious?50:26)*u,tile.width-6*u,22*u),metric.Key,Mathf.RoundToInt((spacious?13:10)*u),muted,false,false,TextAnchor.MiddleCenter);
                 }
             }

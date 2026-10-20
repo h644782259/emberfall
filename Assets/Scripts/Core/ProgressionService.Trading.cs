@@ -147,7 +147,7 @@
         {return fashion==null||fashion.upgradeRank>=MaximumFashionRank?0:6*(fashion.upgradeRank+1);}
         public static int FashionDismantleValue(FashionData fashion)
         {return fashion==null?0:2+2*(int)fashion.AppearanceRarity+3*fashion.upgradeRank*(fashion.upgradeRank+1);}
-        public static int FashionBaseStat(FashionData fashion,string stat)
+        public static float FashionBaseStat(FashionData fashion,string stat)
         {
             if(fashion==null)return 0;
             int q=(int)fashion.rarity;
@@ -155,12 +155,12 @@
             else {if(stat=="攻击")return WeaponPercents[q];if(stat=="暴击率")return WeaponPercents[q];}
             return 0;
         }
-        public static int FashionRankStat(FashionData fashion,string stat)
+        public static float FashionRankStat(FashionData fashion,string stat)
         {
             if(fashion==null)return 0;
             int r=System.Math.Max(0,System.Math.Min(MaximumFashionRank,fashion.upgradeRank));
-            if(fashion.slot==FashionSlot.Wings){if(stat=="生命")return 5*r;if(stat=="防御")return 4*r;if(stat=="移动速度")return r;if(stat=="受到伤害减免")return 2*System.Math.Max(0,r-1);}
-            else {if(stat=="攻击")return 5*r;if(stat=="暴击率")return 3*r;if(stat=="暴击伤害")return 5*System.Math.Max(0,r-1);}
+            if(fashion.slot==FashionSlot.Wings){if(stat=="生命")return 7.5f*r;if(stat=="防御")return 6f*r;if(stat=="移动速度")return 1.5f*r;if(stat=="受到伤害减免")return 3f*System.Math.Max(0,r-1);}
+            else {if(stat=="攻击")return 7.5f*r;if(stat=="暴击率")return 4.5f*r;if(stat=="暴击伤害")return 7.5f*System.Math.Max(0,r-1);}
             return 0;
         }
         public static string FashionBonus(FashionData fashion)
@@ -168,8 +168,8 @@
             if(fashion==null)return "";
             int q=(int)fashion.rarity,r=System.Math.Max(0,System.Math.Min(MaximumFashionRank,fashion.upgradeRank));
             return fashion.slot==FashionSlot.Wings?
-                "生命 +"+(WingHealthPercents[q]+5*r)+"% · 防御 +"+(WingArmorPercents[q]+4*r)+"% · 移动速度 +"+(WingMovePercents[q]+r)+"%"+(r>=2?" · 受到伤害减免 +"+(2*(r-1))+"%":""):
-                "攻击 +"+(WeaponPercents[q]+5*r)+"% · 暴击率 +"+(WeaponPercents[q]+3*r)+"%"+(r>=2?" · 暴击伤害 +"+(5*(r-1))+"%":"");
+                "生命 +"+(WingHealthPercents[q]+7.5f*r)+"% · 防御 +"+(WingArmorPercents[q]+6f*r)+"% · 移动速度 +"+(WingMovePercents[q]+1.5f*r)+"%"+(r>=2?" · 受到伤害减免 +"+(3f*(r-1))+"%":""):
+                "攻击 +"+(WeaponPercents[q]+7.5f*r)+"% · 暴击率 +"+(WeaponPercents[q]+4.5f*r)+"%"+(r>=2?" · 暴击伤害 +"+(7.5f*(r-1))+"%":"");
         }
         public FashionData PreviewFashionUpgrade(string id)
         {

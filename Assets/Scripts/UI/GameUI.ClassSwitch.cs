@@ -36,10 +36,12 @@ namespace Emberfall
             int columns=body.width/u<600?2:4,rows=(4+columns-1)/columns;
             float gap=12*u,cardWidth=(body.width-18*u-(columns-1)*gap)/columns;
             float cardHeight=columns==2?240*u:Mathf.Min(350*u,body.height-48*u);
-            float total=rows*(cardHeight+gap)+40*u;
+            string reason=session.ClassSwitchLockReason();
+            string notice=!string.IsNullOrEmpty(classSwitchMessage)?classSwitchMessage:!string.IsNullOrEmpty(reason)?reason:"选择职业后确认切换";
+            float noticeHeight=Mathf.Max(32*u,Style(Mathf.RoundToInt(13*u),false,true).CalcHeight(new GUIContent(notice),body.width-18*u));
+            float total=rows*(cardHeight+gap)+noticeHeight+8*u;
             classSelectionScroll=BeginTouchScroll("class-selection-models",body,classSelectionScroll,new Rect(0,0,body.width-18*u,Mathf.Max(body.height,total)));
             float top=0;
-            string reason=session.ClassSwitchLockReason();
             for(int i=0;i<4;i++)
             {
                 var hero=(HeroClass)i;bool current=hero==session.Progression.Profile.heroClass;
@@ -56,7 +58,7 @@ namespace Emberfall
                     else {classSwitchOwner=session.Progression;classSwitchHero=session.Player;classSwitchOpen=true;PreviewClassSwitch(hero);BlockUITransition();EndTouchScroll();return;}
                 }
             }
-            Text(new Rect(0,rows*(cardHeight+gap),body.width-18*u,32*u),!string.IsNullOrEmpty(classSwitchMessage)?classSwitchMessage:!string.IsNullOrEmpty(reason)?reason:"选择职业后确认切换",Mathf.RoundToInt(13*u),gold,false,true,TextAnchor.MiddleCenter);
+            Text(new Rect(0,rows*(cardHeight+gap),body.width-18*u,noticeHeight),notice,Mathf.RoundToInt(13*u),gold,false,true,TextAnchor.MiddleCenter);
             EndTouchScroll();
         }
         private bool CloseClassSwitchSurface()

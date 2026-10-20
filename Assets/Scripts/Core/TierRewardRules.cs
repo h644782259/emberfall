@@ -33,13 +33,14 @@ namespace Emberfall
         public static string Name(int target){return target==8?"战技源晶":target==7?"词条重铸石":"时装";}
         public static string Caption(GameProfile p,int target){return Caption(p,target,p.pendingChestChapterSource);}
         public static string Caption(GameProfile p,int target,bool chapter)
-        {int left=Limit-Misses(p,target,chapter);return left==1?"下一箱必出"+Name(target):"再开 "+left+" 箱内必出"+Name(target);}
+        {int left=Limit-Misses(p,target,chapter);return left==1?"下一箱必出"+(target==2?"史诗或传说时装":Name(target)):"再开 "+left+" 箱，必出"+(target==2?"史诗或传说时装":Name(target));}
         public static string Rules(int target)
-        {return "连续未获得"+Name(target)+"时，第10箱必出；获得后重新计数。"+(target==2?"重复时装转为星纹。":"");}
-        public static void Record(GameProfile p,int drawnKind)
+        {if(target==2)return "普通宝箱时装60%：普通27% · 稀有18% · 史诗12% · 传说3%。连续9箱未获得史诗或传说时装，第10箱必出史诗或传说时装（史诗80% · 传说20%）；仅获得史诗或传说时装后重新计数，普通和稀有时装不重置。重复时装转为星纹。";return "连续未获得"+Name(target)+"时，第10箱必出；获得后重新计数。"+(target==2?"重复时装转为星纹。":"");}
+        public static void Record(GameProfile p,int drawnKind,Rarity rarity=Rarity.Common)
         {
             int target=Target(p);if(target==0)return;
-            int next=drawnKind==target?0:Math.Min(Limit-1,Misses(p,target)+1);
+            bool matches=drawnKind==target&&(target!=2||rarity==Rarity.Epic||rarity==Rarity.Legendary);
+            int next=matches?0:Math.Min(Limit-1,Misses(p,target)+1);
             if(target==8)p.forestCrystalMisses=next;else if(target==7){if(p.pendingChestChapterSource)p.redrockReforgeMisses=next;else p.arenaReforgeMisses=next;}else p.corridorFashionMisses=next;
         }
     }
@@ -74,7 +75,7 @@ namespace Emberfall
         public static int PotionChance(int tier){return 12+3*TierRewardBand.Of(tier);}
         public const int LegendaryPityChests=30;
         // Ordinary saves store a level index (1 = Lv10); chapters store their tier.
-        public static int LegendaryChance(int tier){return Math.Min(25,4+TierRewardBand.Clamp(tier)-1);}
+        public static int LegendaryChance(int tier){return 7;}
         private static void Validate(int mode){if(mode < -1 || mode > 3)throw new ArgumentOutOfRangeException(nameof(mode));}
         public static ItemSlot EquipmentSlot(int mode,int index)
         {Validate(mode);if(index<0||index>=8)throw new ArgumentOutOfRangeException(nameof(index));return mode==0?ItemSlot.Armor:mode==1?ItemSlot.Relic:mode==3?(index%2==0?ItemSlot.Armor:ItemSlot.Relic):ItemSlot.Weapon;}

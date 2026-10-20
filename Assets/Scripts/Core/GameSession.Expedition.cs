@@ -202,7 +202,7 @@ namespace Emberfall
             if(SceneLoading)return false;
             if(Progression.Profile.pendingFashionChest||Progression.Profile.pendingChestReveal)return false;
             if(ChapterActive)return false;
-            if(RoomChainRun!=null)return ConfirmRoomInterlude(index);
+            if(RoomChainRun!=null)return false;
             if(ModeRun!=null)return ConfirmArenaBlessing(index);
             if (!InDungeon || IsDead || DungeonCleared || Enemies.Count > 0 || wavePreparing || !RunChoices.Choose(index)) return false;
             if(!Progression.SaveDungeonCheckpoint())Notify(Progression.LastError);

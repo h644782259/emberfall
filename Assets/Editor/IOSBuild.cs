@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.Build;
@@ -70,8 +71,10 @@ namespace Emberfall.Editor
             bool previousTimingStats = PlayerSettings.enableFrameTimingStats;
             bool development = Argument("-emberfallIosDevelopment") == "true";
             string previousTeam = PlayerSettings.iOS.appleDeveloperTeamID;
+            var simulatorTextures = new List<KeyValuePair<string, byte[]>>();
             try
             {
+                if (sdk == "simulator") PrepareSimulatorTextures(simulatorTextures);
                 // No developer identity or signing credential is embedded in source.
                 PlayerSettings.iOS.appleDeveloperTeamID = teamId;
                 PlayerSettings.enableFrameTimingStats = Argument("-emberfallIosFrameTiming") == "true";
@@ -95,6 +98,41 @@ namespace Emberfall.Editor
                 // Keep a CLI-provided personal team out of saved project settings.
                 PlayerSettings.iOS.appleDeveloperTeamID = previousTeam;
                 PlayerSettings.enableFrameTimingStats = previousTimingStats;
+                RestoreSimulatorTextures(simulatorTextures);
+            }
+        }
+
+        private static void PrepareSimulatorTextures(List<KeyValuePair<string, byte[]>> originals)
+        {
+            foreach (string guid in AssetDatabase.FindAssets("t:Texture2D", new[] { "Assets" }))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+                if (importer == null) continue;
+                var original = importer.GetPlatformTextureSettings("iPhone");
+                var format = original.overridden && original.format != TextureImporterFormat.Automatic
+                    ? original.format : importer.GetAutomaticFormat("iPhone");
+                if (!format.ToString().StartsWith("ASTC", StringComparison.Ordinal)) continue;
+                originals.Add(new KeyValuePair<string, byte[]>(path, File.ReadAllBytes(path + ".meta")));
+                var compatible = new TextureImporterPlatformSettings();
+                original.CopyTo(compatible);
+                compatible.name = "iPhone";
+                compatible.overridden = true;
+                compatible.format = format.ToString().Contains("HDR") ? TextureImporterFormat.RGBAHalf : TextureImporterFormat.RGBA32;
+                compatible.crunchedCompression = false;
+                importer.SetPlatformTextureSettings(compatible);
+                importer.SaveAndReimport();
+            }
+            Debug.Log("Simulator: exported " + originals.Count + " ASTC textures as uncompressed pixel data; original dimensions retained.");
+        }
+
+        private static void RestoreSimulatorTextures(List<KeyValuePair<string, byte[]>> originals)
+        {
+            foreach (var entry in originals)
+            {
+                File.WriteAllBytes(entry.Key + ".meta", entry.Value);
+                try { AssetDatabase.ImportAsset(entry.Key, ImportAssetOptions.ForceUpdate); }
+                finally { File.WriteAllBytes(entry.Key + ".meta", entry.Value); }
             }
         }
 

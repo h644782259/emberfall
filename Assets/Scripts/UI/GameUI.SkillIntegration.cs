@@ -70,13 +70,27 @@ namespace Emberfall
             if(!compact)Text(new Rect(0,statsY,w,24*u),(ranged?"每发 ":"伤害 ")+(perShot*100).ToString("0.#")+"% · "+(ranged?"单体上限 "+(SkillDamageBudgets.BasicCoefficient(p.Profile.heroClass)*BasicAttackGrowth.TargetMultiplier(tier)*100).ToString("0.#")+"% · ":"")+"回能 "+SkillDamageBudgets.BasicEnergyOnHit.ToString("0"),Mathf.RoundToInt(11*u),jade);
             EndTouchScroll();
             float footerY=r.yMax-54*u;
-            Text(new Rect(r.x+12*u,footerY,r.width-174*u,20*u),tier>=4?"已达最高档":"消耗 "+cost+"   /   持有 "+p.Profile.basicAttackMaterials,Mathf.RoundToInt(12*u),p.Profile.basicAttackMaterials>=cost?gold:muted,true);
             string reason=p.BasicAttackUpgradeLockReason();
-            Text(new Rect(r.x+12*u,footerY+23*u,r.width-174*u,18*u),tier>=4?"":reason.Length>0?reason:"下一档  "+(tier+1)+"档",Mathf.RoundToInt(10*u),muted);
+            Rect material=new Rect(r.x+12*u,footerY,r.width-174*u,42*u);
+            Fill(material,new Color(.025f,.055f,.07f));Border(material,gold*.35f);
+            if(tier>=4)
+                Text(material,"✓ 满档",Mathf.RoundToInt(14*u),gold,true,false,TextAnchor.MiddleCenter);
+            else
+            {
+                DrawIcon(new Rect(material.x+8*u,material.y+7*u,28*u,28*u),UIIconAtlas.Utility("basic-attack"),Color.white);
+                string amount="<color="+(p.Profile.basicAttackMaterials>=cost?"#EAC77A":"#EE997F")+">"+p.Profile.basicAttackMaterials+"</color> / "+cost;
+                Text(new Rect(material.x+42*u,material.y,material.width-48*u,material.height),amount,Mathf.RoundToInt(14*u),pale,true,false,TextAnchor.MiddleCenter);
+                InspectRewardItem(material,ResourceItemPreview("basic-attack",cost),true);
+            }
             Rect button=new Rect(r.xMax-150*u,footerY,138*u,42*u);
-            bool clicked=PrimaryButton(button,"",gold,reason.Length==0);
-            DrawIcon(new Rect(button.x+23*u,button.y+9*u,24*u,24*u),UIIconAtlas.Utility("basic-attack"),gold);
-            Text(new Rect(button.x+55*u,button.y,70*u,button.height),tier>=4?"满档":"升级",Mathf.RoundToInt(15*u),reason.Length==0?pale:muted,true,false,TextAnchor.MiddleLeft);
+            bool clicked=PrimaryButton(button,"",gold,reason.Length==0,p.IsPracticeOnly?reason:null);
+            string upgradeCaption=tier>=4?"满档":"升级";
+            int upgradeFont=Mathf.RoundToInt(15*u);
+            float captionWidth=Style(upgradeFont,true,false).CalcSize(new GUIContent(upgradeCaption)).x;
+            float upgradeIconSize=24*u,upgradeGap=7*u;
+            float upgradeStart=button.center.x-(upgradeIconSize+upgradeGap+captionWidth)*.5f;
+            DrawIcon(new Rect(upgradeStart,button.center.y-upgradeIconSize*.5f,upgradeIconSize,upgradeIconSize),UIIconAtlas.Utility("basic-attack"),gold);
+            Text(new Rect(upgradeStart+upgradeIconSize+upgradeGap,button.y,captionWidth,button.height),upgradeCaption,upgradeFont,reason.Length==0?pale:muted,true,false,TextAnchor.MiddleCenter);
             if(clicked){bool saved=p.UpgradeBasicAttack();session.Notify(saved?"普通攻击已升至 "+(tier+1)+"档":p.LastError);}
         }
         private bool blinkFollowupSelected;
@@ -99,13 +113,13 @@ namespace Emberfall
             if(MobileControls.Active)
             {
                 Rect icon=DrawCompactSkillTreeCard(r,session.Player.BlinkFollowupName,"Lv.5 · "+(learned?"已习得":"锁定"),blinkFollowupSelected,learned,u);
-                DrawIcon(icon,UIIconAtlas.Utility("blink"),accent);
+                DrawIcon(icon,AuthoredIconArt.BlinkFollowup(session.Progression.Profile.heroClass),accent);
             }
             else
             {
                 Surface(r,blinkFollowupSelected?new Color(.12f,.20f,.23f):learned?new Color(.06f,.145f,.15f):card);
                 SurfaceFrame(r,blinkFollowupSelected?gold:new Color(accent.r,accent.g,accent.b,learned?.7f:.25f));
-                DrawIcon(new Rect(r.x+5,r.y+7,24,24),UIIconAtlas.Utility("blink"),accent);
+                DrawIcon(new Rect(r.x+5,r.y+7,24,24),AuthoredIconArt.BlinkFollowup(session.Progression.Profile.heroClass),accent);
                 Text(new Rect(r.x+32,r.y+7,107,24),session.Player.BlinkFollowupName,14,learned?pale:muted,true,false,TextAnchor.MiddleCenter);
                 Text(new Rect(r.x+5,r.y+35,134,18),"Lv.5 · "+(learned?"已习得":"未解锁"),11,muted,false,false,TextAnchor.MiddleCenter);
             }
@@ -119,18 +133,22 @@ namespace Emberfall
             SkillStateTag(new Rect(r.xMax-142*u,r.y+10*u,56*u,24*u),"主动",jade,Mathf.RoundToInt(12*u));
             SkillStateTag(new Rect(r.xMax-82*u,r.y+10*u,72*u,24*u),"衔接技",gold,Mathf.RoundToInt(12*u));
             r=new Rect(r.x+6*u,r.y+44*u,r.width-12*u,Mathf.Max(32*u,r.height-52*u));
-            blinkFollowupDetailScroll=BeginTouchScroll("blink-followup-detail",r,blinkFollowupDetailScroll,new Rect(0,0,r.width-16*u,290*u));
-            r=new Rect(0,0,r.width-16*u,290*u);
-            float x=r.x+16*u,w=r.width-32*u;
-
-            Text(new Rect(x,r.y+8*u,w,24*u),session.Player.BlinkFollowupLearned?"Lv.5 · 已习得":"Lv.5 · 自动习得",Mathf.RoundToInt(12*u),jade,true);
+            float x=16*u,w=r.width-48*u;
             string damage=(session.Player.BlinkFollowupDamageMultiplier*100).ToString("0")+"%攻击 + "+SkillDamageBudgets.BaseDamage(session.Progression.Profile.level,session.Player.BlinkFollowupDamageMultiplier).ToString("0.#");
             string effect=session.Player.HeroClass==HeroClass.Vanguard?"对前方3米、130°扇形内敌人造成"+damage+"伤害，击退并震慑0.2秒。":session.Player.HeroClass==HeroClass.Arcanist?"对周围3米内敌人造成"+damage+"伤害，小幅击退并震慑0.2秒。":session.Player.HeroClass==HeroClass.Ranger?"贯穿前方7米内敌人，造成"+damage+"伤害，小幅击退并震慑0.1秒。":"在6米内目标位置引爆，造成"+damage+"的2.6米范围伤害，震慑0.55秒。";
-            int effectFont=Mathf.RoundToInt(14*u);float effectHeight=Mathf.Max(66*u,Style(effectFont,false,true).CalcHeight(new GUIContent(effect),w));
-            Text(new Rect(x,r.y+42*u,w,effectHeight),effect,effectFont,pale,false,true);
             string trigger=MobileControls.Active?"闪现后 1.2 秒内，点击原闪现按钮释放。":"闪现后 1.2 秒内，点击鼠标左键释放。";
-            Text(new Rect(x,r.y+48*u+effectHeight,w,66*u),trigger,Mathf.RoundToInt(13*u),jade,false,true);
-            Text(new Rect(x,r.y+116*u+effectHeight,w,50*u),"5级自动习得。每次闪现可衔接一次，无额外资源消耗。",Mathf.RoundToInt(12*u),muted,false,true);
+            string note="5级自动习得。每次闪现可衔接一次，无额外资源消耗。";
+            int effectFont=Mathf.RoundToInt(14*u),triggerFont=Mathf.RoundToInt(13*u),noteFont=Mathf.RoundToInt(12*u);
+            float effectHeight=Style(effectFont,false,true).CalcHeight(new GUIContent(effect),w);
+            float triggerHeight=Style(triggerFont,false,true).CalcHeight(new GUIContent(trigger),w);
+            float noteHeight=Style(noteFont,false,true).CalcHeight(new GUIContent(note),w);
+            float triggerY=42*u+effectHeight+12*u,noteY=triggerY+triggerHeight+12*u;
+            float contentHeight=noteY+noteHeight+16*u;
+            blinkFollowupDetailScroll=BeginTouchScroll("blink-followup-detail",r,blinkFollowupDetailScroll,new Rect(0,0,r.width-16*u,Mathf.Max(r.height,contentHeight)));
+            Text(new Rect(x,8*u,w,24*u),session.Player.BlinkFollowupLearned?"Lv.5 · 已习得":"Lv.5 · 自动习得",Mathf.RoundToInt(12*u),jade,true);
+            Text(new Rect(x,42*u,w,effectHeight),effect,effectFont,pale,false,true);
+            Text(new Rect(x,triggerY,w,triggerHeight),trigger,triggerFont,jade,false,true);
+            Text(new Rect(x,noteY,w,noteHeight),note,noteFont,muted,false,true);
             EndTouchScroll();
         }
         private int skillSection;
@@ -147,38 +165,6 @@ namespace Emberfall
                 if(selected)Fill(new Rect(hit.x+8*u,hit.yMax-5*u,hit.width-16*u,2*u),gold);
                 if(GUI.Button(hit,GUIContent.none,invisibleButton)&&!selected){skillSection=i;CancelMobileScroll();BlockUITransition();}
             }
-        }
-        private float DrawSpecializationChoices(float width,float u,float y,bool draw)
-        {
-            var p=session.Progression;
-            bool elemental=p.Profile.heroClass==HeroClass.Arcanist;
-            bool martial=p.Profile.heroClass==HeroClass.Vanguard||p.Profile.heroClass==HeroClass.Ranger;
-            string[] names=martial?new[]{BuildCatalog.MartialSpecializationName(p.Profile.heroClass,MartialSpecialization.Balanced),BuildCatalog.MartialSpecializationName(p.Profile.heroClass,MartialSpecialization.Assault),BuildCatalog.MartialSpecializationName(p.Profile.heroClass,MartialSpecialization.Survival)}:elemental?new[]{"均衡","碎冰","灼燃"}:new[]{"强契","群契"};
-            string[] descriptions=martial?new[]{BuildCatalog.MartialSpecializationDescription(p.Profile.heroClass,MartialSpecialization.Balanced),BuildCatalog.MartialSpecializationDescription(p.Profile.heroClass,MartialSpecialization.Assault),BuildCatalog.MartialSpecializationDescription(p.Profile.heroClass,MartialSpecialization.Survival)}:elemental?new[]{
-                "均衡：保留冰霜控制与陨星直接伤害；消耗霜痕时追加 50% 基础伤害。",
-                "碎冰：陨星直接伤害降低 15%，碎冰追加 100% 基础伤害；霜环延长霜痕，大招积霜后引爆。",
-                "灼燃：普攻与陨星附加灼烧，新星改为减速；霜焰行者提供机动火区，大招偏持续灼烧。"
-            }:new[]{"强契：每次召唤一只，召唤物伤害提高20%；全部限时存在。","群契：灵狼每次召唤两只，召唤物伤害降低20%；全部限时存在。"};
-            int selected=martial?(int)p.Profile.martialSpecialization:elemental?(int)p.Profile.specialization:(int)p.Profile.summonerRoute;
-            float descriptionHeight=0;
-            foreach(string text in descriptions)descriptionHeight=Mathf.Max(descriptionHeight,Style(Mathf.RoundToInt(13*u),false,true).CalcHeight(new GUIContent(text),(width-8)*u)/u);
-            if(draw)
-            {
-                Text(new Rect(4*u,y*u,(width-8)*u,26*u),"专精",Mathf.RoundToInt(16*u),pale,true);
-                float optionWidth=(width-(names.Length-1)*8)/names.Length;
-                for(int i=0;i<names.Length;i++)
-                {
-                    Rect hit=new Rect(i*(optionWidth+8)*u,(y+30)*u,optionWidth*u,44*u);
-                    if(TabButton(hit,names[i],selected==i)&&selected!=i)
-                    {
-                        bool saved=martial?p.SetMartialSpecialization((MartialSpecialization)i,session.IsInCamp):elemental?p.SetSpecialization((ElementalistSpecialization)i,session.IsInCamp):p.SetSummonerRoute((SummonerRoute)i,session.IsInCamp);
-                        MobileWorkshopResult(saved,names[i]+"已选择");
-                        if(saved)selected=i;
-                    }
-                }
-                Text(new Rect(4*u,(y+82)*u,(width-8)*u,descriptionHeight*u),descriptions[Mathf.Clamp(selected,0,names.Length-1)],Mathf.RoundToInt(13*u),pale,false,true);
-            }
-            return y+82+descriptionHeight+12;
         }
         private bool DrawSkillSubsurface()
         {
@@ -236,10 +222,9 @@ namespace Emberfall
         private string MasteryCoreText(MasteryType mastery)
         {
             string text=BuildCatalog.MasteryDescription(mastery);
-            int end=text.IndexOf(MasteryProgressionRules.TierSummary,System.StringComparison.Ordinal);
-            if(end>=0)text=text.Substring(0,end);
             int start=text.IndexOf("核心：",System.StringComparison.Ordinal);
-            return start>=0?text.Substring(start+3):text;
+            int end=text.IndexOf(MasteryProgressionRules.TierSummary,System.StringComparison.Ordinal);
+            return text.Substring(start+3,end-start-3).Trim();
         }
         private float DrawSkillDevelopmentContent(float width,float u,bool draw)
         {
@@ -256,10 +241,16 @@ namespace Emberfall
                 if(GUI.Button(reset,GUIContent.none,invisibleButton))masteryResetConfirm=true;
             }
             y+=compact?44:52;
-            int columns=compact||width>=760?4:2,cap=ProgressionService.MasteryCap(p.Profile.level);
+            int cap=ProgressionService.MasteryCap(p.Profile.level);
+            int statFont=Mathf.RoundToInt(13*u);
+            float minimumTile=24+Mathf.Max(46,Style(statFont,true).CalcSize(new GUIContent("下一点")).x/u+8);
+            float widestBonus=0;
+            for(int i=0;i<4;i++)widestBonus=Mathf.Max(widestBonus,Style(statFont,true).CalcSize(new GUIContent(MasteryBonusText(i,cap))).x/u);
+            minimumTile+=widestBonus+4;
+            int columns=width>=minimumTile*4+30?4:width>=minimumTile*2+10?2:1;
             float tileWidth=(width-(columns-1)*10)/columns,coreHeight=0;
             for(int i=0;i<4;i++)coreHeight=Mathf.Max(coreHeight,Style(Mathf.RoundToInt((compact?11:12)*u),false,true).CalcHeight(new GUIContent(MasteryCoreText((MasteryType)i)),(tileWidth-(compact?16:24))*u)/u);
-            float tileHeight=(compact?168:202)+coreHeight;
+            float tileHeight=(compact?174:208)+coreHeight;
             for(int i=0;i<4;i++)
             {
                 var mastery=(MasteryType)i;int rank=p.Profile.masteryRanks[i];
@@ -268,14 +259,23 @@ namespace Emberfall
                 if(!draw)continue;
                 bool selected=selectedMastery==i,flashing=masteryChangedNode==i&&Time.unscaledTime-masteryChangedAt<1.2f;
                 Fill(tile,flashing?new Color(.07f,.23f,.17f):card);Border(tile,p.HasMasteryCore(mastery)?gold:jade*.4f);
-                DrawIcon(new Rect(tile.x+(compact?8:10)*u,tile.y+8*u,(compact?22:28)*u,(compact?22:28)*u),UIIconAtlas.Mastery(mastery),pale);
-                Text(new Rect(tile.x+(compact?36:46)*u,tile.y+(compact?4:8)*u,tile.width-(compact?100:110)*u,28*u),BuildCatalog.MasteryName(mastery),Mathf.RoundToInt((compact?12:14)*u),pale,true);
-                Text(new Rect(tile.xMax-56*u,tile.y+5*u,48*u,24*u),"投入 "+rank,Mathf.RoundToInt(10*u),muted,false,false,TextAnchor.MiddleRight);
-                Text(new Rect(tile.x+12*u,tile.y+(compact?32:42)*u,tile.width-24*u,24*u),"当前  "+MasteryBonusText(i,rank),Mathf.RoundToInt(13*u),pale,true);
-                Text(new Rect(tile.x+12*u,tile.y+(compact?54:68)*u,tile.width-24*u,24*u),rank<cap?"下一点  "+MasteryBonusText(i,rank+1):cap==0?"Lv"+MasteryProgressionRules.FirstUnlockLevel+" 解锁":"已达当前等级上限",Mathf.RoundToInt(12*u),rank<cap?jade:muted);
+                DrawIcon(new Rect(tile.x+(compact?8:10)*u,tile.y+(compact?7:8)*u,(compact?22:28)*u,(compact?22:28)*u),UIIconAtlas.Mastery(mastery),pale);
+                Text(new Rect(tile.x+(compact?36:46)*u,tile.y+(compact?4:8)*u,tile.width-(compact?100:110)*u,28*u),BuildCatalog.MasteryName(mastery),Mathf.RoundToInt((compact?12:14)*u),pale,true,false,TextAnchor.MiddleLeft);
+                Text(new Rect(tile.xMax-56*u,tile.y+(compact?4:8)*u,48*u,28*u),"投入 "+rank,Mathf.RoundToInt(10*u),muted,false,false,TextAnchor.MiddleRight);
+                int statSize=Mathf.RoundToInt(13*u);
+                float labelWidth=Mathf.Max(46*u,Style(statSize,true).CalcSize(new GUIContent("下一点")).x+8*u);
+                float statX=tile.x+12*u+labelWidth,statWidth=tile.width-24*u-labelWidth;
+                Text(new Rect(tile.x+12*u,tile.y+(compact?32:42)*u,labelWidth,24*u),"当前",statSize,pale,true);
+                Text(new Rect(statX,tile.y+(compact?32:42)*u,statWidth,24*u),MasteryBonusText(i,rank),statSize,pale,true);
+                if(rank<cap)
+                {
+                    Text(new Rect(tile.x+12*u,tile.y+(compact?54:68)*u,labelWidth,24*u),"下一点",statSize,jade,true);
+                    Text(new Rect(statX,tile.y+(compact?54:68)*u,statWidth,24*u),MasteryBonusText(i,rank+1),statSize,jade,true);
+                }
+                else Text(new Rect(tile.x+12*u,tile.y+(compact?54:68)*u,tile.width-24*u,24*u),cap==0?"Lv"+MasteryProgressionRules.FirstUnlockLevel+" 解锁":"已达当前等级上限",Mathf.RoundToInt(12*u),muted);
                 if(GUI.Button(new Rect(tile.x,tile.y,tile.width,(compact?72:98)*u),GUIContent.none,invisibleButton))selectedMastery=i;
                 string action=learnable?"+ 1点":cap==0?"尚未解锁":rank>=cap?"当前已满":"精通点不足";
-                if(PrimaryButton(new Rect(tile.x+10*u,tile.y+(compact?76:102)*u,tile.width-20*u,36*u),action,jade,learnable))
+                if(PrimaryButton(new Rect(tile.x+10*u,tile.y+(compact?82:108)*u,tile.width-20*u,36*u),action,jade,learnable))
                 {
                     selectedMastery=i;bool saved=p.LearnMastery(mastery);
                     masteryChangeNotice=saved?BuildCatalog.MasteryName(mastery)+"："+MasteryBonusText(i,rank)+" → "+MasteryBonusText(i,p.Profile.masteryRanks[i])+"（消耗 1 精通点）":p.LastError;
@@ -283,7 +283,7 @@ namespace Emberfall
                     if(saved){masteryChangedNode=i;masteryChangedAt=Time.unscaledTime;}
                 }
                 bool active=p.HasMasteryCore(mastery);
-                Text(new Rect(tile.x+(compact?8:12)*u,tile.y+(compact?120:150)*u,tile.width-(compact?16:24)*u,coreHeight*u),MasteryCoreText(mastery),Mathf.RoundToInt((compact?11:12)*u),active?gold:pale,false,true);
+                Text(new Rect(tile.x+(compact?8:12)*u,tile.y+(compact?126:156)*u,tile.width-(compact?16:24)*u,coreHeight*u),MasteryCoreText(mastery),Mathf.RoundToInt((compact?11:12)*u),active?gold:pale,false,true);
                 bool canChooseCore=session.IsInCamp||p.Profile.masteryCore<0;
                 string coreAction=active?"✓ 核心已启用":rank<MasteryCoreRules.InitialInvestment?"投入 "+MasteryCoreRules.InitialInvestment+" 点解锁":canChooseCore?"启用核心":"回营地切换";
                 Rect coreRect=new Rect(tile.x+10*u,tile.yMax-(compact?40:44)*u,tile.width-20*u,36*u);
@@ -296,7 +296,6 @@ namespace Emberfall
                 {bool saved=p.SelectMasteryCore(mastery,session.IsInCamp);masteryChangeNotice=saved?"已启用 "+BuildCatalog.MasteryName(mastery)+"核心":p.LastError;if(!saved)session.Notify(p.LastError);}
             }
             y+=((4+columns-1)/columns)*(tileHeight+10);
-            y=DrawSpecializationChoices(width,u,y+8,draw)+16;
             return y+8;
         }
     }

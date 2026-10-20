@@ -771,7 +771,6 @@ namespace Emberfall
             IsDead = true;
             RevivalPending=CanSuspendForRevival;
             if(!RevivalPending)FinalizeDeathRun();else Player.BeginGhost();
-            pendingRoomChoice.Cancel();
             DungeonSelectionOpen = false;
             LastRunSummary = BuildRunSummary(false);
             GameAudio.Play(SoundCue.Death);

@@ -152,7 +152,11 @@ namespace Emberfall
   private float DrawRewardDetailRows(EntryRewardPreview item,float available,float u,bool draw)
   {
    if(item.PreviewBagSlot>=0)return DrawGemBagContents(item,available,u,draw);
-   if(CompactRewardItem(item)){if(draw)Text(new Rect(0,0,available*u,44*u),ResourceDescription(item.Key),Mathf.RoundToInt(12*u),new Color(.78f,.84f,.9f),false,true);return 44;}
+   if(CompactRewardItem(item)){
+    string description=ResourceDescription(item.Key);int font=Mathf.RoundToInt(12*u);
+    float measured=Mathf.Max(44,Style(font,false,true).CalcHeight(new GUIContent(description),available*u)/u);
+    if(draw)Text(new Rect(0,0,available*u,measured*u),description,font,new Color(.78f,.84f,.9f),false,true);return measured;
+   }
    if(!item.GearSlot.HasValue&&!item.AppearanceSlot.HasValue)return DrawEntryRewardRows(item,available,u,draw);
    string current="";ItemData currentEquipment=null;
    if(item.GearSlot.HasValue){var equipped=session.Progression.Equipped(item.GearSlot.Value);if(equipped!=null){var preview=ActualEquipmentPreview(equipped);current=preview.Description;currentEquipment=preview.Equipment;}}
@@ -164,6 +168,13 @@ namespace Emberfall
    EntryRewardPreview worn=null;
    if(currentEquipment!=null)worn=ActualEquipmentPreview(currentEquipment);
    if(item.AppearanceSlot.HasValue){var f=session.Progression.EquippedFashion(item.AppearanceSlot.Value);if(f!=null)worn=new EntryRewardPreview{Name=f.name,Rarity=f.rarity,AppearanceSlot=f.slot,Icon=UIIconAtlas.FashionCardIcon(f,session.Progression.Profile.heroClass)};}
+   float nameHeight=32;
+   for(int col=firstColumn;col<2;col++){
+    var value=col==0?worn:item;
+    float headingWidth=cardWidth-20-(value==null?0:48);
+    nameHeight=Mathf.Max(nameHeight,Style(Mathf.RoundToInt(15*u),true,true).CalcHeight(new GUIContent(RewardDetailName(value)),headingWidth*u)/u);
+   }
+   float headingExtra=Mathf.Ceil(nameHeight-32);y+=headingExtra;
    if(draw){Fill(new Rect(0,0,available*u,DrawRewardDetailRows(item,available,u,false)*u),ink);if(!selectedWorn)Fill(new Rect(cardWidth*u,0,gap*u,DrawRewardDetailRows(item,available,u,false)*u),new Color(.15f,.29f,.31f));}
    if(draw)for(int col=firstColumn;col<2;col++){float x=(col-firstColumn)*(cardWidth+gap);Rect cardRect=new Rect(x*u,0,cardWidth*u,DrawRewardDetailRows(item,available,u,false)*u);Fill(cardRect,ink);}
    var progression=session.Progression;
@@ -172,11 +183,9 @@ namespace Emberfall
    {
     var value=col==0?worn:item;float x=(col-firstColumn)*(cardWidth+gap);Color accent=value==null?muted:GameBalance.RarityColor(value.Rarity);
     float headingWidth=cardWidth-20-(value==null?0:48);
-    Fill(new Rect(x*u,0,cardWidth*u,86*u),new Color(.02f,.035f,.055f));
+    Fill(new Rect(x*u,0,cardWidth*u,(86+headingExtra)*u),new Color(.02f,.035f,.055f));
     Text(new Rect((x+10)*u,2*u,headingWidth*u,20*u),col==0||selectedWorn?"已穿戴":"所选物品",Mathf.RoundToInt(12*u),col==0?pale:jade,true);
-    string name=value==null?"未穿戴":string.IsNullOrEmpty(value.Name)?"所选时装":value.Name;
-    string level=value==null?"":System.Text.RegularExpressions.Regex.Match(value.Description??"",@"Lv\.?\d+").Value;
-    if(level.Length>0)name=level+"  "+name;
+    string name=RewardDetailName(value);
     if(value!=null)
     {
      Rect equipmentIcon=new Rect((x+cardWidth-48)*u,8*u,40*u,40*u);
@@ -185,8 +194,8 @@ namespace Emberfall
      Border(equipmentIcon,accent,2*u);
      if(value.Rarity==Rarity.Legendary)DrawFashionSlotFlow(equipmentIcon,accent,u);
     }
-    Text(new Rect((x+10)*u,24*u,headingWidth*u,32*u),name,Mathf.RoundToInt(15*u),pale,true,true);
-    if(value!=null)DrawItemDetailTags(new Rect((x+8)*u,60*u,(cardWidth-16)*u,22*u),value,u);
+    Text(new Rect((x+10)*u,24*u,headingWidth*u,nameHeight*u),name,Mathf.RoundToInt(15*u),pale,true,true);
+    if(value!=null)DrawItemDetailTags(new Rect((x+8)*u,(60+headingExtra)*u,(cardWidth-16)*u,22*u),value,u);
    }
    FashionData ownedFashion=item.AppearanceSlot.HasValue&&item.Key!=null&&item.Key.StartsWith("fashion:")?progression.Profile.fashions.Find(v=>v!=null&&"fashion:"+v.id==item.Key):null;
    FashionData currentFashion=item.AppearanceSlot.HasValue?progression.EquippedFashion(item.AppearanceSlot.Value):null;
@@ -214,7 +223,7 @@ namespace Emberfall
       if(item.AppearanceSlot.HasValue)
       {
        var f=col==0?currentFashion:selectedFashion;
-       int basis=ProgressionService.FashionBaseStat(f,pair.Key),rank=ProgressionService.FashionRankStat(f,pair.Key);
+       float basis=ProgressionService.FashionBaseStat(f,pair.Key),rank=ProgressionService.FashionRankStat(f,pair.Key);
        float start=34+Mathf.Min(72,cardWidth*.28f),space=cardWidth-start-6;
        string prefix="";
        DrawComparedValue(new Rect((x+start)*u,y*u,space*.55f*u,34*u),prefix+basis+"%",col==0||selectedWorn?0:basis.CompareTo(ProgressionService.FashionBaseStat(currentFashion,pair.Key)),u,false);
@@ -269,6 +278,13 @@ namespace Emberfall
    Text(r,value,size,tint,true,false,TextAnchor.MiddleLeft);
    if(direction!=0)DrawIcon(new Rect(r.x+Mathf.Min(r.width,Style(size,true,false).CalcSize(new GUIContent(value)).x)+2*u,r.center.y-7*u,14*u,14*u),UIIconAtlas.StatTrendArrow(direction>0),tint);
   }
+  private static string RewardDetailName(EntryRewardPreview value)
+  {
+   if(value==null)return "未穿戴";
+   string name=string.IsNullOrEmpty(value.Name)?"所选时装":value.Name;
+   string level=System.Text.RegularExpressions.Regex.Match(value.Description??"",@"Lv\.?\d+").Value;
+   return level.Length>0?level+"  "+name:name;
+  }
   private static bool IsRandomEquipmentStat(string name)
   {return name=="攻击加成"||name=="暴击率"||name=="暴击伤害";}
   private static int EquipmentStatBonus(ItemData item,string name)
@@ -295,12 +311,15 @@ namespace Emberfall
    public int BagSlot=-1,PreviewBagSlot=-1;public ItemData Equipment;public string Key,Name,Description;public Texture2D Icon;public Color Tint;public Color QualityColor {get{return GameBalance.RarityColor(Rarity);}}public Rarity Rarity;public bool Clear;public bool UnenhancedReward;public bool AllowActions;public int Quantity=1;public ItemSlot? GearSlot;public FashionSlot? AppearanceSlot;
   }
   private readonly System.Collections.Generic.Dictionary<string,System.Collections.Generic.List<EntryRewardPreview>> entryPreviewCache = new System.Collections.Generic.Dictionary<string,System.Collections.Generic.List<EntryRewardPreview>>();
-  private void PrioritizeEntryPity(System.Collections.Generic.List<EntryRewardPreview> items,int mode,bool chapter)
+  private void SortEntryPreviewRarity(System.Collections.Generic.List<EntryRewardPreview> items,int mode,bool chapter)
   {
-   int target=SpecialtyChestPity.Target(chapter,chapter?(int)session.SelectedChapterNode:mode);
-   bool gems=chapter&&session.SelectedChapterNode==ChapterNode.StarPlatform;
-   System.Predicate<EntryRewardPreview> first=item=>item.Clear&&(target==8?item.Key=="basic-attack":target==7?item.Key=="affix-reforge":target==2?item.AppearanceSlot.HasValue:gems?item.Key.StartsWith("gem:"):item.GearSlot.HasValue&&item.Rarity==Rarity.Legendary);
-   var guaranteed=items.FindAll(first);items.RemoveAll(first);items.InsertRange(0,guaranteed);
+   // Stable descending quality order: preserve the original order within each quality.
+   for(int i=1;i<items.Count;i++)
+   {
+    var item=items[i];int j=i-1;
+    while(j>=0&&(int)items[j].Rarity<(int)item.Rarity){items[j+1]=items[j];j--;}
+    items[j+1]=item;
+   }
   }
   private System.Collections.Generic.List<EntryRewardPreview> EntryRewardPreviews(int mode,int tier,bool chapter)
   {
@@ -319,7 +338,7 @@ namespace Emberfall
      material.Description=material.Name+"\n数量  "+(crystal?"1":minimum+"～"+maximum)+"\n掉落概率  "+(crystal?BasicAttackGrowth.DropChance(rewardTier):stones?BasicAttackGrowth.RefinementChance(rewardTier):BasicAttackGrowth.FragmentChance(rewardTier))+"%"+(crystal?"\n"+SpecialtyChestPity.Rules(8):"");
      result.Add(material);
     }
-    PrioritizeEntryPity(result,mode,chapter);if(entryPreviewCache.Count>=64)entryPreviewCache.Clear();entryPreviewCache[cacheKey]=result;return result;
+    SortEntryPreviewRarity(result,mode,chapter);if(entryPreviewCache.Count>=64)entryPreviewCache.Clear();entryPreviewCache[cacheKey]=result;return result;
    }
    int level=chapter?ProgressionService.EquipmentGenerationLevel(session.Progression.Profile.level):AdventureRewardRules.DungeonLevel(tier);
    int enemyTier=chapter?session.SelectedChapterTier:tier;
@@ -339,7 +358,7 @@ namespace Emberfall
    if(AdventureRewardRules.ChestFashion(mode,chapter))foreach(var rarity in new[]{Rarity.Common,Rarity.Rare,Rarity.Epic,Rarity.Legendary})foreach(var slot in new[]{FashionSlot.Weapon,FashionSlot.Wings})
     result.Add(new EntryRewardPreview{Key="fashion:"+slot+":"+rarity,AppearanceSlot=slot,Clear=true,Rarity=rarity,Name=ProgressionService.FashionName(slot,rarity,session.Progression.Profile.heroClass),Icon=UIIconAtlas.FashionCardIcon(slot,(int)rarity,session.Progression.Profile.heroClass),Tint=GameBalance.RarityColor(rarity),Description=ProgressionService.FashionName(slot,rarity,session.Progression.Profile.heroClass)+"\n"+(slot==FashionSlot.Weapon?"兵装":"羽翼")+" · "+GameBalance.RarityName(rarity)+"\n"+ProgressionService.FashionBonus(slot,rarity)});
    if(AdventureRewardRules.ChestAffixReforge(chapter?(int)session.SelectedChapterNode:mode,chapter)){var reforge=ResourceItemPreview("affix-reforge",1);reforge.Clear=true;result.Add(reforge);}
-   PrioritizeEntryPity(result,mode,chapter);
+   SortEntryPreviewRarity(result,mode,chapter);
    if(entryPreviewCache.Count>=64)entryPreviewCache.Clear();
    entryPreviewCache[cacheKey]=result;return result;
   }
@@ -382,13 +401,13 @@ namespace Emberfall
      {
       Rect odds=new Rect((available-90)*u,end*u,82*u,(compact?16:22)*u);
       Text(odds,"概率说明 ⓘ",Mathf.RoundToInt((compact?9:10)*u),muted,false,false,TextAnchor.MiddleRight);
-      var info=new EntryRewardPreview{Key="chest-odds",Name="通关宝箱概率",Rarity=Rarity.Legendary,Icon=UIIconAtlas.Utility("inventory"),Description=gemChest?"每箱1颗宝石\n史诗80% · 传说20%\n重复宝石转为碎片。":pityTarget!=0?(pityTarget==8?BasicAttackGrowth.DropSummary(tier)+"\n":"每箱获得一件物品或一组材料。\n")+SpecialtyChestPity.Rules(pityTarget):"通关宝箱概率\n传说装备概率  "+AdventureRewardRules.LegendaryChance(tier)+"%\n每箱获得一件物品或一组材料。\n连续未获得传说装备时，第30箱必出；获得后重新计数。"};
+      var info=new EntryRewardPreview{Key="chest-odds",Name="通关宝箱概率",Rarity=Rarity.Legendary,Icon=UIIconAtlas.Utility("inventory"),Description=gemChest?"每箱1颗宝石\n史诗80% · 传说20%\n重复宝石转为碎片。":pityTarget!=0?(pityTarget==8?BasicAttackGrowth.DropSummary(tier)+"\n":"每箱获得一件物品或一组材料。\n")+SpecialtyChestPity.Rules(pityTarget):"通关宝箱概率\n传说装备 7% · 史诗装备 33%\n星烬碎片 30% · 装备洗练石 30%\n每箱获得一件物品或一组材料。\n连续未获得传说装备时，第30箱必出；获得后重新计数。"};
       InspectRewardItem(MobileControls.Active?new Rect(odds.x,odds.y,odds.width,44*u):odds,info);
       int remaining=Mathf.Max(1,AdventureRewardRules.LegendaryPityChests-session.Progression.Profile.legendaryEquipmentMisses);
       Rect pity=new Rect(8*u,(end+(compact?18:26))*u,(available-16)*u,(compact?26:34)*u);
       Fill(pity,new Color(.22f,.12f,.025f));Border(pity,gold,u);
       Fill(new Rect(pity.x,pity.y,3*u,pity.height),gold);
-      Text(new Rect(pity.x+8*u,pity.y,pity.width-16*u,pity.height),gemChest?"每箱1颗宝石 · 史诗80% · 传说20%":pityTarget!=0?SpecialtyChestPity.Caption(session.Progression.Profile,pityTarget,chapter):remaining==1?"下一箱必出传说装备":"再开 "+remaining+" 箱内必出传说装备",Mathf.RoundToInt((compact?11:14)*u),new Color(1f,.82f,.35f),true,true,TextAnchor.MiddleCenter);
+      Text(new Rect(pity.x+8*u,pity.y,pity.width-16*u,pity.height),gemChest?"每箱1颗宝石 · 史诗80% · 传说20%":pityTarget!=0?SpecialtyChestPity.Caption(session.Progression.Profile,pityTarget,chapter):remaining==1?"下一箱必出传说装备":"再开 "+remaining+" 箱，必出传说装备",Mathf.RoundToInt((compact?11:14)*u),new Color(1f,.82f,.35f),true,true,TextAnchor.MiddleCenter);
      }
     }
     end+=clear?(compact?50:68):(compact?22:24);

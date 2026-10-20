@@ -15,7 +15,11 @@ body=member((r/'Assets/Scripts/Combat/PhysicalSkillMotion.cs').read_text(),'    
 bolt='\n'.join(member(enemy,key) for key in ['private Vector3 BoltMuzzle(', 'private Vector3 BoltDirection(', 'private float BoltSpeed ']).replace('private ','public ')
 nav='\n'.join(member(world,key) for key in ['private static Vector3 NavigationScenePoint(', 'private static Vector2 NavigationSceneSize(', 'private static float NavigationSceneRadius(']).replace('private ','public ')
 large=(r/'Assets/Scripts/Combat/LargeExpeditionBoss.cs').read_text()
-beam='\n'.join(member(large,key) for key in ['private bool BeamContains(', 'private Vector3 ClipBeam(']).replace('private ','public ')
+sweep=(r/'Assets/Scripts/Combat/EnemySkillPhysicalVfx.cs').read_text();sweep=sweep[sweep.index('internal sealed class EnemySweepPhysicalVfx'):]
+a=sweep.index('                spanStarts[i]=');b=sweep.index('                bodies[i].gameObject.SetActive',a)
+mask=sweep[a:b].replace('bodies.Length','clearSpans.Length')
+beam='float radius=>BeamDangerRadius;bool[] clearSpans=new bool[32];Vector3[] spanStarts=new Vector3[32],spanEnds=new Vector3[32];public bool BeamContains(Vector3 point,Vector3 from,Vector3 to){for(int i=0;i<clearSpans.Length;i++){'+mask+'}return Contains(point);}'+member(sweep,'internal bool Contains(')
+
 math=(r/'Tests/DestructibleTraversalTests.cs').read_text();math='using System;using UnityEngine;'+math[math.index('namespace Emberfall'):]
 fixture=r'''
 namespace UnityEngine{public class Transform{public Vector3 position,scale=new Vector3(1,1,1);public Vector3 lossyScale=>scale;public Vector3 TransformPoint(Vector3 p)=>position+new Vector3(p.x*scale.x,p.y*scale.y,p.z*scale.z);}}
@@ -23,7 +27,7 @@ namespace Emberfall{
  public enum EnemyKind{Slime,Goblin,Wisp,Guardian}public enum ChapterNode{ForestCourt,Redrock,StarPlatform}
  public class SummonedCompanion{public enum Kind{Wolf,Spirit,Treant,Wisp}public bool IsAlive=true;public float PhysicalBodyHeight;}
  public class BoltFixture{
-  public enum AttackType{Fan,Bolt}public AttackType attackType=AttackType.Fan;public bool IsBoss=true;public object largeBoss;public Transform bossBoltSocket;public Vector3 targetPoint;public SummonedCompanion companionTarget;
+  public enum AttackType{Fan,Bolt}public AttackType attackType=AttackType.Bolt;public bool IsBoss=true;public object largeBoss;public Transform bossBoltSocket;public Vector3 targetPoint;public SummonedCompanion companionTarget;
   public float BodyScale=>BossScaleRules.EnemyMultiplier(IsBoss,largeBoss!=null);
   BOLT
  }
@@ -69,7 +73,7 @@ class Program{
    bolt.companionTarget=new SummonedCompanion{PhysicalBodyHeight=BossScaleRules.CompanionBodyHeight(SummonedCompanion.Kind.Treant)};direction=bolt.BoltDirection(muzzle,new Vector3(0,0,1));C(ContactFixture.BodyContact(muzzle,muzzle+direction*bolt.BoltSpeed*3,bolt.targetPoint,bolt.companionTarget.PhysicalBodyHeight,1.35f,.32f,out fraction),"elevated Boss shot aims at actual enlarged Treant body");
    float height=BossScaleRules.BodyHeight(true,large,EnemyKind.Guardian),width=BossScaleRules.ProjectileRadius(true,large);C(ContactFixture.BodyContact(new Vector3(-6,height-.5f,0),new Vector3(6,height-.5f,0),Vector3.zero,height,width,.32f,out fraction),"full-height Boss contact accepts high shot at enlarged head");C(!ContactFixture.BodyContact(new Vector3(-6,height+1,0),new Vector3(6,height+1,0),Vector3.zero,height,width,.32f,out fraction),"shot truly above enlarged body remains safe");
   }
-  foreach(float scale in new[]{1f,1.45f}){var sweep=new BeamFixture{BodyScale=scale};Flat(22.5f);C(sweep.BeamContains(new Vector3(.94f*scale,0,6),Vector3.zero,new Vector3(0,0,12)),"scaled Boss beam full width accepts damage");C(!sweep.BeamContains(new Vector3(.96f*scale,0,6),Vector3.zero,new Vector3(0,0,12)),"scaled Boss beam safe side outside real width");WorldTraversal.AddCircle(new Vector3(.6f*scale,0,6),.2f);var end=sweep.ClipBeam(Vector3.zero,new Vector3(0,0,12));C(end.z<6&&WorldTraversal.HasClearSweepCapsule(Vector3.zero,end,.95f*scale),"scaled beam clips full capsule before real cover");}
+  foreach(float scale in new[]{1f,1.45f}){var sweep=new BeamFixture{BodyScale=scale};Flat(22.5f);C(sweep.BeamContains(new Vector3(.94f*scale,0,6),Vector3.zero,new Vector3(0,0,12)),"scaled Boss beam full width accepts damage");C(!sweep.BeamContains(new Vector3(.96f*scale,0,6),Vector3.zero,new Vector3(0,0,12)),"scaled Boss beam safe side outside real width");WorldTraversal.AddCircle(new Vector3(.6f*scale,0,6),.2f);C(!sweep.BeamContains(new Vector3(.6f*scale,0,6),Vector3.zero,new Vector3(0,0,12)),"scaled beam has no hidden cover damage");C(sweep.BeamContains(new Vector3(0,0,10),Vector3.zero,new Vector3(0,0,12)),"scaled beam continues after cover");}
   BossScaleRules.ReviewLegacyDimensions=true;C(BossScaleRules.EnemyMultiplier(true)==1&&ArenaSizeRules.LayoutScale(105)==1&&BossScaleRules.CompanionMultiplier(SummonedCompanion.Kind.Treant)==1,"review-only before comparison restores original dimensions");BossScaleRules.ReviewLegacyDimensions=false;
   Console.WriteLine("PASS "+n+" production Boss/arena/route/contact/core/3D-flight/mode-scope checks");
  }

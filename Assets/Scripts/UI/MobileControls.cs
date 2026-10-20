@@ -331,7 +331,7 @@ namespace Emberfall
             GUI.color=ready?new Color(.35f,1f,.76f,.85f*opacity):new Color(.65f,.76f,.84f,.8f*opacity);
             GUI.DrawTexture(rect,UIIconAtlas.ControlRing(),ScaleMode.ScaleToFit,true);
             GUI.color=ready?new Color(1,1,1,opacity):new Color(.72f,.77f,.82f,.85f*opacity);
-            float size=rect.width*.84f;GUI.DrawTexture(new Rect(rect.center.x-size*.5f,rect.center.y-size*.5f,size,size),(icon=="followup"?AuthoredIconArt.Skill(session.Progression.Profile.heroClass,0):icon=="attack"?AuthoredIconArt.BasicAttack(session.Progression.Profile.heroClass):UIIconAtlas.Utility(icon)),ScaleMode.ScaleToFit,true);GUI.color=Color.white;
+            float size=rect.width*.84f;GUI.DrawTexture(new Rect(rect.center.x-size*.5f,rect.center.y-size*.5f,size,size),(icon=="followup"?AuthoredIconArt.BlinkFollowup(session.Progression.Profile.heroClass):icon=="attack"?AuthoredIconArt.BasicAttack(session.Progression.Profile.heroClass):UIIconAtlas.Utility(icon)),ScaleMode.ScaleToFit,true);GUI.color=Color.white;
         }
         private Rect PotionVisualRect()
         { return VisualRect(Potion); }

@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Emberfall
 {
@@ -68,7 +68,7 @@ namespace Emberfall
         {
             if(castFrame==Time.frameCount||owner==null||index<0||index>=GameBalance.SkillCount||GameBalance.IsPassive(index))return false;
             bool ground = RequiresConfirmation(owner.HeroClass,index);
-            if(MobileControls.Active)
+            if(MobileControls.Active||owner.UsesFacingSkillAim(index))
             {
                 owner.PrepareMobileSkillAim(index);
                 owner.ClearMobilePinnedTarget();
@@ -223,7 +223,7 @@ namespace Emberfall
                 if(skill==6)return new Preview(Shape.Ground,ElementalistGeometry.PressRadius(rank),9*r);
                 if (skill == 5) return new Preview(Shape.Self, 2.8f * r);
                 float size = skill == 1 || skill == 10 ? (rank == 3 ? 3.2f : 3f) : skill == 2 ? ElementalistFieldTuning.GravityDamageRadius : skill == 4 ? 6 : skill == 7 ? 5f : GameBalance.ArcanistFinaleRadius;
-                return new Preview(Shape.Ground, size * r, 9 * r);
+                return new Preview(Shape.Ground, size * r, (skill==2?18:9) * r);
             }
             if (skill == 0) return new Preview(Shape.Cone, 0, 23 * r, 50);
             if (skill == 4) return new Preview(Shape.Leap, 3.2f*r, 5*r);

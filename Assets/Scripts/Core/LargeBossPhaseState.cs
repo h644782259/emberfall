@@ -9,7 +9,7 @@ namespace Emberfall
     {
         public const float WindupSeconds = 4.4f, BeamSeconds = 14f, ExposureSeconds = 12f;
         public const float BeamTickSeconds = .65f, BeamDegreesPerSecond = 24f;
-        public const float BeamHalfWidth = .55f, BeamLength = 9f, CoreDamageMultiplier = 1.35f;
+        public const float BeamHalfWidth = .55f, BeamLength = 18f, CoreDamageMultiplier = 1.35f;
         public LargeBossPhase Phase { get; private set; }
         public int PhaseNumber { get; private set; }
         public int LiveAnchorMask { get; private set; }
@@ -22,7 +22,7 @@ namespace Emberfall
         private float nextPulse, phaseCooldown;
         private bool anchorsCommitted, followupPending;
         private readonly bool chapterFollowup, starSweepTrial;
-        public float CurrentBeamLength { get { return starSweepTrial && !IsFollowup ? 14f : BeamLength; } }
+        public float CurrentBeamLength { get { return starSweepTrial && !IsFollowup ? 28f : BeamLength; } }
         public float CurrentBeamDegreesPerSecond { get { return starSweepTrial && !IsFollowup ? 18f : BeamDegreesPerSecond; } }
         public bool IsFollowup { get; private set; }
         public LargeBossPhaseState(bool chapterFollowup = false, bool starSweepTrial = false)

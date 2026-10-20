@@ -59,15 +59,15 @@ namespace Emberfall
         public const int AscensionCost = 24;
         public const int AscensionMilestone = 5;
         public const int VariantCost = 4;
-        private static readonly int[] WingHealthPercents = { 3, 5, 8, 12 };
-        private static readonly int[] WingMovePercents = { 2, 4, 6, 8 };
-        private static readonly int[] WingArmorPercents = { 2, 3, 5, 8 };
-        private static readonly int[] WeaponPercents = { 2, 4, 6, 9 };
-        // Preserve the overall 40% fashion chance while restoring four quality tiers.
+        private static readonly float[] WingHealthPercents = { 4.5f, 7.5f, 12, 18 };
+        private static readonly float[] WingMovePercents = { 3, 6, 9, 12 };
+        private static readonly float[] WingArmorPercents = { 3, 4.5f, 7.5f, 12 };
+        private static readonly float[] WeaponPercents = { 3, 6, 9, 13.5f };
+        // Ordinary fashion draw: 27% common, 18% rare, 12% epic, 3% legendary.
         public static Rarity? RollFashionRarity(int roll)
         {
             if(roll<0||roll>=100)throw new ArgumentOutOfRangeException("roll");
-            return roll<18?Rarity.Common:roll<30?Rarity.Rare:roll<38?Rarity.Epic:roll<40?(Rarity?)Rarity.Legendary:null;
+            return roll<27?Rarity.Common:roll<45?Rarity.Rare:roll<57?Rarity.Epic:roll<60?(Rarity?)Rarity.Legendary:null;
         }
 
         public static string FashionName(FashionSlot slot,Rarity rarity)
@@ -83,13 +83,13 @@ namespace Emberfall
         public static string FashionBonus(FashionSlot slot, Rarity rarity)
         {
             int rank = (int)rarity;
-            int primary = slot == FashionSlot.Wings ? WingHealthPercents[rank] : WeaponPercents[rank];
-            int secondary = slot == FashionSlot.Wings ? WingArmorPercents[rank] : WeaponPercents[rank];
+            float primary = slot == FashionSlot.Wings ? WingHealthPercents[rank] : WeaponPercents[rank];
+            float secondary = slot == FashionSlot.Wings ? WingArmorPercents[rank] : WeaponPercents[rank];
             return slot == FashionSlot.Wings ? "生命 +" + primary + "% · 防御 +" + secondary + "% · 移动速度 +"+WingMovePercents[rank]+"%"
                 : "攻击 +" + primary + "% · 暴击率 +" + secondary + "%";
         }
 
-        public static int WeaponFashionPercent(Rarity rarity) { return WeaponPercents[(int)rarity]; }
+        public static float WeaponFashionPercent(Rarity rarity) { return WeaponPercents[(int)rarity]; }
         internal const int MaximumGold = 999999999;
         private const int MaximumEquipmentStat = 10000;
         private const int MaximumEquipmentHealth = 100000;
@@ -854,18 +854,18 @@ namespace Emberfall
             if (wings != null)
             {
                 int rank = (int)wings.rarity;
-                stats.MaxHealth *= 1f + (WingHealthPercents[rank]+5*wings.upgradeRank) / 100f;
-                stats.Armor *= 1f + (WingArmorPercents[rank]+4*wings.upgradeRank) / 100f;
-                stats.MoveSpeed *= 1f + (WingMovePercents[rank]+wings.upgradeRank) / 100f;
-                if(wings.upgradeRank>=2)stats.DamageReduction=1f-(1f-stats.DamageReduction)*(1f-.02f*(wings.upgradeRank-1));
+                stats.MaxHealth *= 1f + (WingHealthPercents[rank]+7.5f*wings.upgradeRank) / 100f;
+                stats.Armor *= 1f + (WingArmorPercents[rank]+6f*wings.upgradeRank) / 100f;
+                stats.MoveSpeed *= 1f + (WingMovePercents[rank]+1.5f*wings.upgradeRank) / 100f;
+                if(wings.upgradeRank>=2)stats.DamageReduction=1f-(1f-stats.DamageReduction)*(1f-.03f*(wings.upgradeRank-1));
             }
             FashionData weaponFashion = StrongestFashion(FashionSlot.Weapon);
             if (weaponFashion != null)
             {
-                float bonus = (WeaponPercents[(int)weaponFashion.rarity]+5*weaponFashion.upgradeRank) / 100f;
+                float bonus = (WeaponPercents[(int)weaponFashion.rarity]+7.5f*weaponFashion.upgradeRank) / 100f;
                 stats.Damage *= 1f + bonus;
-                stats.CritChance = Math.Min(1f, stats.CritChance + (WeaponPercents[(int)weaponFashion.rarity]+3*weaponFashion.upgradeRank)/100f);
-                if(weaponFashion.upgradeRank>=2)stats.CritDamageBonus+=.05f*(weaponFashion.upgradeRank-1);
+                stats.CritChance = Math.Min(1f, stats.CritChance + (WeaponPercents[(int)weaponFashion.rarity]+4.5f*weaponFashion.upgradeRank)/100f);
+                if(weaponFashion.upgradeRank>=2)stats.CritDamageBonus+=.075f*(weaponFashion.upgradeRank-1);
             }
             if (Profile.masteryRanks != null && Profile.masteryRanks.Length >= 3)
             {
@@ -912,13 +912,13 @@ namespace Emberfall
         {
             if(Profile.heroClass!=HeroClass.Vanguard&&Profile.heroClass!=HeroClass.Ranger)return Fail("当前职业不使用武技专精。");
             if(!Enum.IsDefined(typeof(MartialSpecialization),specialization))return Fail("无效的专精。");
-            GameProfile candidate=Snapshot();candidate.martialSpecialization=specialization;return CommitCandidate(candidate);
+            GameProfile candidate=Snapshot();candidate.martialSpecialization=MartialSpecialization.Balanced;return CommitCandidate(candidate);
         }
         public bool SetSpecialization(ElementalistSpecialization specialization, bool inCamp)
         {
             if (Profile.heroClass != HeroClass.Arcanist) return Fail("只有元素师可切换冰火专精。");
             if (!Enum.IsDefined(typeof(ElementalistSpecialization), specialization)) return Fail("无效的专精。");
-            GameProfile candidate=Snapshot();candidate.specialization=specialization;
+            GameProfile candidate=Snapshot();candidate.specialization=ElementalistSpecialization.None;
             return CommitCandidate(candidate);
         }
 
@@ -965,10 +965,8 @@ namespace Emberfall
             if(hero==HeroClass.Arcanist&&skill==1&&HasMechanic(EquipmentMechanic.CinderTrail))
             {
                 bool concentrated=SelectedMechanicB(EquipmentMechanic.CinderTrail);
-                text+="\n当前余烬 "+(concentrated?"B":"A")+" 修正：陨星直伤倍率 ×"+BuildCatalog.CinderDirectMultiplier.ToString("0.##")+"（与专精相乘）；火场半径倍率 ×"+BuildCatalog.CinderTrailRadiusMultiplier(concentrated).ToString("0.##")+"；每跳相对本阶首陨伤害 ×"+BuildCatalog.CinderTrailTickMultiplier(concentrated).ToString("0.####")+"。";
+                text+="\n当前余烬 "+(concentrated?"B":"A")+" 修正：陨星直伤倍率 ×"+BuildCatalog.CinderDirectMultiplier.ToString("0.##")+"；火场半径倍率 ×"+BuildCatalog.CinderTrailRadiusMultiplier(concentrated).ToString("0.##")+"；每跳相对本阶首陨伤害 ×"+BuildCatalog.CinderTrailTickMultiplier(concentrated).ToString("0.####")+"。";
             }
-            if(hero==HeroClass.Arcanist&&(skill==0||skill==1||skill==5||skill==9))
-                text+="\n当前专精覆盖："+BuildCatalog.SpecializationDescription(Profile.specialization);
             if(hero==HeroClass.Vanguard&&HasMechanic(EquipmentMechanic.ReturningBlade))
             {
                 string[] variants=BuildCatalog.MechanicDescription(EquipmentMechanic.ReturningBlade).Split(new[]{"变体B："},StringSplitOptions.None);
@@ -1236,14 +1234,14 @@ namespace Emberfall
             public int OriginalMasteryRank(int index){return index>=0&&index<4?source.masteryRanks[index]:0;}
             public bool SkillChanged(int index){return OriginalSkillRank(index)!=SkillRank(index);}
             public bool MasteryChanged(int index){return OriginalMasteryRank(index)!=MasteryRank(index);}
-            private static string CoreLabel(int core,int invested){return core<0?"无核心":BuildCatalog.MasteryName((MasteryType)core)+(MasteryCoreRules.Tier(invested)==2?" · 增强":" · 初阶");}
+            private static string CoreLabel(int core,int invested){return core<0?"无核心":BuildCatalog.MasteryName((MasteryType)core);}
             public string CoreChangeSummary
             {
                 get
                 {
                     int oldCore=source.masteryCore;int oldRank=oldCore<0?0:OriginalMasteryRank(oldCore),newRank=Core<0?0:MasteryRank(Core);
                     string result="核心："+CoreLabel(oldCore,oldRank)+" → "+CoreLabel(Core,newRank);
-                    if(oldCore>=0&&(Core!=oldCore||MasteryCoreRules.Tier(newRank)<MasteryCoreRules.Tier(oldRank)))result+=" · 失效："+CoreLabel(oldCore,oldRank)+(Core==oldCore?"增强效果":"能力");
+                    if(oldCore>=0&&(Core!=oldCore||MasteryCoreRules.Tier(newRank)<MasteryCoreRules.Tier(oldRank)))result+=" · 失效："+CoreLabel(oldCore,oldRank)+"能力";
                     return result;
                 }
             }
@@ -1317,7 +1315,7 @@ namespace Emberfall
             public string CoreThreshold(int index)
             {
                 int rank=MasteryRank(index);
-                return rank<MasteryCoreRules.InitialInvestment?"距核心 "+(MasteryCoreRules.InitialInvestment-rank)+"点":rank<MasteryCoreRules.EnhancedInvestment?"核心可选 · 距强化 "+(MasteryCoreRules.EnhancedInvestment-rank)+"点":"强化核心可选";
+                return rank<MasteryCoreRules.InitialInvestment?"距核心 "+(MasteryCoreRules.InitialInvestment-rank)+"点":"核心可选";
             }
             public bool Undo()
             {
@@ -1411,7 +1409,7 @@ namespace Emberfall
             string text="等级 "+Profile.level+" · 剩余配点 "+(GameBalance.SkillPointBudget(Profile.level)-spent)+"\n"+CurrentBuildSummary();
             foreach(string id in new[]{Profile.weaponId,Profile.armorId,Profile.relicId})
             {ItemData item=Profile.inventory.Find(x=>x!=null&&x.id==id);if(item!=null)text+="\n"+item.name+" · "+GameBalance.RarityName(item.rarity)+" · 强化 +"+item.upgradeLevel;}
-            if(Profile.masteryCore>=0)text+="\n核心阶段："+(MasteryCoreRules.Tier(Profile.masteryRanks[Profile.masteryCore])==2?"增强":"初阶");
+            if(Profile.masteryCore>=0)text+="\n已启用核心："+BuildCatalog.MasteryName((MasteryType)Profile.masteryCore);
             return text;
         }
 
@@ -1433,8 +1431,7 @@ namespace Emberfall
                 if (rank > 0) tracks.Add(BuildCatalog.MasteryName((MasteryType)i) + " " + rank + "点");
             }
             string core = configuration.masteryCore >= 0 && configuration.masteryCore < 4 ? BuildCatalog.MasteryName((MasteryType)configuration.masteryCore) : "无核心";
-            string classChoice = configuration.heroClass == HeroClass.Arcanist ? " · " + BuildCatalog.SpecializationName(configuration.specialization) :
-                configuration.heroClass == HeroClass.Summoner ? (configuration.summonerRoute == SummonerRoute.Bonded ? " · 强契" : " · 群契") : " · "+BuildCatalog.MartialSpecializationName(configuration.heroClass,configuration.martialSpecialization);
+            string classChoice = "";
             var equipment = new List<string>();
             foreach (string id in new[] { configuration.weaponId, configuration.armorId, configuration.relicId })
             {
@@ -1577,7 +1574,7 @@ namespace Emberfall
                 foreach(var gem in p.attachments)
                     if(BuildCatalog.GemCompatible(gem.mechanic,p.heroClass))gem.mounted=Array.IndexOf(state.mountedGems,gem.mechanic)>=0;
             p.skillRanks=state.skillRanks;p.masteryRanks=state.masteryRanks;p.masteryCore=state.masteryCore;
-            p.specialization=state.specialization;p.martialSpecialization=state.martialSpecialization;p.summonerRoute=state.summonerRoute;
+            p.specialization=ElementalistSpecialization.None;p.martialSpecialization=MartialSpecialization.Balanced;p.summonerRoute=SummonerRoute.Bonded;
             p.equippedSkills=state.equippedSkills;p.hotbarKeys=state.hotbarKeys;p.hotbarPage=state.hotbarPage;
             p.tutorialMask=state.tutorialMask;p.classTutorialCompleted=state.classTutorialCompleted;
             p.automaticGrowth=state.automaticGrowth;
@@ -1730,7 +1727,7 @@ namespace Emberfall
         {
             if (Profile.heroClass != HeroClass.Summoner || !Enum.IsDefined(typeof(SummonerRoute), route))
                 return Fail("请选择有效的唤灵师契约模式。");
-            GameProfile candidate = Snapshot(); candidate.summonerRoute = route; return CommitCandidate(candidate);
+            GameProfile candidate = Snapshot(); candidate.summonerRoute = SummonerRoute.Bonded; return CommitCandidate(candidate);
         }
 
         public FashionData StrongestFashion(FashionSlot slot)
@@ -1790,7 +1787,7 @@ namespace Emberfall
             int minimum=TierRewardRules.ChestGoldMinimum(tier);
             return (savedReward!=null&&savedReward.rulesRevision<2?"旧版已保存奖励按原回执展示，不追加新箱收益。\n\n":"")+
                 "三个通关宝箱任选一个，奖励只领取一次。金币 "+minimum+"～"+(minimum+40)+" + 1星烬碎片 + 1基础星纹。\n"+
-                "额外时装：传说40% · 无时装60%。优先补齐未拥有的传说兵装或羽翼，两部位齐全后随机重复。\n"+
+                "额外时装：普通27% · 稀有18% · 史诗12% · 传说3% · 无时装40%。优先补齐未拥有的同品质兵装或羽翼。\n"+
                 "重复时装仍转为原金币与额外星纹。未抽签的旧资格仅此箱保留金币×1.5；已冻结抽签只继续原结果。\n"+
                 "营地可手动用6星纹换1碎片，或30星纹自选未有传说；不自动兑换。实际到账受余额上限影响。基础通关碎片独立结算，跳过动画不改变收益。";
         }
@@ -1832,6 +1829,7 @@ namespace Emberfall
             bool fashion=AdventureRewardRules.ChestFashion(profile.pendingChestMode,profile.pendingChestChapterSource);
             bool reforge=AdventureRewardRules.ChestAffixReforge(profile.pendingChestMode,profile.pendingChestChapterSource);
             r.primaryKind=profile.pendingChestGemSource?4:legendary||qualityRoll<40?1:qualityRoll>=95&&reforge?7:qualityRoll<70?3:qualityRoll<85&&fashion?2:5;
+            if(fashion&&!profile.pendingChestGemSource)r.primaryKind=qualityRoll<60?2:qualityRoll<85?3:5;
             // Arena and corridor clear chests contain specialty rewards/materials only.
             if(!profile.pendingChestChapterSource&&(profile.pendingChestMode==2||profile.pendingChestMode==3)&&r.primaryKind==1)r.primaryKind=3;
             if(pityTarget!=0&&SpecialtyChestPity.Misses(profile,pityTarget)>=SpecialtyChestPity.Limit-1)r.primaryKind=pityTarget;
@@ -1839,8 +1837,8 @@ namespace Emberfall
             if(r.primaryKind==1)r.primarySlot=(int)AdventureRewardRules.EquipmentSlot(profile.pendingChestMode,profile.pendingChestMode==3?slotRoll:0);
             else if(r.primaryKind==2)
             {
-                int fashionRoll=Clamp(quantityRoll,0,40);
-                Rarity quality=fashionRoll<18?Rarity.Common:fashionRoll<30?Rarity.Rare:fashionRoll<38?Rarity.Epic:Rarity.Legendary;
+                bool guaranteed=pityTarget==2&&SpecialtyChestPity.Misses(profile,2)>=SpecialtyChestPity.Limit-1;
+                Rarity quality=guaranteed?(qualityRoll<20?Rarity.Legendary:Rarity.Epic):RollFashionRarity(qualityRoll)??Rarity.Legendary;
                 r.primaryRarity=quality;r.rarityIndex=(int)quality;r.appearanceTier=(int)quality;
                 bool weapon=profile.fashions.Exists(f=>f.slot==FashionSlot.Weapon&&f.AppearanceRarity==quality);
                 bool wings=profile.fashions.Exists(f=>f.slot==FashionSlot.Wings&&f.AppearanceRarity==quality);
@@ -1942,7 +1940,7 @@ namespace Emberfall
                 else if(receipt.primaryKind==5){candidate.refinementStones+=receipt.primaryCount;receipt.refinementStonesDelta=receipt.primaryCount;receipt.name="装备洗练石";}
                 else {candidate.fashionThreads+=receipt.primaryCount;receipt.threadsDelta=receipt.primaryCount;receipt.name="星纹";}
             }
-            SpecialtyChestPity.Record(candidate,draw.primaryKind);
+            SpecialtyChestPity.Record(candidate,draw.primaryKind,(Rarity)draw.rarityIndex);
             if(SpecialtyChestPity.Target(candidate)==0&&!candidate.pendingChestGemSource)candidate.legendaryEquipmentMisses=receipt.primaryKind==1&&receipt.primaryRarity==Rarity.Legendary?0:Math.Min(AdventureRewardRules.LegendaryPityChests-1,candidate.legendaryEquipmentMisses+1);
             // Reflect duplicate conversions in the chosen slot; keep the other saved contents.
             if(receipt.contents!=null&&receipt.contents.Length==3&&receipt.selectedChest>=0&&receipt.selectedChest<3)
@@ -3172,7 +3170,7 @@ namespace Emberfall
             int refundedRanks = 0;
             MigrateAchievementReceipts(profile);
             var achievementIds=new HashSet<string>();
-            profile.achievementReceipts.RemoveAll(id=>string.IsNullOrEmpty(id)||Array.Find(Achievements,a=>a.Id==id)==null||!achievementIds.Add(id));
+            profile.achievementReceipts.RemoveAll(id=>string.IsNullOrEmpty(id)||(Array.Find(Achievements,a=>a.Id==id)==null&&!LegacyGemAchievementReceipt(id))||!achievementIds.Add(id));
             if (!Enum.IsDefined(typeof(HeroClass), profile.heroClass)) profile.heroClass = HeroClass.Vanguard;
             profile.version = 1;
             ChapterProgression.Normalize(profile);
@@ -3211,9 +3209,10 @@ namespace Emberfall
             Guid dungeonReceipt;profile.lastDungeonRewardId=Guid.TryParseExact(profile.lastDungeonRewardId,"N",out dungeonReceipt)?dungeonReceipt.ToString("N"):null;
             profile.sideEventRewardReceipts=NormalizeSideEventReceipts(profile.sideEventRewardReceipts);
             profile.tutorialMask = Math.Max(0, profile.tutorialMask) & 15;
-            if (profile.heroClass != HeroClass.Arcanist || !Enum.IsDefined(typeof(ElementalistSpecialization), profile.specialization))
-                profile.specialization = ElementalistSpecialization.None;
-            if(!Enum.IsDefined(typeof(MartialSpecialization),profile.martialSpecialization)||profile.heroClass!=HeroClass.Vanguard&&profile.heroClass!=HeroClass.Ranger)profile.martialSpecialization=MartialSpecialization.Balanced;
+            // Specializations are temporarily disabled; legacy saves use the default branches.
+            profile.specialization=ElementalistSpecialization.None;
+            profile.martialSpecialization=MartialSpecialization.Balanced;
+            profile.summonerRoute=SummonerRoute.Bonded;
             profile.mechanicMaterials = Clamp(profile.mechanicMaterials, 0, 999999);
             profile.revivalStones=Clamp(profile.revivalStones,0,999999);
             if(profile.gemBags==null||profile.gemBags.Length!=3)profile.gemBags=new int[3];

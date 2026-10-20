@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 namespace Emberfall
 {
@@ -103,6 +103,14 @@ namespace Emberfall
     internal sealed class EnemySweepPhysicalVfx : MonoBehaviour
     {
         private Transform[] bodies;
+        private Vector3[] spanStarts,spanEnds;
+        private bool[] clearSpans;
+        internal bool Contains(Vector3 point)
+        {
+            for(int i=0;i<clearSpans.Length;i++)
+                if(clearSpans[i]&&CombatFx.SegmentDistance(point,spanStarts[i],spanEnds[i])<=radius)return true;
+            return false;
+        }
         private Renderer[] renderers;
         private Transform core;
         private Material material;
@@ -120,6 +128,7 @@ namespace Emberfall
             fx.material = resources.Material(fx.baseTint, false, VisualSurface.Stone); fx.block = new MaterialPropertyBlock();
             SkillBodyMaterialLibrary.Apply(fx.material, SkillBodyMaterialLibrary.Matter.Rock);
             int count = EffectPreferences.ReducedEffects ? 22 : 32;
+            fx.spanStarts=new Vector3[count];fx.spanEnds=new Vector3[count];fx.clearSpans=new bool[count];
             fx.bodies = new Transform[count]; fx.renderers = new Renderer[count];
             for (int i = 0; i < count; i++)
             {
@@ -136,28 +145,33 @@ namespace Emberfall
             float length = CombatFx.Flat(to - from).magnitude;
             Vector3 forward = length > .01f ? CombatFx.Flat(to - from) / length : Vector3.forward;
             Vector3 right = Vector3.Cross(Vector3.up, forward);
-            float spacing = length / Mathf.Max(1, bodies.Length - 1);
+            float spacing = length / bodies.Length;
             for (int i = 0; i < bodies.Length; i++)
             {
-                float t = i / (float)(bodies.Length - 1);
-                Vector3 point = Vector3.Lerp(from, to, t) + right * Mathf.Sin(i * 2.399963f) * radius * .24f;
+                spanStarts[i]=Vector3.Lerp(from,to,i/(float)bodies.Length);
+                spanEnds[i]=Vector3.Lerp(from,to,(i+1)/(float)bodies.Length);
+                // Test every span independently: a pillar makes a local gap,
+                // never truncates the rotating attack behind it.
+                clearSpans[i]=WorldTraversal.HasClearSweepCapsule(spanStarts[i],spanEnds[i],radius);
+                bodies[i].gameObject.SetActive(clearSpans[i]);
+                if(!clearSpans[i])continue;
+                Vector3 point=(spanStarts[i]+spanEnds[i])*.5f;
                 float rise = live ? .38f + .06f * Mathf.Sin(Time.time * 12 - i * .7f) : .1f + .19f * progress;
                 bodies[i].position = WorldTerrain.Ground(point, rise * .2f);
                 // Elongated clods follow the actual sweep corridor. Keep only
                 // small local irregularity, so turning the sweep cannot rotate
                 // the long rock axis across its collision-clipped footprint.
-                bodies[i].rotation = Quaternion.LookRotation(forward, Vector3.up) *
-                    Quaternion.Euler(i % 3 * 8, (i % 4 - 1.5f) * 9, i % 4 * 7);
+                bodies[i].rotation = Quaternion.LookRotation(forward, Vector3.up);
                 // The body excludes player-radius compensation in the damage capsule.
                 float width = Mathf.Max(.28f, radius - .4f) * 1.25f;
-                bodies[i].localScale = new Vector3(width, rise * 2f, Mathf.Max(.62f, spacing * 1.75f));
+                bodies[i].localScale = new Vector3(width, rise * 2f, spacing);
                 Color tint = live ? new Color(.24f, .155f, .085f) : Color.Lerp(new Color(.8f,.35f,.06f), new Color(1f,.15f,.035f), progress);
                 block.Clear(); block.SetColor("_Color", tint); block.SetColor("_Tint", tint);
                 block.SetFloat("_Heat", live ? 1 : .65f+progress*.35f);
                 block.SetColor("_EmissionColor", new Color(.7f, .13f, .018f) * (live ? .035f : .45f+progress*.55f));
                 renderers[i].SetPropertyBlock(block);
             }
-            core.gameObject.SetActive(!live && interruptible); core.position = WorldTerrain.Ground(from, .52f); core.localScale = new Vector3(.38f, .62f, .38f);
+            core.gameObject.SetActive(!live && interruptible && clearSpans[0]); core.position = WorldTerrain.Ground(from, .52f); core.localScale = new Vector3(.38f, .62f, .38f);
             if (live)
             {
                 debrisClock -= Time.deltaTime;
@@ -165,11 +179,11 @@ namespace Emberfall
                 {
                     debrisClock = EffectPreferences.ReducedEffects ? .65f : .36f;
                     Vector3 point = Vector3.Lerp(from, to, .35f + Mathf.Repeat(Time.time * .43f, .6f));
-                    PhysicalSkillVfx.Impact(WorldTerrain.Ground(point), forward, new Color(.36f, .23f, .12f), .38f);
+                    if(Contains(point))PhysicalSkillVfx.Impact(WorldTerrain.Ground(point), forward, new Color(.36f, .23f, .12f), .38f);
                 }
             }
             else debrisClock = 0;
-            if (live && !wasLive) PhysicalSkillVfx.Impact(WorldTerrain.Ground(from), forward, new Color(.36f, .23f, .12f), radius);
+            if (live && !wasLive && clearSpans[0]) PhysicalSkillVfx.Impact(WorldTerrain.Ground(from), forward, new Color(.36f, .23f, .12f), radius);
             wasLive = live;
         }
     }
