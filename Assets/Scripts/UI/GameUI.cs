@@ -1979,14 +1979,17 @@ namespace Emberfall
             string notice=PlatformText(session.Notification);
             float noticeHeight=Mathf.Max(40,Style(14,true,true,TextAnchor.MiddleCenter).CalcHeight(new GUIContent(notice),522)+12);
             Rect r = new Rect((width - 550) * .5f, overlay ? height - noticeHeight - 9 : 90, 550, noticeHeight);
-            if(session.InDungeon&&!overlay)
+            bool dungeonNotice=session.InDungeon&&!overlay;
+            int noticeFont=dungeonNotice?12:14;
+            if(dungeonNotice)
             {
-                float available=Mathf.Min(282,width*.26f);
-                noticeHeight=Style(12,false,true).CalcHeight(new GUIContent(notice),available-20)+16;
-                r=new Rect(16,Mathf.Max(height*.55f,height-noticeHeight-80),available,noticeHeight);
+                Rect map=DesktopMinimapRect;
+                float available=Mathf.Min(220,width*.26f);
+                noticeHeight=Mathf.Max(32,Style(noticeFont,false,true).CalcHeight(new GUIContent(notice),available-28)+12);
+                r=new Rect(map.xMax-available,map.yMax+10,available,noticeHeight);
             }
             Box(r, gold);
-            Text(new Rect(r.x + 14, r.y + 6, r.width - 28, r.height - 12),notice,14,pale,true,true,TextAnchor.MiddleCenter);
+            Text(new Rect(r.x + 14, r.y + 6, r.width - 28, r.height - 12),notice,noticeFont,pale,!dungeonNotice,true,dungeonNotice?TextAnchor.UpperLeft:TextAnchor.MiddleCenter);
         }
 
         private void DrawTooltip()

@@ -213,6 +213,12 @@ namespace Emberfall
         {
             var area=MobileControls.Layout.Notice;
             Rect bounds=TouchRect(area);
+            if(session.InDungeon)
+            {
+                Rect map=TouchRect(MobileControls.Layout.Map);
+                float available=Mathf.Min(220*TouchRatio,width*.38f);
+                bounds=new Rect(map.xMax-available,map.yMax+8*TouchRatio,available,height-map.yMax-16*TouchRatio);
+            }
             if(session.Notification.StartsWith("等级提升"))
                 bounds.width=Mathf.Min(280*TouchRatio,(MobileControls.Layout.Width*.45f-area.X)*TouchRatio);
             float y=bounds.y;
