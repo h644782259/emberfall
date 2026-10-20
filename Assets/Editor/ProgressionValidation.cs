@@ -216,17 +216,26 @@ namespace Emberfall.Editor
                     name + ": retrying a committed chest does not grant twice");
                 Check(restored.AcknowledgeChestReward() && restored.Load() && !restored.Profile.pendingChestReveal,
                     name + ": acknowledgement persists");
+                // This fixture tests storage recovery, independently of reward rolls
+                // and changes to the economy's potion price.
+                restored.AddGold(ProgressionService.PotionPrice);
+                int purchaseGold = restored.Profile.gold, purchasePotions = restored.Profile.potions;
+                Check(purchaseGold >= ProgressionService.PotionPrice && purchasePotions < 99 &&
+                    string.IsNullOrEmpty(restored.LastError), name + ": storage fixture can afford a potion");
                 string primary = File.ReadAllText(restored.SaveFilePath), backup = File.ReadAllText(restored.SaveFilePath + ".bak");
                 string temporary = restored.SaveFilePath + ".tmp";
                 Directory.CreateDirectory(temporary);
                 try
                 {
-                    Check(!restored.BuyPotion() && File.ReadAllText(restored.SaveFilePath) == primary &&
+                    Check(!restored.BuyPotion() && restored.Profile.gold == purchaseGold &&
+                        restored.Profile.potions == purchasePotions && File.ReadAllText(restored.SaveFilePath) == primary &&
                         File.ReadAllText(restored.SaveFilePath + ".bak") == backup,
                         name + ": blocked write preserves both durable documents");
                 }
                 finally { Directory.Delete(temporary); }
-                Check(restored.BuyPotion() && restored.Load(), name + ": transaction retries after storage recovery");
+                Check(restored.BuyPotion() && restored.Load() &&
+                    restored.Profile.gold == purchaseGold - ProgressionService.PotionPrice &&
+                    restored.Profile.potions == purchasePotions + 1, name + ": transaction retries after storage recovery");
                 // A real frozen record is still protected; a malformed primary cannot
                 // silently fall back to an older backup and reroll its reward.
                 Check(restored.PrepareDungeonChest(), name + ": corruption fixture creates a fresh qualification");
