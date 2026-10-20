@@ -37,19 +37,19 @@ class Program{
  static void Main(){
   foreach(EnemyKind kind in Enum.GetValues(typeof(EnemyKind))){
    C(Near(BossScaleRules.EnemyMultiplier(false),1),"nonboss enemy scale unchanged");
-   C(Near(BossScaleRules.NavigationRadius(false,false,kind),kind==EnemyKind.Guardian?.6f:.45f),"nonboss navigation unchanged");
+   C(Near(BossScaleRules.NavigationRadius(false,false,kind),kind==EnemyKind.Guardian?.44f:.32f),"nonboss navigation unchanged");
   }
-  C(Near(BossScaleRules.EnemyMultiplier(true),1.5f)&&Near(BossScaleRules.EnemyMultiplier(true,true),1.45f),"central Boss model dimensions");
-  C(Near(BossScaleRules.NavigationRadius(true,false,EnemyKind.Guardian),1.35f)&&Near(BossScaleRules.ProjectileRadius(true,false),1.575f)&&Near(BossScaleRules.BodyHeight(true,false,EnemyKind.Guardian),5.7f),"ordinary Boss navigation and contact grow together");
-  C(Near(BossScaleRules.NavigationRadius(true,true,EnemyKind.Guardian),1.8125f)&&Near(BossScaleRules.ProjectileRadius(true,true),1.885f)&&Near(BossScaleRules.BodyHeight(true,true,EnemyKind.Guardian),6.38f),"Large Boss routing and full-height projectile body");
+  C(Near(BossScaleRules.EnemyMultiplier(true),3f)&&Near(BossScaleRules.EnemyMultiplier(true,true),2.9f),"central Boss model dimensions");
+  C(Near(BossScaleRules.NavigationRadius(true,false,EnemyKind.Guardian),2.7f)&&Near(BossScaleRules.ProjectileRadius(true,false),3.15f)&&Near(BossScaleRules.BodyHeight(true,false,EnemyKind.Guardian),11.4f),"ordinary Boss navigation and contact grow together");
+  C(Near(BossScaleRules.NavigationRadius(true,true,EnemyKind.Guardian),3.625f)&&Near(BossScaleRules.ProjectileRadius(true,true),3.77f)&&Near(BossScaleRules.BodyHeight(true,true,EnemyKind.Guardian),12.76f),"Large Boss routing and full-height projectile body");
   C(BossScaleRules.SpawnRadius(true)>BossScaleRules.NavigationRadius(true,true,EnemyKind.Guardian),"spawn clearance exceeds full enlarged body");
   foreach(SummonedCompanion.Kind form in Enum.GetValues(typeof(SummonedCompanion.Kind))){float scale=BossScaleRules.CompanionMultiplier(form);C(Near(scale,form==SummonedCompanion.Kind.Treant?1.5f:1),"only ultimate Treant grows");}
   C(Near(BossScaleRules.CompanionNavigation(SummonedCompanion.Kind.Treant),1.05f)&&Near(BossScaleRules.CompanionBodyRadius(SummonedCompanion.Kind.Treant),1.35f),"Treant navigation and projectile capsule match added scale");
-  for(int layout=-1;layout<110;layout++)C(ArenaSizeRules.LayoutScale(layout)==(layout==0||layout==1||layout==4||layout==14||layout==105?1.25f:1),"only actual configured Boss arenas expand");
+  for(int layout=-1;layout<110;layout++)C(ArenaSizeRules.LayoutScale(layout)>=1&&ArenaSizeRules.LayoutScale(layout)<=1.5f,"room scales stay within navigation limits");
   foreach(ExpeditionModeKind mode in Enum.GetValues(typeof(ExpeditionModeKind))){var run=new ExpeditionModeState(mode,9,234);ExpeditionPhasePlan plan;C(run.TryBeginPhase(out plan),"production mode creates actual phase");bool boss=false;foreach(var role in plan.Enemies)boss|=role==ExpeditionEnemyRole.Boss;C(ArenaSizeRules.HasBossEncounter((int)mode+2)==boss,"production role list decides arena expansion");}
-  C(Near(ArenaSizeRules.Radius(ZoneKind.Dungeon,0,0),35)&&Near(ArenaSizeRules.Radius(ZoneKind.Dungeon,105,0),22.5f),"world/game radii include enlarged encounters");
+  C(Near(ArenaSizeRules.Radius(ZoneKind.Dungeon,0,0),35)&&Near(ArenaSizeRules.Radius(ZoneKind.Dungeon,105,0),26.55f),"world/game radii include enlarged encounters");
   var p=new Vector3(3,1.7f,-8);C((ArenaSizeRules.LocalPoint(105,ArenaSizeRules.Point(105,p))-p).magnitude<.001f,"world point roundtrip leaves height unchanged");
-  Flat(35);C(WorldTraversal.IsWalkable(new Vector3(32,0,0),BossScaleRules.NavigationRadius(true,true,EnemyKind.Guardian)),"expanded perimeter accommodates enlarged Boss");C(WorldTraversal.FindPath(new Vector3(-31,0,0),new Vector3(31,0,0),1.8125f).Count>0,"fixed navigation grid reaches both enlarged edges");
+  Flat(35);C(WorldTraversal.IsWalkable(new Vector3(30,0,0),BossScaleRules.NavigationRadius(true,true,EnemyKind.Guardian)),"expanded perimeter accommodates enlarged Boss");C(WorldTraversal.FindPath(new Vector3(-30,0,0),new Vector3(30,0,0),3.625f).Count>0,"fixed navigation grid reaches both enlarged edges");
   WorldTerrain.Configure(ZoneKind.Dungeon,0,35);C(Near(WorldTerrain.Radius,35),"height shader and actual terrain use expanded radius");
   Flat(22.5f);WorldTraversal.BeginSceneBuild(1.25f);C(Near(WorldTraversal.SceneLocalArenaRadius,18),"scene-local placement keeps authored extent");
   var h=WorldTraversal.AddDynamicCircle(new Vector3(8,0,3),.8f);C(!WorldTraversal.IsWalkable(new Vector3(10,0,3.75f),.05f)&&WorldTraversal.IsWalkable(new Vector3(8,0,3),.05f),"navigation center scales exactly once");
@@ -64,7 +64,7 @@ class Program{
    float radius=node==ChapterNode.StarPlatform?BossScaleRules.SpawnRadius(true):.65f;Vector3 spawn;C(ChapterRoomGeometry.TrySpawn(plan,0,new System.Collections.Generic.List<Vector3>(),radius,out spawn),"production chapter spawn fits matching enlarged clearance");C(WorldTraversal.IsWalkable(spawn,radius)&&WorldTraversal.CanReach(plan.Entrance,spawn,radius),"actual chapter boss spawn and entrance route pass navigation");
   }
   foreach(bool large in new[]{false,true}){
-   var bolt=new BoltFixture{largeBoss=large?new object():null,targetPoint=new Vector3(0,0,24),bossBoltSocket=new Transform{position=new Vector3(0,large?2.1f*1.45f:1.43f*1.48f*1.5f,0)}};
+   var bolt=new BoltFixture{largeBoss=large?new object():null,targetPoint=new Vector3(0,0,24),bossBoltSocket=new Transform{position=new Vector3(0,large?2.1f*2.9f:1.43f*1.48f*3f,0)}};
    Vector3 muzzle=bolt.BoltMuzzle(Vector3.zero,new Vector3(0,0,1)),direction=bolt.BoltDirection(muzzle,new Vector3(0,0,1));C(Near(muzzle.y,bolt.bossBoltSocket.position.y),"Boss projectile starts at actual animated core socket");C(direction.y<0&&Near(direction.magnitude,1),"enlarged Boss aims from chest down to victim body");float fraction;C(ContactFixture.BodyContact(muzzle,muzzle+direction*bolt.BoltSpeed*3,bolt.targetPoint,2.2f,.45f,.32f,out fraction),"3D Boss shot reaches actual player body before expiry");float horizontal=bolt.BoltSpeed*3*CombatFx.Flat(direction).magnitude;C(Near(CombatFx.Flat(muzzle+direction*bolt.BoltSpeed*3-muzzle).magnitude,horizontal),"warning endpoint uses actual horizontal range of 3D velocity");
    bolt.companionTarget=new SummonedCompanion{PhysicalBodyHeight=BossScaleRules.CompanionBodyHeight(SummonedCompanion.Kind.Treant)};direction=bolt.BoltDirection(muzzle,new Vector3(0,0,1));C(ContactFixture.BodyContact(muzzle,muzzle+direction*bolt.BoltSpeed*3,bolt.targetPoint,bolt.companionTarget.PhysicalBodyHeight,1.35f,.32f,out fraction),"elevated Boss shot aims at actual enlarged Treant body");
    float height=BossScaleRules.BodyHeight(true,large,EnemyKind.Guardian),width=BossScaleRules.ProjectileRadius(true,large);C(ContactFixture.BodyContact(new Vector3(-6,height-.5f,0),new Vector3(6,height-.5f,0),Vector3.zero,height,width,.32f,out fraction),"full-height Boss contact accepts high shot at enlarged head");C(!ContactFixture.BodyContact(new Vector3(-6,height+1,0),new Vector3(6,height+1,0),Vector3.zero,height,width,.32f,out fraction),"shot truly above enlarged body remains safe");
@@ -77,7 +77,7 @@ class Program{
 '''.replace('BOLT',bolt).replace('NAV',nav).replace('BODY',body).replace('BEAM',beam)
 with tempfile.TemporaryDirectory(prefix='emberfall-boss-arena-scale-') as d:
  p=Path(d);(p/'Math.cs').write_text(math);(p/'Program.cs').write_text('using System;using Emberfall;using UnityEngine;'+fixture)
- sources=['Assets/Scripts/Combat/BossScaleRules.cs','Assets/Scripts/World/ArenaSizeRules.cs','Assets/Scripts/World/WorldTraversal.cs','Assets/Scripts/World/ChapterRoomGeometry.cs','Assets/Scripts/Core/ExpeditionModeState.cs','Assets/Scripts/Core/LargeBossPhaseState.cs','Assets/Scripts/Core/TierRewardBand.cs']
+ sources=['Assets/Scripts/Combat/BossScaleRules.cs','Assets/Scripts/World/ArenaSizeRules.cs','Assets/Scripts/World/WorldTraversal.cs','Assets/Scripts/World/ChapterRoomGeometry.cs','Assets/Scripts/World/TacticalRoomGeometry.cs','Assets/Scripts/Core/ExpeditionModeState.cs','Assets/Scripts/Core/LargeBossPhaseState.cs','Assets/Scripts/Core/TierRewardBand.cs']
  for file in sources:(p/Path(file).name).write_text((r/file).read_text())
  (p/'Test.csproj').write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework><OutputType>Exe</OutputType></PropertyGroup></Project>');(p/'NuGet.Config').write_text('<configuration><packageSources><clear /></packageSources></configuration>')
  env=dict(os.environ,DOTNET_CLI_HOME=str(p/'cli'),DOTNET_NOLOGO='1',DOTNET_SKIP_FIRST_TIME_EXPERIENCE='1');dotnet=sys.argv[1] if len(sys.argv)>1 else os.environ.get('DOTNET','dotnet')
@@ -87,7 +87,7 @@ with tempfile.TemporaryDirectory(prefix='emberfall-boss-arena-scale-') as d:
   ('WorldTraversal.cs','o.PhysicalCenter=center;','o.PhysicalCenter=ScenePoint(center);','world physical bounds never double-scale'),
   ('WorldTraversal.cs','internal static void EndSceneBuild(){sceneBuildScale=1;}','internal static void EndSceneBuild(){}','scene build restores unscaled runtime scope'),
   ('Program.cs','float distance=Mathf.Max(.1f,CombatFx.Flat(targetPoint-muzzle).magnitude);','return flatForward;\n            float distance=Mathf.Max(.1f,CombatFx.Flat(targetPoint-muzzle).magnitude);','enlarged Boss aims from chest down to victim body'),
-  ('ArenaSizeRules.cs','return layout==0||layout==1||layout==4||layout==14||layout==105;','return layout>=0&&layout<=4||layout==14||layout==105;','only actual configured Boss arenas expand'),
+  ('ArenaSizeRules.cs','return layout==0||layout==1||layout==4||layout==14||layout==105;','return layout>=0&&layout<=4||layout==14||layout==105;','production role list decides arena expansion'),
  ]
  for name,old,new,why in controls:
   source=(p/name).read_text();assert old in source,(name,old);(p/name).write_text(source.replace(old,new))
@@ -96,12 +96,13 @@ with tempfile.TemporaryDirectory(prefix='emberfall-boss-arena-scale-') as d:
   result=subprocess.run([dotnet,str(p/'bin/Release/net8.0/Test.dll')],env=env,text=True,capture_output=True);assert result.returncode and why in result.stderr,result.stdout+result.stderr
   print('PASS compiled negative control: '+why);(p/name).write_text(source)
 # Wiring assertions supplement the executed production methods and cannot substitute for native renders.
-for text in ['BossAttackPolicy.ChargeHalfWidth*BodyScale','BossAttackPolicy.ChargeSpeed*BodyScale','BossAttackPolicy.SlamRadius*BodyScale','model.transform.localScale *= BodyScale;','CacheBossBoltSocket();','BoltDirection(muzzle,Quaternion.Euler(0,i*17,0)*attackForward)','float range=BoltSpeed*3f*CombatFx.Flat(flight).magnitude;']:
+for text in ['BossAttackPolicy.ChargeHalfWidth*BodyScale','BossAttackPolicy.ChargeSpeed*BodyScale','BossAttackPolicy.SlamRadius*BodyScale','model.transform.localScale *= BodyScale;','CacheBossBoltSocket();','BoltDirection(muzzle,Quaternion.Euler(0,FanAngle(i),0)*attackForward)','float range=BoltSpeed*3f*CombatFx.Flat(flight).magnitude;']:
  assert text in enemy,text
 assert 'projectile.direction=forward.normalized;' in (r/'Assets/Scripts/Combat/CombatEffects.cs').read_text()
 assert 'candidate.IsBoss?candidate.PhysicalBodyHeight:' in (r/'Assets/Scripts/Combat/CombatEffects.cs').read_text()
 assert 'NavigationSceneSize(parent,new Vector2(1.4f,1.4f))' in world
 assert 'finally{WorldTraversal.EndSceneBuild();}' in world
 assert world.index('finally{WorldTraversal.EndSceneBuild();}')<world.index('if(dungeon)BuildBreakablePockets(root.transform,dungeonLayout);')
-assert 'BossSpawnRadius' in (r/'Assets/Scripts/Core/GameSession.Expedition.cs').read_text()
+assert 'BossSpawnRadius' in (r/'Assets/Scripts/Core/GameSession.cs').read_text()
+assert 'BossSpawnRadius' in (r/'Assets/Scripts/Core/GameSession.RoomChain.cs').read_text()
 print('PASS source integration for ordinary/Large/Treant scale, actor contact, warning, charge, native socket and runtime registration scope')

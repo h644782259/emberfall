@@ -57,10 +57,7 @@ namespace Emberfall
 
         public static Texture2D BasicAttack(HeroClass hero)
         {
-            Texture2D weapon=RefinedEquipment(ItemSlot.Weapon,hero,Rarity.Rare);
-            if(weapon!=null)return weapon;
-            if (hero == HeroClass.Vanguard) return Load("resources/10") ?? UIIconAtlas.Utility("attack");
-            return Load("actions/" + ((int)hero - 1).ToString("D2")) ?? UIIconAtlas.Skill(hero, 0);
+            return UIIconAtlas.BasicAttackGlyph();
         }
 
         public static Texture2D Utility(string key)
@@ -75,6 +72,9 @@ namespace Emberfall
                 case "coin": return Load("resources/01");
                 case "shard": return Load("resources/02");
                 case "gem": return Load("resources/03");
+                case "refinement": return Load("refinement-stone");
+                case "affix-reforge": return Load("gems/03");
+                case "basic-attack": return Load("resources/15");
                 case "bag": case "inventory": return Load("resources/06");
                 case "core": return Load("resources/07");
                 case "smith": return Load("resources/08");

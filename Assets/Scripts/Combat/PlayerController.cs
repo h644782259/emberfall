@@ -139,12 +139,14 @@ namespace Emberfall
         public float SkillRechargeRemaining(int skill){return skillRuntime==null?0:skillRuntime.RechargeRemaining(skill);}
         public float SkillRechargePeriod(int skill){return skillRuntime==null?0:skillRuntime.RechargePeriod(skill);}
 
+        private StatBlock gemBaseStats;
+        private bool gemWasMoving;
+        private readonly GemFormRuntime gemForms=new GemFormRuntime();
         private readonly RelicGemRuntime relicGems=new RelicGemRuntime();
         private void ConfigureRelicGems()
         {
             for(int i=0;i<3;i++){
-                var gem=session.Progression.Attachment((EquipmentMechanic)((int)EquipmentMechanic.RelicPower+i));
-                relicGems.Configure(i,gem!=null&&gem.mounted?gem.ascensionRank:0,gem==null?0:gem.variant);
+                relicGems.Configure(i,0,0); // Superseded by attribute-specific forms.
             }
         }
         private void ApplyRelicProc(RelicGemProc proc,Vector3 target)
@@ -160,7 +162,7 @@ namespace Emberfall
             if (session == null) return;
             float previousMaximum = MaxHealth;
             bool wasDead = previousMaximum > 0 && Health <= 0;
-            stats = session.Progression.GetStats();
+            stats = session.Progression.GetStats();gemBaseStats=stats;gemWasMoving=false;gemForms.Configure(session.Progression.Profile.attachments);
             ConfigureRelicGems();
             int selectedCore=session.Progression.Profile.masteryCore;
             int oldCore=masteryCore.Core,oldTier=masteryCore.Tier;
@@ -182,7 +184,8 @@ namespace Emberfall
         internal void RestoreLifeSteal(float actualDamage)
         {
             if(IsDead||session==null||session.Player!=this||!session.HasStarted||session.CombatEnded||
-                actualDamage<=0||float.IsNaN(actualDamage)||float.IsInfinity(actualDamage)||stats.LifeSteal<=0)return;
+                actualDamage<=0||float.IsNaN(actualDamage)||float.IsInfinity(actualDamage) )return;
+            gemForms.Trigger(GemFormTrigger.Hit);
             Heal(actualDamage*stats.LifeSteal);
         }
 
@@ -218,13 +221,14 @@ namespace Emberfall
 
         public void Teleport(Vector3 position)
         {
+            gemWasMoving=false;
             ClearPlayerImpact();hurtFlashUntil=nextImpactControl=0;
             SummonedCompanion.RefreshBuild(this);
-            CombatEpoch++;relicGems.Reset();
+            CombatEpoch++;relicGems.Reset();gemForms.Reset();
             ClearMobilePinnedTarget();
             perfectDodgeCounterTime = 0;
             CancelCombatPose();
-            masteryCore.Reset();relicGems.Reset();coreWardTime=0;
+            masteryCore.Reset();relicGems.Reset();gemForms.Reset();coreWardTime=0;
             if (targeting != null) targeting.Cancel();
             if (charge != null) charge.Cancel();
             AimTarget = null;
@@ -261,7 +265,7 @@ namespace Emberfall
         internal void RetireCombatForWorldTransition()
         {
             SummonedCompanion.RefreshBuild(this);
-            CombatEpoch++;relicGems.Reset();
+            CombatEpoch++;relicGems.Reset();gemForms.Reset();
             ClearMobilePinnedTarget();
             perfectDodgeCounterTime = 0;
             CancelCombatPose();
@@ -273,11 +277,11 @@ namespace Emberfall
         // Opening/cancelling a portal and advancing waves never call this method.
         public void ResetCooldownsForDungeonEntry()
         {
-            CombatEpoch++;relicGems.Reset();
+            CombatEpoch++;relicGems.Reset();gemForms.Reset();
             ClearMobilePinnedTarget();
             perfectDodgeCounterTime = 0;
             CancelCombatPose();
-            masteryCore.Reset();relicGems.Reset();coreWardTime=0; // Retire prior-zone delayed impacts as well as stale aim.
+            masteryCore.Reset();relicGems.Reset();gemForms.Reset();coreWardTime=0; // Retire prior-zone delayed impacts as well as stale aim.
             if (targeting != null) targeting.Cancel();
             if (charge != null) charge.Cancel();
             if (skillRuntime != null) skillRuntime.ResetCooldowns();
@@ -323,6 +327,7 @@ namespace Emberfall
             session.RecordIncomingDamage(source, Mathf.Min(Health, damage));
             float healthBeforeHit = Health;
             Health = Mathf.Max(0,Health - damage);
+            if(Health<healthBeforeHit)gemForms.Trigger(GemFormTrigger.Hurt);
             if (CombatReviewEvents.Enabled) CombatReviewEvents.Emit("takendamage",CombatReviewObjectId.Get(this),amount:healthBeforeHit-Health,detail:source);
             if(Health>0){float recovery=masteryCore.DamageTaken(Health/MaxHealth);if(recovery>0){Heal(MaxHealth*recovery);session.RecordCombatAction("生机核心");}}
             invulnerability = .2f;
@@ -334,11 +339,11 @@ namespace Emberfall
             {
                 if (CombatReviewEvents.Enabled) CombatReviewEvents.Emit("death",CombatReviewObjectId.Get(this));
                 if(ImpactControlled){transform.position=WorldTraversal.NearestWalkable(transform.position,.45f);ClearPlayerImpact();}
-                if(!session.CanSuspendForRevival)CombatEpoch++;relicGems.Reset();
+                if(!session.CanSuspendForRevival)CombatEpoch++;relicGems.Reset();gemForms.Reset();
             ClearMobilePinnedTarget();
                 perfectDodgeCounterTime = 0;
                 CancelCombatPose();
-            masteryCore.Reset();relicGems.Reset();coreWardTime=0;
+            masteryCore.Reset();relicGems.Reset();gemForms.Reset();coreWardTime=0;
                 if (targeting != null) targeting.Cancel();
                 if (charge != null) charge.Cancel();
                 if (jumping) transform.position = WorldTraversal.NearestWalkable(transform.position, .45f);
@@ -419,6 +424,11 @@ namespace Emberfall
             returningBladeProc.Advance(dt); venomSpreadProc.Advance(dt); openingFrostProc.Advance(dt);
             if (FocusTarget == null) { focusedEnemy = null; focusTime = 0; }
             if (IsDead) return;
+            gemForms.Advance(dt);
+            float healthRatio=Health/Mathf.Max(1,MaxHealth);
+            stats=gemForms.Evaluate(gemBaseStats,healthRatio,Energy/Mathf.Max(1,MaxEnergy),gemWasMoving);
+            float nextMaximum=Mathf.Max(1,stats.MaxHealth);
+            if(Mathf.Abs(nextMaximum-MaxHealth)>.001f){MaxHealth=nextMaximum;Health=Mathf.Clamp(healthRatio*MaxHealth,0,MaxHealth);}
             skillRuntime.Advance(dt);relicGems.Advance(dt);
             skillRuntime.RestoreEnergy(dt*SkillRuntime.EnergyPerSecond*(stats.EnergyRecovery+(Energy<MaxEnergy*.5f?stats.GemLowEnergyRecovery:stats.GemHighEnergyRecovery)));
             if (ActiveRunBonuses != null) skillRuntime.RestoreEnergy(dt * ActiveRunBonuses.ExtraEnergyPerSecond);
@@ -493,6 +503,7 @@ namespace Emberfall
             if (mobile && !FrostStrideActive && movement.sqrMagnitude > .01f && !wantsBasic && !HasPendingSkillRelease && (charge == null || !charge.IsCharging))
                 transform.rotation = Quaternion.RotateTowards(transform.rotation,Quaternion.LookRotation(movement),360f*dt);
             // Commit actual walking before any attack samples its final weapon pose.
+            gemWasMoving=walkingDisplacement.sqrMagnitude>.00001f;
             model.SetLocomotion(transform.InverseTransformDirection(walkingDisplacement),dt,stats.MoveSpeed,!TraversalStartedThisFrame,jumping,jumpAge/.55f);
             // Mouse selection uses this frame's final position. Walking only turns
             // the model; it never overwrites the independent mouse aim point.
@@ -1210,7 +1221,7 @@ namespace Emberfall
             else FilledSkillVfx.Impact(this,transform.position,radius,HeroClass==HeroClass.Arcanist?FilledVfxKind.Lightning:FilledVfxKind.Summon,tint,CombatVisualPriority.RealContact,elementalist:HeroClass==HeroClass.Arcanist);
         }
 
-        internal void HitArea(Vector3 at, float radius, CombatDamage damage, float knockback = 0, float stun = 0, int castId = 0, ProjectileVolleyBudget<EnemyController> volley = null, bool strictRadius = false)
+        internal void HitArea(Vector3 at, float radius, CombatDamage damage, float knockback = 0, float stun = 0, int castId = 0, ProjectileVolleyBudget<EnemyController> volley = null, bool strictRadius = false, bool requireSight = true)
         {
             CombatImpactBatch.Begin();
             try
@@ -1223,7 +1234,7 @@ namespace Emberfall
                 EnemyController enemy = session.Enemies[i];
                 if (enemy == null || enemy.IsDead) continue;
                 Vector3 delta = CombatFx.Flat(enemy.transform.position - at);
-                if (delta.magnitude <= radius + (strictRadius?0:(enemy.IsBoss ? .85f : .4f) + enemy.HitFootprintBonus) && CombatSight.Area(at,enemy.transform.position))
+                if (delta.magnitude <= radius + (strictRadius?0:(enemy.IsBoss ? .85f : .4f) + enemy.HitFootprintBonus) && (!requireSight||CombatSight.Area(at,enemy.transform.position)))
                 {
                     var impact=volley==null?damage:volley.Apply(enemy,damage,true);if(impact.Amount<=0)continue;
                     if(confirmedSkillCast)RegisterSkillHit(castId);ApplySpellDodgeBoon(enemy);
@@ -1507,6 +1518,7 @@ namespace Emberfall
             session.RecordPracticeCast(castId,slot);
             session.RecordCombatAction("职业能力");
             if (executingChargedSkill && session.HasBlessing(RunBlessing.ChargedWard)) chargedWardTime = Mathf.Max(chargedWardTime, 2f);
+            gemForms.Trigger(GemFormTrigger.Cast);
             GameAudio.PlaySkill(HeroClass,slot);
             if (CombatReviewEvents.Enabled) CombatReviewEvents.Emit("skillrelease",CombatReviewObjectId.Get(this),skill:slot);
             if ((HeroClass == HeroClass.Vanguard && slot == 5) || (HeroClass == HeroClass.Ranger && slot == 4)) movementSkillLock = .15f;
@@ -1530,7 +1542,7 @@ namespace Emberfall
             if(HeroClass==HeroClass.Arcanist&&(slot==6||slot==7))
             {ElementalistGravity.Spawn(this,session,slot,rank,slot==7?transform.position:target,Damage(1f),castId);return;}
             if(HeroClass==HeroClass.Arcanist&&slot==10)
-            {TrackingLaser.Spawn(this,session,target,rank,Damage(.45f+.10f*(rank-1)),castId);return;}
+            {TrackingLaser.Spawn(this,session,target,rank,Damage((.45f+.10f*(rank-1))*1.5f),castId);return;}
             if (HeroClass == HeroClass.Summoner)
             {
                 {

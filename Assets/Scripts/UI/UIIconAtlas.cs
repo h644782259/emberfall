@@ -195,6 +195,7 @@ namespace Emberfall
 
         public static Texture2D Utility(string name,bool highResolution=false)
         {
+            if(name=="attack")return BasicAttackGlyph();
             Texture2D painting = AuthoredIconArt.Utility(name);
             if (painting != null) return painting;
             var targetCache=highResolution?detailCache:cache;
@@ -477,6 +478,59 @@ namespace Emberfall
         }
         public static void Clear() { ProductionGearIconArt.Clear(); foreach (Texture2D texture in cache.Values) if (texture != null) Object.Destroy(texture); cache.Clear();foreach(var texture in detailCache.Values)if(texture!=null)Object.Destroy(texture);detailCache.Clear();detailOrder.Clear();detailSources.Clear(); }
         private static Vector2 V(float x, float y) { return new Vector2(x, y); }
+        public static Texture2D BasicAttackGlyph()
+        {
+            const int key=-803;Texture2D texture;
+            if(cache.TryGetValue(key,out texture))return texture;
+            var ink=new Icon(Color.white,128);
+            // Broad diagonal slash, a subdued rear blade and solid impact shards.
+            ink.color=new Color(.65f,.68f,.7f,1);
+            ink.Polygon(new[]{V(9,9),V(21,10),V(40,34),V(32,40),V(10,23)});
+            ink.color=Color.white;
+            ink.Polygon(new[]{V(47,9),V(59,7),V(56,21),V(32,43),V(23,35)});
+            ink.Polygon(new[]{V(20,33),V(35,45),V(31,48),V(17,36)});
+            ink.Polygon(new[]{V(25,40),V(30,45),V(18,56),V(12,52)});
+            ink.Polygon(new[]{V(20,39),V(12,36),V(16,43),V(6,45),V(14,48),V(9,56),V(20,51),V(23,60),V(27,49),V(35,56),V(33,46),V(43,49),V(37,41),V(49,38),V(37,36),V(34,40),V(38,43),V(30,41),V(30,48),V(25,43),V(21,51),V(20,45),V(14,45),V(21,43)});
+            // Complete the rear sword beyond the crossing and impact flash.
+            ink.color=new Color(.65f,.68f,.7f,1);
+            ink.Polygon(new[]{V(38,37),V(44,43),V(40,47),V(34,40)});
+            ink.Polygon(new[]{V(33,45),V(44,34),V(47,37),V(36,48)});
+            ink.Polygon(new[]{V(41,43),V(45,40),V(54,51),V(50,55)});
+            ink.Polygon(new[]{V(48,53),V(53,48),V(57,53),V(53,57)});
+            ink.CenterSilhouette();
+            texture=ink.Finish("Universal basic attack");cache[key]=texture;return texture;
+        }
+        public static Texture2D MobilityGlyph(bool jump)
+        {
+            int key=jump?-801:-802;Texture2D texture;
+            if(cache.TryGetValue(key,out texture))return texture;
+            var ink=new Icon(Color.white,128);
+            if(jump)
+            {
+                ink.Disc(32,13,5);
+                ink.Line(31,25,32,37,9);
+                ink.Line(28,25,22,19,5);ink.Line(22,19,18,9,5);
+                ink.Line(35,25,42,19,5);ink.Line(42,19,46,10,5);
+                // One extended leg and one raised knee, matching the airborne pose.
+                ink.Line(30,36,30,47,6);ink.Line(30,47,32,57,5);
+                ink.Line(35,35,43,40,6);ink.Line(43,40,39,47,5);
+            }
+            else
+            {
+                ink.Disc(36,12,5);
+                ink.Line(33,24,29,36,9);
+                ink.Line(35,25,46,25,5);ink.Line(46,25,50,16,5);
+                ink.Line(30,24,22,22,5);ink.Line(22,22,17,30,4);
+                ink.Line(31,36,43,37,7);ink.Line(43,37,38,49,5);
+                ink.Line(28,36,23,46,6);ink.Line(23,46,16,56,5);
+                // Tapered trails keep the body dominant and the silhouette centered.
+                ink.Polygon(new[]{V(7,30),V(22,25),V(20,29)});
+                ink.Polygon(new[]{V(4,40),V(21,33),V(19,38)});
+                ink.Polygon(new[]{V(7,48),V(19,42),V(17,46)});
+            }
+            ink.CenterSilhouette();
+            texture=ink.Finish(jump?"Jump silhouette":"Blink silhouette");cache[key]=texture;return texture;
+        }
         private sealed class Icon
         {
             private readonly int Size;
@@ -494,6 +548,18 @@ namespace Emberfall
                 if(!Layered){if(c.a>pixels[index].a)pixels[index]=c;return;}
                 Color previous=pixels[index];float combined=c.a+previous.a*(1-c.a);
                 Color blended=(c*c.a+previous*(previous.a*(1-c.a)))/combined;blended.a=combined;pixels[index]=blended;
+            }
+            // Center the visible artwork, not its transparent texture canvas.
+            public void CenterSilhouette()
+            {
+                int minX=Size,minY=Size,maxX=-1,maxY=-1;
+                for(int y=0;y<Size;y++)for(int x=0;x<Size;x++)
+                    if(pixels[y*Size+x].a>.1f){minX=Mathf.Min(minX,x);maxX=Mathf.Max(maxX,x);minY=Mathf.Min(minY,y);maxY=Mathf.Max(maxY,y);}
+                if(maxX<0)return;
+                int dx=Mathf.RoundToInt((Size-1-minX-maxX)*.5f),dy=Mathf.RoundToInt((Size-1-minY-maxY)*.5f);
+                var source=(Color[])pixels.Clone();System.Array.Clear(pixels,0,pixels.Length);
+                for(int y=minY;y<=maxY;y++)for(int x=minX;x<=maxX;x++)
+                    if(x+dx>=0&&x+dx<Size&&y+dy>=0&&y+dy<Size)pixels[(y+dy)*Size+x+dx]=source[y*Size+x];
             }
             public void Line(float ax, float ay, float bx, float by, float thickness)
             {

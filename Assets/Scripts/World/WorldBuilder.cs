@@ -16,7 +16,7 @@ namespace Emberfall
         }
 
         public static System.Collections.IEnumerator BuildAsync(ZoneKind zone, int dungeonLayout, int campProgress,
-            int hub, int chapterSeed, System.Action<GameObject> ready, System.Action<float, string> progress = null)
+            int hub, int chapterSeed, System.Action<GameObject> ready, System.Action<float, string> progress = null, int roomStyle = -1)
         {
             WorldTraversal.Reset(zone);
             WorldTraversal.SetArenaRadius(ArenaSizeRules.Radius(zone,dungeonLayout,hub));
@@ -90,7 +90,7 @@ namespace Emberfall
             }
             else BuildTown(root.transform, resources, hub);
             progress?.Invoke(.62f, "准备场景建筑与交互"); yield return null;
-            if(dungeon)BuildDungeonNaturalScenery(geometry,resources,dungeonLayout);
+            if(dungeon){BuildDungeonNaturalScenery(geometry,resources,dungeonLayout);BuildRoomIdentity(geometry,resources,roomStyle<0?dungeonLayout:roomStyle);}
             progress?.Invoke(.73f, "准备自然场景模型"); yield return null;
             if(!dungeon){BuildHubLightPools(root.transform,hub);BuildClimbableProps(root.transform,resources);BuildTravelStation(root.transform,resources,hub);}
             if(SurfaceTextureLibrary.Enabled&&!dungeon&&hub==0)BuildMeadowDetail(root.transform,resources);
@@ -256,10 +256,10 @@ namespace Emberfall
             BuildCampfire(camp, r, new Vector3(-5.5f, 0, -23));
             Tent(camp, r, new Vector3(5.5f, 0, -23));
             Portal(parent,r,GameSession.ChapterEntrancePosition,r.Material(new Color(.64f,.38f,1f),true));
-            Label(parent,"STAR CHAPTERS","星路章节",GameSession.ChapterEntrancePosition+Vector3.up*4.65f,.10f,new Color(.83f,.65f,1),false);
-            // The travel rune supplies the only label at this location.
+            PortalNameplate.Create(parent,GameSession.ChapterEntrancePosition,"星路章节",new Color(.83f,.65f,1));
+            // Names stay attached to the visible arch, rather than floating above the camera frame.
             Portal(parent, r, GameSession.WildernessDungeonEntrancePosition, jade);
-            Label(parent, "FALLEN STAR", "沉星遗迹", GameSession.WildernessDungeonEntrancePosition+Vector3.up*4.65f, .10f, new Color(.65f, 1, .87f), false);
+            PortalNameplate.Create(parent,GameSession.WildernessDungeonEntrancePosition,"沉星遗迹",new Color(.65f,1,.87f));
             for (int i = 0; i < 12; i++)
             {
                 float angle = i * Mathf.PI / 6;
@@ -755,7 +755,7 @@ namespace Emberfall
             go.GetComponent<MeshRenderer>().sharedMaterial=font.material;
             text.text=value;
             go.transform.rotation=Quaternion.Euler(floor?90:18,0,0);
-            if(!floor)go.AddComponent<WorldLabelPresentation>().Initialize(text);
+            if(!floor)go.AddComponent<WorldLabelPresentation>().Initialize(text,objectName=="STAR CHAPTERS"||objectName=="FALLEN STAR"?10:0);
         }
 
         public static GameObject MakeLootBeacon(Vector3 position,Color color)

@@ -10,14 +10,22 @@ namespace Emberfall
         {float k=combatButton?MobileControls.CombatButtonVisualScale:EffectPreferences.TouchVisualScale;return new Rect(hit.center.x-hit.width*k*.5f,hit.center.y-hit.height*k*.5f,hit.width*k,hit.height*k);}
         private void EnsureMobileBindings()
         {
-            string key="Emberfall.TouchBindings."+session.Progression.CurrentSlotId+"."+(int)session.Progression.Profile.heroClass;
+            string suffix=session.Progression.CurrentSlotId+"."+(int)session.Progression.Profile.heroClass;
+            string key="Emberfall.TouchBindings.Ascending.v2."+suffix;
             if(mobileBindings!=null&&mobileBindingOwner==key)return;
             mobileBindingOwner=key;mobileBindings=MobileSkillPolicy.DefaultBindings(session.Progression.Profile.heroClass==HeroClass.Summoner,session.Progression.Profile.heroClass==HeroClass.Arcanist);
-            string[] saved=PlayerPrefs.GetString(key,"").Split(',');
+            string savedValue=PlayerPrefs.GetString(key,"");
+            if(!PlayerPrefs.HasKey(key))
+            {
+                string previous=PlayerPrefs.GetString("Emberfall.TouchBindings.LowLevelRing.v1."+suffix,"");
+                string oldDefault=session.Progression.Profile.heroClass==HeroClass.Arcanist?"6,7,10,0,1,2,5,4,9":"6,7,-1,0,1,2,5,4,9";
+                if(previous!=oldDefault)savedValue=previous;
+            }
+            string[] saved=savedValue.Split(',');
             int[] parsed=new int[saved.Length];bool valid=true;
             for(int i=0;i<saved.Length;i++)if(!int.TryParse(saved[i],out parsed[i]))valid=false;
             if(valid&&MobileSkillPolicy.ValidBindings(parsed))mobileBindings=parsed;
-            if(session.Progression.Profile.heroClass==HeroClass.Arcanist&&mobileBindings[7]==-1&&System.Array.IndexOf(mobileBindings,10)<0)mobileBindings[7]=10;
+            if(session.Progression.Profile.heroClass==HeroClass.Arcanist&&mobileBindings[2]==-1&&System.Array.IndexOf(mobileBindings,10)<0)mobileBindings[2]=10;
             bindingDragSource=-1;bindingDragFinger=-1000;CancelMobileCast();
         }
         private int BoundMobileSkill(int button,int page)
@@ -27,19 +35,16 @@ namespace Emberfall
         }
         public int MobileKeyboardSkill(int key)
         {
-            int page,button;
-            if(key>=(int)KeyCode.Alpha1&&key<=(int)KeyCode.Alpha5){page=0;button=key-(int)KeyCode.Alpha1;}
-            else
-            {
-                page=1;button=key==(int)KeyCode.Z?0:key==(int)KeyCode.X?1:key==(int)KeyCode.C?2:key==(int)KeyCode.V?3:key==(int)KeyCode.B?4:-1;
-            }
-            if(button<0)return -1;
-            mobileSkillPage=page;return BoundMobileSkill(button,page);
+            int button=key>=(int)KeyCode.Alpha1&&key<=(int)KeyCode.Alpha4?key-(int)KeyCode.Alpha1:
+                key==(int)KeyCode.Z?4:key==(int)KeyCode.X?5:key==(int)KeyCode.C?6:key==(int)KeyCode.V?7:
+                key==(int)KeyCode.Alpha5||key==(int)KeyCode.B?8:-1;
+            return button<0?-1:BoundMobileSkill(button,0);
         }
+
         public MobileControlLayout.Area MobileOpportunityArea(int skill)
         {
             var layout=MobileControls.Layout;
-            for(int button=0;button<5;button++)if(BoundMobileSkill(button,mobileSkillPage)==skill)
+            for(int button=0;button<MobileSkillPolicy.ButtonCount;button++)if(BoundMobileSkill(button,mobileSkillPage)==skill)
             {
                 return layout.SkillOpportunityForButton(button);
             }
@@ -80,50 +85,48 @@ namespace Emberfall
             {mobileBindingEditor=false;bindingDragSource=-1;bindingDragFinger=-1000;BlockUITransition();return;}
             if(QuietAction(TouchRect(x+contentWidth-212,24,108,40),"调整位置"))
             {BeginMobilePositionEditor();return;}
-            Text(TouchRect(x,70,contentWidth,40),"拖动技能交换位置，可跨页拖动；固定按键不参与交换。位置微调请点“调整位置”。",TouchFont(12),muted,false,true);
-            Rect[] slots=new Rect[8];float pageWidth=(contentWidth-16)*.5f;
-            for(int page=0;page<2;page++)
+            Text(TouchRect(x,70,contentWidth,40),"拖动技能交换位置",TouchFont(12),muted,false,true);
+            Rect[] slots=new Rect[8];float pageWidth=contentWidth;
+            for(int page=0;page<1;page++)
             {
                 float left=x+page*(pageWidth+16),top=118,pageHeight=panelHeight-top+12-20;
                 Fill(TouchRect(left,top,pageWidth,pageHeight),new Color(.025f,.055f,.075f,.9f));
-                Text(TouchRect(left+16,top+12,pageWidth-32,26),page==0?"第一页":"第二页",TouchFont(14),jade,true);
                 // Include every control edge, including the iPad ultimate and page switch.
                 float minX=float.MaxValue,minY=float.MaxValue,maxX=float.MinValue,maxY=float.MinValue;
-                var previewAreas=new[]{layout.Skills[0],layout.Skills[1],layout.Skills[2],layout.Skills[3],layout.Skills[4],layout.Attack,layout.Dodge,layout.Jump,layout.SkillPage};
+                var previewAreas=layout.CombatButtons();
                 foreach(var area in previewAreas){minX=Mathf.Min(minX,area.X);minY=Mathf.Min(minY,area.Y);maxX=Mathf.Max(maxX,area.X+area.Width);maxY=Mathf.Max(maxY,area.Y+area.Height);}
                 float availableHeight=Mathf.Max(1,pageHeight-64);
                 float previewScale=Mathf.Min((pageWidth-40)/(maxX-minX),availableHeight/(maxY-minY));
                 float originX=left+(pageWidth-(maxX-minX)*previewScale)*.5f;
                 float originY=top+48+(availableHeight-(maxY-minY)*previewScale)*.5f;
-                for(int button=0;button<4;button++)
+                for(int button=0;button<8;button++)
                 {
-                    int index=page*4+button,skill=mobileBindings[index];
+                    int index=button,skill=mobileBindings[index];
                     Rect hit=slots[index]=BindingPreviewRect(layout.Skills[button],minX,minY,originX,originY,previewScale);
                     bool target=bindingDragSource>=0&&hit.Contains(bindingDragPoint);
                     if(skill>=0)
                     {
-                        float size=hit.width;
-                        DrawIcon(hit,UIIconAtlas.ControlRing(),UIIconAtlas.SkillColor(session.Progression.Profile.heroClass,skill));
-                        DrawIcon(new Rect(hit.center.x-size*.5f,hit.center.y-size*.5f,size,size),UIIconAtlas.SkillGlyph(session.Progression.Profile.heroClass,skill,48),index==bindingDragSource?muted:UIIconAtlas.SkillColor(session.Progression.Profile.heroClass,skill));
+                        DrawBindingSkill(hit,skill,index==bindingDragSource);
                         if(hit.Contains(Mouse))tooltip=GameBalance.SkillName(session.Progression.Profile.heroClass,skill);
                     }
                     else Text(hit,"空位",TouchFont(11),muted,false,false,TextAnchor.MiddleCenter);
                 }
-                var fixedAreas=new[]{layout.Skills[4],layout.Attack,layout.Dodge,layout.Jump};
-                string[] captions={"大招","普攻","闪现","跳跃"};string[] icons={"","attack","blink","jump"};
+                var fixedAreas=new[]{layout.Skills[8],layout.Attack,layout.Dodge,layout.Jump};
+                string[] captions={"大招","普攻","闪现","跳跃"};
                 for(int i=0;i<fixedAreas.Length;i++)
                 {
                     Rect hit=BindingPreviewRect(fixedAreas[i],minX,minY,originX,originY,previewScale);
-                    if(i!=0)DrawMobileControlSurface(hit,false,false);
-                    else DrawIcon(hit,UIIconAtlas.ControlRing(),UIIconAtlas.SkillColor(session.Progression.Profile.heroClass,9));
-                    float size=hit.width*(i==0?1f:.64f);
-                    DrawIcon(new Rect(hit.center.x-size*.5f,hit.center.y-size*.5f,size,size),i==0?UIIconAtlas.SkillGlyph(session.Progression.Profile.heroClass,9,48):i==1?AuthoredIconArt.BasicAttack(session.Progression.Profile.heroClass):UIIconAtlas.Utility(icons[i]),i==0?UIIconAtlas.SkillColor(session.Progression.Profile.heroClass,9):muted);
+                    if(i==0)DrawBindingSkill(hit,9,false);
+                    else
+                    {
+                        DrawMobileControlSurface(hit,false,false);
+                        float size=hit.width*.84f;
+                        var glyph=i==1?UIIconAtlas.BasicAttackGlyph():UIIconAtlas.MobilityGlyph(i==3);
+                        DrawIcon(new Rect(hit.center.x-size*.5f,hit.center.y-size*.5f,size,size),glyph,new Color(1,1,1,.85f));
+                    }
                     if(hit.Contains(Mouse))tooltip=captions[i]+" · 固定按键";
-                    DrawIcon(new Rect(hit.xMax-10*u,hit.y,10*u,10*u),UIIconAtlas.EquipmentLock(true),muted);
+                    if(i==0)DrawIcon(new Rect(hit.xMax-10*u,hit.y,10*u,10*u),UIIconAtlas.EquipmentLock(true),muted);
                 }
-                Rect pageArrow=BindingPreviewRect(layout.SkillPage,minX,minY,originX,originY,previewScale);
-                float arrowSize=24*u*previewScale;
-                DrawIcon(new Rect(pageArrow.center.x-arrowSize*.5f,pageArrow.center.y-arrowSize*.5f,arrowSize,arrowSize),UIIconAtlas.SkillPageArrow(),Color.white);
 
             }
             if(Input.touchCount>0)
@@ -156,7 +159,14 @@ namespace Emberfall
                 if(bindingDragSource>=0&&e.type==EventType.MouseUp){FinishBindingDrag(slots,Mouse,false);e.Use();}
             }
             if(bindingDragSource>=0)
-                DrawIcon(new Rect(bindingDragPoint.x-22*u,bindingDragPoint.y-22*u,44*u,44*u),UIIconAtlas.SkillGlyph(session.Progression.Profile.heroClass,mobileBindings[bindingDragSource],48),UIIconAtlas.SkillColor(session.Progression.Profile.heroClass,mobileBindings[bindingDragSource]));
+                DrawBindingSkill(new Rect(bindingDragPoint.x-22*u,bindingDragPoint.y-22*u,44*u,44*u),mobileBindings[bindingDragSource],false);
+        }
+        private void DrawBindingSkill(Rect hit,int skill,bool dragging)
+        {
+            float size=hit.width*.94f;
+            Rect art=new Rect(hit.center.x-size*.5f,hit.center.y-size*.5f,size,size);
+            DrawSkillMaterial(art,UIIconAtlas.SkillGlyph(session.Progression.Profile.heroClass,skill,48),dragging?.5f:1f);
+            DrawIcon(hit,UIIconAtlas.ControlRing(),UIIconAtlas.SkillColor(session.Progression.Profile.heroClass,skill));
         }
         private bool mobilePositionEditor,positionValid=true;
         private float[] positionDraft,positionDragStart;
@@ -235,8 +245,8 @@ namespace Emberfall
             for(int i=0;i<buttons.Length;i++)
             {
                 Rect r=MobileVisualRect(TouchRect(buttons[i]),combatButton:true);
-                int skill=i<5?BoundMobileSkill(i,mobileSkillPage):-1;
-                if(i<5&&!CombatSkillLearned(session.Progression.Profile,skill))Text(r,skill<0?"空位":"未解锁",TouchFont(11),pale,false,false,TextAnchor.MiddleCenter);
+                int skill=i<MobileSkillPolicy.ButtonCount?BoundMobileSkill(i,mobileSkillPage):-1;
+                if(i<MobileSkillPolicy.ButtonCount&&!CombatSkillLearned(session.Progression.Profile,skill))Text(r,skill<0?"空位":"未解锁",TouchFont(11),pale,false,false,TextAnchor.MiddleCenter);
                 DrawIcon(r,UIIconAtlas.ControlRing(),positionButton>=0?(positionValid?jade:Color.red):new Color(1,1,1,.35f));
             }
             if(Input.touchCount>0)

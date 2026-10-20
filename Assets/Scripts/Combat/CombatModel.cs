@@ -456,6 +456,20 @@ namespace Emberfall
             BuildGearSignature(look,equipmentRelic,new Vector3(0,.88f,.43f));
         }
 
+        public void ConfigureBossAppearance(int archetype)
+        {
+            // Art is attached to existing animated bones, so strikes and paralysis keep their poses.
+            Color accent=archetype==1?new Color(.8f,.46f,.2f):archetype==2?new Color(.65f,.4f,.94f):archetype==3?new Color(.8f,.2f,.16f):new Color(.24f,.72f,.9f);
+            if(archetype==1)for(int side=-1;side<=1;side+=2)
+                Part("Earthbreaker shoulder mantle",PrimitiveType.Cube,new Vector3(side*.12f,.2f,0),new Vector3(.72f,.3f,.7f),accent,side<0?leftArm:rightArm);
+            else if(archetype==2)for(int i=0;i<5;i++)
+                Tapered("Star priest crystal crown",transform,new Vector3((i-2)*.17f,2.28f,0),.075f,.008f,.42f+(.2f-Mathf.Abs(i-2)*.08f),new Vector3(0,0,-.06f),accent,10);
+            else if(archetype==3)for(int side=-1;side<=1;side+=2)
+                Tapered("Hunt commander blade bracer",side<0?leftArm:rightArm,new Vector3(side*.15f,-.25f,.22f),.14f,.012f,.8f,new Vector3(0,0,.2f),accent,10);
+            else for(int side=-1;side<=1;side+=2)
+                Part("Storm sentinel crystal fin",PrimitiveType.Cube,new Vector3(side*.25f,.18f,-.1f),new Vector3(.14f,.85f,.45f),accent,side<0?leftArm:rightArm).localRotation=Quaternion.Euler(0,0,-side*25);
+        }
+
         public static CombatModel Enemy(Transform parent, EnemyKind kind, bool boss)
         {
             CombatModel model = Create(parent);

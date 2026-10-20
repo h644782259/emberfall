@@ -122,7 +122,7 @@ namespace Emberfall
         public static bool TrySpawnAt(ChapterRoomPlan plan,Vector3 desired,List<Vector3> occupied,float radius,out Vector3 point)
         {
             point=Vector3.zero;
-            if(plan==null||float.IsNaN(radius)||float.IsInfinity(radius)||radius<=0||radius>2.4f||
+            if(plan==null||float.IsNaN(radius)||float.IsInfinity(radius)||radius<=0||radius>Mathf.Max(2.4f,BossScaleRules.SpawnRadius(true))||
                 float.IsNaN(desired.x)||float.IsNaN(desired.y)||float.IsNaN(desired.z)||
                 float.IsInfinity(desired.x)||float.IsInfinity(desired.y)||float.IsInfinity(desired.z))return false;
             desired=ArenaSizeRules.Point(plan.Layout,desired);float layoutScale=ArenaSizeRules.LayoutScale(plan.Layout);

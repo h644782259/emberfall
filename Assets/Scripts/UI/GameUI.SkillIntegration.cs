@@ -37,15 +37,25 @@ namespace Emberfall
             Text(new Rect(r.x+12*u,r.y+7*u,r.width-120*u,30*u),"普通攻击",Mathf.RoundToInt(18*u),pale,true);
             SkillStateTag(new Rect(r.xMax-96*u,r.y+10*u,84*u,24*u),"基础攻击",gold,Mathf.RoundToInt(11*u));
             Rect area=new Rect(r.x+10*u,r.y+46*u,r.width-20*u,Mathf.Max(20*u,r.height-112*u));
-            float w=area.width-16*u;int columns=w>=480*u?4:2;
-            float gap=8*u,tileWidth=(w-gap*(columns-1))/columns,tileHeight=134*u;
-            float contentHeight=(4/columns)*(tileHeight+gap)+32*u;
+            bool compact=MobileControls.Active;
+            float w=area.width-(compact?0:16*u);int columns=compact||w>=480*u?4:2;
+            float gap=(compact?5:8)*u,tileWidth=(w-gap*(columns-1))/columns,tileHeight=(compact?94:134)*u;
+            float contentHeight=(4/columns)*(tileHeight+gap)+(compact?0:32*u);
             basicAttackDetailScroll=BeginTouchScroll("basic-attack-detail",area,basicAttackDetailScroll,new Rect(0,0,w,contentHeight));
             for(int i=1;i<=4;i++)
             {
                 bool current=i==tier;Color accent=current?gold:i<tier?jade:muted;
                 Rect tile=new Rect(((i-1)%columns)*(tileWidth+gap),((i-1)/columns)*(tileHeight+gap),tileWidth,tileHeight);
                 Fill(tile,current?new Color(.18f,.135f,.055f):card);Border(tile,accent,current?2*u:u);
+                if(compact)
+                {
+                    float iconScale=Mathf.Min(42*u/54f,(tile.width-6*u)/70f);
+                    Text(new Rect(tile.x+2*u,tile.y+3*u,tile.width-4*u,20*u),i+"档",Mathf.RoundToInt(11*u),accent,true,false,TextAnchor.MiddleCenter);
+                    DrawBasicAttackShape(new Rect(tile.x+3*u,tile.y+26*u,tile.width-6*u,42*u),i,p.Profile.heroClass,accent,iconScale);
+                    string label=p.Profile.heroClass==HeroClass.Vanguard?BasicAttackGrowth.Angle(i).ToString("0")+"°":i==1?"单发":i==2?"二连发":BasicAttackGrowth.Shots(i)+"发扇形";
+                    DrawGemEffectText(new Rect(tile.x+2*u,tile.y+69*u,tile.width-4*u,21*u),label,Mathf.RoundToInt(10*u),current?pale:accent,true,TextAnchor.MiddleCenter);
+                    continue;
+                }
                 Text(new Rect(tile.x+8*u,tile.y+5*u,tile.width-16*u,22*u),i+"档",Mathf.RoundToInt(13*u),accent,true);
                 Text(new Rect(tile.xMax-60*u,tile.y+5*u,52*u,22*u),current?"当前":i<tier?"已解锁":"",Mathf.RoundToInt(10*u),accent,false,false,TextAnchor.MiddleRight);
                 DrawBasicAttackShape(new Rect(tile.x+6*u,tile.y+30*u,tile.width-12*u,50*u),i,p.Profile.heroClass,accent,u);
@@ -57,7 +67,7 @@ namespace Emberfall
             float statsY=(4/columns)*(tileHeight+gap);
             bool ranged=p.Profile.heroClass!=HeroClass.Vanguard;
             float perShot=SkillDamageBudgets.BasicCoefficient(p.Profile.heroClass)*(ranged?BasicAttackGrowth.ProjectileMultiplier(tier):1f);
-            Text(new Rect(0,statsY,w,24*u),(ranged?"每发 ":"伤害 ")+(perShot*100).ToString("0.#")+"% · "+(ranged?"单体上限 "+(SkillDamageBudgets.BasicCoefficient(p.Profile.heroClass)*BasicAttackGrowth.TargetMultiplier(tier)*100).ToString("0.#")+"% · ":"")+"回能 "+SkillDamageBudgets.BasicEnergyOnHit.ToString("0"),Mathf.RoundToInt(11*u),jade);
+            if(!compact)Text(new Rect(0,statsY,w,24*u),(ranged?"每发 ":"伤害 ")+(perShot*100).ToString("0.#")+"% · "+(ranged?"单体上限 "+(SkillDamageBudgets.BasicCoefficient(p.Profile.heroClass)*BasicAttackGrowth.TargetMultiplier(tier)*100).ToString("0.#")+"% · ":"")+"回能 "+SkillDamageBudgets.BasicEnergyOnHit.ToString("0"),Mathf.RoundToInt(11*u),jade);
             EndTouchScroll();
             float footerY=r.yMax-54*u;
             Text(new Rect(r.x+12*u,footerY,r.width-174*u,20*u),tier>=4?"已达最高档":"消耗 "+cost+"   /   持有 "+p.Profile.basicAttackMaterials,Mathf.RoundToInt(12*u),p.Profile.basicAttackMaterials>=cost?gold:muted,true);
@@ -65,31 +75,31 @@ namespace Emberfall
             Text(new Rect(r.x+12*u,footerY+23*u,r.width-174*u,18*u),tier>=4?"":reason.Length>0?reason:"下一档  "+(tier+1)+"档",Mathf.RoundToInt(10*u),muted);
             Rect button=new Rect(r.xMax-150*u,footerY,138*u,42*u);
             bool clicked=PrimaryButton(button,"",gold,reason.Length==0);
-            DrawIcon(new Rect(button.x+23*u,button.y+9*u,24*u,24*u),UIIconAtlas.Utility("gem"),gold);
+            DrawIcon(new Rect(button.x+23*u,button.y+9*u,24*u,24*u),UIIconAtlas.Utility("basic-attack"),gold);
             Text(new Rect(button.x+55*u,button.y,70*u,button.height),tier>=4?"满档":"升级",Mathf.RoundToInt(15*u),reason.Length==0?pale:muted,true,false,TextAnchor.MiddleLeft);
             if(clicked){bool saved=p.UpgradeBasicAttack();session.Notify(saved?"普通攻击已升至 "+(tier+1)+"档":p.LastError);}
         }
         private bool blinkFollowupSelected;
         private Vector2 blinkFollowupDetailScroll;
+        private Rect DrawCompactSkillTreeCard(Rect r,string name,string status,bool selected,bool learned,float u)
+        {
+            Color accent=selected?gold:learned?jade:muted;
+            Surface(r,new Color(.018f,.036f,.054f,.99f));SurfaceFrame(r,new Color(accent.r,accent.g,accent.b,selected?.9f:.35f));
+            float size=r.height-4*u;Rect icon=new Rect(r.x+2*u,r.y+2*u,size,size);
+            float textX=icon.xMax+4*u,textWidth=Mathf.Max(1,r.xMax-textX-3*u);
+            int font=Mathf.RoundToInt(10*u);while(font>Mathf.RoundToInt(7*u)&&Style(font,true,false).CalcSize(new GUIContent(name)).x>textWidth)font--;
+            Text(new Rect(textX,r.y+2*u,textWidth,(r.height-4*u)*.5f),name,font,learned?pale:muted,true,false,TextAnchor.MiddleLeft);
+            Text(new Rect(textX,r.center.y,textWidth,(r.height-4*u)*.5f),status,Mathf.RoundToInt(8*u),accent,false,false,TextAnchor.MiddleLeft);
+            return icon;
+        }
         private void DrawBlinkFollowupNode(Rect r,float u)
         {
-            bool compact=r.height<50*u,learned=session.Player.BlinkFollowupLearned;
+            bool learned=session.Player.BlinkFollowupLearned;
             Color accent=blinkFollowupSelected?gold:learned?jade:muted;
-            if(compact)
+            if(MobileControls.Active)
             {
-                Surface(r,new Color(accent.r*.025f,accent.g*.035f,accent.b*.045f,.98f));
-                SurfaceFrame(r,new Color(accent.r,accent.g,accent.b,blinkFollowupSelected?.8f:.22f));
-                DrawIcon(new Rect(r.x+3*u,r.y+2*u,24*u,24*u),UIIconAtlas.Utility("blink"),accent);
-                Text(new Rect(r.x+31*u,r.y+2*u,r.width-34*u,20*u),session.Player.BlinkFollowupName,Mathf.RoundToInt(9*u),learned?pale:muted,true,false,TextAnchor.MiddleLeft);
-                Text(new Rect(r.x+4*u,r.y+22*u,r.width-8*u,16*u),"Lv.5 · "+(learned?"已习得":"锁定"),Mathf.RoundToInt(8*u),accent,false,false,TextAnchor.MiddleCenter);
-            }
-            else if(MobileControls.Active)
-            {
-                DrawIcon(new Rect(r.center.x-18*u,r.y+5*u,36*u,36*u),UIIconAtlas.Utility("blink"),accent);
-                if(blinkFollowupSelected)DrawIcon(new Rect(r.center.x+20*u,r.y+2*u,12*u,12*u),UIIconAtlas.Utility("confirm"),gold);
-                Text(new Rect(r.x+4*u,r.y+44*u,r.width-8*u,22*u),session.Player.BlinkFollowupName,Mathf.RoundToInt(10*u),learned?pale:muted,true,false,TextAnchor.MiddleCenter);
-                SkillStateTag(new Rect(r.x+3*u,r.y+64*u,(r.width-10*u)*.45f,18*u),"Lv.5",muted,Mathf.RoundToInt(9*u));
-                SkillStateTag(new Rect(r.x+r.width*.46f,r.y+64*u,r.width*.54f-3*u,18*u),learned?"已习得":"未解锁",accent,Mathf.RoundToInt(9*u));
+                Rect icon=DrawCompactSkillTreeCard(r,session.Player.BlinkFollowupName,"Lv.5 · "+(learned?"已习得":"锁定"),blinkFollowupSelected,learned,u);
+                DrawIcon(icon,UIIconAtlas.Utility("blink"),accent);
             }
             else
             {
@@ -239,7 +249,11 @@ namespace Emberfall
             if(draw)
             {
                 Text(new Rect(4*u,y*u,(width-132)*u,44*u),"可用精通点 "+p.Profile.skillPoints,Mathf.RoundToInt((compact?13:16)*u),gold,true);
-                if(DrawButton(new Rect((width-116)*u,(y+5)*u,112*u,32*u),"重置精通",ButtonRole.Action,fontSize:Mathf.RoundToInt(11*u)))masteryResetConfirm=true;
+                Rect reset=new Rect((width-116)*u,(y+5)*u,112*u,32*u);
+                Surface(reset,new Color(.14f,.095f,.045f,.95f));SurfaceFrame(reset,gold*.8f);
+                DrawIcon(new Rect(reset.x+9*u,reset.center.y-8*u,16*u,16*u),UIIconAtlas.Utility("reset"),gold);
+                Text(new Rect(reset.x+29*u,reset.y,reset.width-34*u,reset.height),"重置精通",Mathf.RoundToInt(11*u),gold,true,false,TextAnchor.MiddleCenter);
+                if(GUI.Button(reset,GUIContent.none,invisibleButton))masteryResetConfirm=true;
             }
             y+=compact?44:52;
             int columns=compact||width>=760?4:2,cap=ProgressionService.MasteryCap(p.Profile.level);
@@ -265,20 +279,23 @@ namespace Emberfall
                 {
                     selectedMastery=i;bool saved=p.LearnMastery(mastery);
                     masteryChangeNotice=saved?BuildCatalog.MasteryName(mastery)+"："+MasteryBonusText(i,rank)+" → "+MasteryBonusText(i,p.Profile.masteryRanks[i])+"（消耗 1 精通点）":p.LastError;
+                    if(!saved)session.Notify(p.LastError);
                     if(saved){masteryChangedNode=i;masteryChangedAt=Time.unscaledTime;}
                 }
                 bool active=p.HasMasteryCore(mastery);
                 Text(new Rect(tile.x+(compact?8:12)*u,tile.y+(compact?120:150)*u,tile.width-(compact?16:24)*u,coreHeight*u),MasteryCoreText(mastery),Mathf.RoundToInt((compact?11:12)*u),active?gold:pale,false,true);
                 bool canChooseCore=session.IsInCamp||p.Profile.masteryCore<0;
                 string coreAction=active?"✓ 核心已启用":rank<MasteryCoreRules.InitialInvestment?"投入 "+MasteryCoreRules.InitialInvestment+" 点解锁":canChooseCore?"启用核心":"回营地切换";
-                if(Button(new Rect(tile.x+10*u,tile.yMax-(compact?40:44)*u,tile.width-20*u,36*u),coreAction,active?gold:jade,canChooseCore&&rank>=MasteryCoreRules.InitialInvestment&&!active))
-                {bool saved=p.SelectMasteryCore(mastery,session.IsInCamp);masteryChangeNotice=saved?"已启用 "+BuildCatalog.MasteryName(mastery)+"核心":p.LastError;}
+                Rect coreRect=new Rect(tile.x+10*u,tile.yMax-(compact?40:44)*u,tile.width-20*u,36*u);
+                if(active)
+                {
+                    Surface(coreRect,new Color(.24f,.17f,.065f,.98f));SurfaceFrame(coreRect,gold);
+                    Text(coreRect,coreAction,Mathf.RoundToInt(13*u),gold,true,false,TextAnchor.MiddleCenter);
+                }
+                else if(Button(coreRect,coreAction,jade,canChooseCore&&rank>=MasteryCoreRules.InitialInvestment))
+                {bool saved=p.SelectMasteryCore(mastery,session.IsInCamp);masteryChangeNotice=saved?"已启用 "+BuildCatalog.MasteryName(mastery)+"核心":p.LastError;if(!saved)session.Notify(p.LastError);}
             }
             y+=((4+columns-1)/columns)*(tileHeight+10);
-            string notice=string.IsNullOrEmpty(masteryChangeNotice)?"":masteryChangeNotice;
-            float noticeHeight=string.IsNullOrEmpty(notice)?0:Style(Mathf.RoundToInt(13*u),false,true).CalcHeight(new GUIContent(notice),(width-24)*u)/u+16;
-            if(draw&&noticeHeight>0){Fill(new Rect(0,y*u,width*u,noticeHeight*u),new Color(.045f,.13f,.12f));Text(new Rect(12*u,(y+8)*u,(width-24)*u,(noticeHeight-16)*u),notice,Mathf.RoundToInt(13*u),jade,false,true);}
-            y+=noticeHeight+12;
             y=DrawSpecializationChoices(width,u,y+8,draw)+16;
             return y+8;
         }

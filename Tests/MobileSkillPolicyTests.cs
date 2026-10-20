@@ -5,24 +5,24 @@ public static class MobileSkillPolicyTests
  static int n;static void Check(bool b,string m){n++;if(!b)throw new Exception(m);}
  public static string Run()
  {
-  n=0;int[][] pages={new[]{0,1,2,4,9},new[]{5,6,7,-1,9}};var seen=new System.Collections.Generic.HashSet<int>();
-  for(int page=0;page<2;page++)for(int button=0;button<5;button++){int mapped=MobileSkillPolicy.SkillAtButton(button,page);Check(mapped==pages[page][button],"exact four-plus-three pages with fixed ultimate");if(mapped>=0)seen.Add(mapped);}
-  Check(seen.Count==8&&MobileSkillPolicy.SkillAtButton(4,0)==9&&MobileSkillPolicy.SkillAtButton(4,1)==9,"every real active appears and ultimate never moves");
+  n=0;int[] skills={6,7,-1,0,4,5,2,1,9};var seen=new System.Collections.Generic.HashSet<int>();
+  for(int button=0;button<9;button++){int mapped=MobileSkillPolicy.SkillAtButton(button);Check(mapped==skills[button],"single panel order");if(mapped>=0)seen.Add(mapped);}
+  Check(seen.Count==8&&MobileSkillPolicy.SkillAtButton(8)==9,"every active appears and ultimate stays fixed");
   Check(!MobileSkillPolicy.IsActiveSkill(3)&&!MobileSkillPolicy.IsActiveSkill(8)&&MobileSkillPolicy.IsActiveSkill(9),"passives noninteractive and ultimate reachable");
-  Check(MobileSkillPolicy.SkillAtButton(-1)==-1&&MobileSkillPolicy.SkillAtButton(8)==-1,"bounds");
+  Check(MobileSkillPolicy.SkillAtButton(-1)==-1&&MobileSkillPolicy.SkillAtButton(9)==-1,"bounds");
   var summoner=MobileSkillPolicy.DefaultBindings(true);
   Check(MobileSkillPolicy.ValidBindings(summoner),"summoner default preserves all skills and fixed ultimate");
-  Check(string.Join(",",summoner)=="0,1,5,7,2,4,6,-1,9","direct spells first page; summons second page; ultimate fixed");
+  Check(string.Join(",",summoner)=="6,7,-1,0,4,5,2,1,9","low level skills surround attack; advanced skills and ultimate in top row");
   var bindings=MobileSkillPolicy.DefaultBindings();
   Check(MobileSkillPolicy.ValidBindings(bindings),"default persistent mapping validates");
-  Check(MobileSkillPolicy.SwapBinding(bindings,5,0)&&bindings[5]==0&&bindings[0]==6,"cross-page reorder swaps without losing skills");
-  Check(MobileSkillPolicy.SwapBinding(bindings,7,1)&&bindings[7]==1&&bindings[1]==-1,"drop into empty position preserves one empty slot");
+  Check(MobileSkillPolicy.SwapBinding(bindings,5,0)&&bindings[5]==0&&bindings[3]==5,"single panel reorder swaps without losing skills");
+  Check(MobileSkillPolicy.SwapBinding(bindings,2,1)&&bindings[2]==1&&bindings[7]==-1,"drop into empty position preserves one empty slot");
   Check(!MobileSkillPolicy.SwapBinding(bindings,8,2)&&!MobileSkillPolicy.SwapBinding(bindings,0,9)&&bindings[8]==9,"ultimate is immutable in both directions");
   Check(!MobileSkillPolicy.SwapBinding(bindings,0,3)&&!MobileSkillPolicy.SwapBinding(bindings,0,8),"passives cannot be assigned");
   Check(MobileSkillPolicy.ValidBindings(bindings),"reorder retains every active skill exactly once");
   var corrupt=(int[])bindings.Clone();corrupt[0]=corrupt[1];Check(!MobileSkillPolicy.ValidBindings(corrupt),"duplicate saved mapping rejected");
   corrupt=(int[])bindings.Clone();corrupt[8]=2;Check(!MobileSkillPolicy.ValidBindings(corrupt),"corrupt ultimate mapping rejected");
-  Check(MobileSkillPolicy.BindingIndex(4,0)==8&&MobileSkillPolicy.BindingIndex(4,1)==8&&MobileSkillPolicy.BindingIndex(3,1)==7,"both pages share only fixed ultimate");
+  Check(MobileSkillPolicy.BindingIndex(8,0)==8&&MobileSkillPolicy.BindingIndex(4,1)==-1&&MobileSkillPolicy.BindingIndex(7,0)==7,"single panel exposes every saved slot");
   var targets=new[]{new MobileSkillPolicy.Candidate(4,true,false),new MobileSkillPolicy.Candidate(25,true,true),new MobileSkillPolicy.Candidate(1,false,false)};
   Check(MobileSkillPolicy.SelectTarget(targets,8)==1,"current valid focus takes priority");
   Check(MobileSkillPolicy.SelectTarget(targets,4)==0,"out-of-range focus falls back to nearest");

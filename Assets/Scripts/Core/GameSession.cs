@@ -742,8 +742,11 @@ namespace Emberfall
             waveRoutine = null;
         }
 
+        public const int DungeonRevivalLimit=3;
+        public int DungeonRevivalsUsed {get;private set;}
+        public int DungeonRevivalsRemaining => Mathf.Max(0,DungeonRevivalLimit-DungeonRevivalsUsed);
         public bool RevivalPending {get;private set;}
-        public bool CanSuspendForRevival => InDungeon&&!DungeonCleared&&!ModeFinished&&!PracticeActive;
+        public bool CanSuspendForRevival => InDungeon&&!DungeonCleared&&!ModeFinished&&!PracticeActive&&DungeonRevivalsRemaining>0;
         private void FinalizeDeathRun()
         {
             RevivalPending=false;
@@ -755,7 +758,9 @@ namespace Emberfall
         public bool ReviveInDungeon()
         {
             if(!IsDead||!RevivalPending||Player==null||!InDungeon)return false;
+            if(DungeonRevivalsRemaining<=0){Notify("本次副本复活次数已用完");return false;}
             if(!Progression.ConsumeRevivalStone()){Notify(Progression.LastError);return false;}
+            DungeonRevivalsUsed++;
             Player.ReviveAtCurrentPosition();IsDead=false;RevivalPending=false;Paused=false;uiBlocking=false;
             LastRunSummary=null;UpdateTimeScale();Notify("已复活");return true;
         }
@@ -796,7 +801,7 @@ namespace Emberfall
             if(PracticeActive&&(InputBlocked||PracticeRecord==null||!PracticeRecord.Started||PracticeRecord.Finished))return;
             if (!HasStarted || IsDead || Player == null) return;
             if (Player.PotionCooldownRemaining > 0) { Notify("药剂冷却中，还需 " + Mathf.CeilToInt(Player.PotionCooldownRemaining) + " 秒。"); return; }
-            if (Player.Health >= Player.MaxHealth - .5f) { Notify("生命已满，无需使用药水。"); return; }
+            if (Player.Health >= Player.MaxHealth - .5f) return;
             if (ChallengeRun && InDungeon) { if (!TrySpendHealingCharge()) return; }
             else if (!Progression.UsePotion()) { Notify(Progression.LastError); return; }
             Player.StartPotionCooldown();

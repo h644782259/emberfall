@@ -40,7 +40,7 @@ namespace Emberfall
                 if(camera==null)continue;
                 item.transform.rotation=camera.transform.rotation;item.transform.localScale=item.originalScale;
                 Vector3 point=camera.WorldToScreenPoint(item.transform.position);
-                if(!WorldLabelReadability.Visible(point.z,(item.transform.position-camera.transform.position).sqrMagnitude))continue;
+                if(item.priority>=10?point.z<=0||(item.transform.position-camera.transform.position).sqrMagnitude>10000:!WorldLabelReadability.Visible(point.z,(item.transform.position-camera.transform.position).sqrMagnitude))continue;
                 int lines=1;foreach(char c in item.label.text)if(c=='\n')lines++;
                 // Actual font bounds, including current CJK glyphs; no guessed character width.
                 float height=item.visual.localBounds.size.y*item.transform.lossyScale.y;

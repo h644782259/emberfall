@@ -39,7 +39,7 @@ namespace Emberfall
         public string DisplayName { get; private set; }
         public int Level {get;private set;}
         public string TargetName => DisplayName.Contains(" · ")?DisplayName.Substring(DisplayName.IndexOf(" · ")+3):DisplayName;
-        public string TraitDescription { get { return DungeonRoleDescription+EscapePostDescription+(session!=null&&(session.IsRoomSupplier(this)||session.IsChapterSupplier(this))?"护援者：6米内可见同伴减伤30%；引开、遮挡或击杀可解除。" : largeBoss != null ? "大型远征首领：70%与35%生命召唤供能锚；青色晶核表示可打断，熔热地面扫射期间摧毁锚点。断能后核心暴露6秒，受到伤害增加35%。" : IsBoss ? "首领：地面发热与碎石隆起预示攻击；青色晶核表示可用控制技能打断，晶核熄灭时处于霸体恢复。打断后5秒免疫再次打断，击退大幅衰减。近身普攻与旋转横扫交替，中距直线冲锋、远距弹幕。" : Kind == EnemyKind.Slime ? "跳扑近身，黏液命中使你暂时减速。" : Kind == EnemyKind.Goblin ? "绕侧接近，近身后快速出刀并侧移。" : Kind == EnemyKind.Wisp ? "保持远距离游走，发射双重灵弹。" : "正面石甲减伤35%；重击蓄力时护甲失效。"); } }
+        public string TraitDescription { get { return DungeonRoleDescription+EscapePostDescription+(session!=null&&(session.IsRoomSupplier(this)||session.IsChapterSupplier(this))?"护援者：6米内可见同伴减伤30%；引开、遮挡或击杀可解除。" : largeBoss != null ? "大型远征首领：70%与35%生命召唤供能锚；青色晶核表示可打断，熔热地面扫射期间摧毁锚点。断能后核心暴露6秒，受到伤害增加35%。" : IsBoss ? "首领：地面发热与碎石隆起预示攻击；青色晶核表示可用控制技能打断，晶核熄灭时处于霸体恢复。打断后5秒免疫再次打断，击退大幅衰减。近身普攻与旋转横扫交替，中距直线冲锋、远距弹幕；星火司祭锁点轰击，风暴守卫释放环形弹幕。" : Kind == EnemyKind.Slime ? "跳扑近身，黏液命中使你暂时减速。" : Kind == EnemyKind.Goblin ? "绕侧接近，近身后快速出刀并侧移。" : Kind == EnemyKind.Wisp ? "保持远距离游走，发射双重灵弹。" : "正面石甲减伤35%；重击蓄力时护甲失效。"); } }
 
         private enum AttackType { Melee, Bolt, Slam, Charge, Fan, Strike, Spin }
         private GameSession session;
@@ -56,6 +56,10 @@ namespace Emberfall
         private int attackNumber, repeatedMove, arenaBossPattern, pullBudgetFrame = -1;
         private float pullUsedThisFrame;
         private BossAttackPolicy.Move previousMove;
+        private int bossArchetype;
+        private bool ringVolley, distantSlam;
+        private int FanCount => ringVolley?12:bossArchetype==2?7:5;
+        private float FanAngle(int index) => ringVolley?index*30f:(index-(FanCount-1)*.5f)*(bossArchetype==2?13f:17f);
         private Vector3 walkingDisplacement;
         private Vector3 wanderGoal;
         private float wanderPause, wanderBlocked, wanderAge;
@@ -105,6 +109,7 @@ namespace Emberfall
             level = Mathf.Max(1,level);Level=level;
             DisplayName = (Tier == ThreatTier.Boss ? "首领 · " : Tier == ThreatTier.Elite ? "精英 · " : "普通 · ") +
                 (boss ? "星蚀巨像" : new[] { "森林史莱姆", "盗宝哥布林", "幽光魔灵", "遗迹守卫" }[(int)kind]);
+            if(boss) { bossArchetype=1+(int)((uint)(game.DungeonLayout+game.DungeonTier)%4); DisplayName="首领 · "+new[]{"裂地巨像","星火司祭","逐猎战将","风暴守卫"}[bossArchetype-1]; }
             gameObject.name = DisplayName;
             float[] moveSpeed = { 2.05f, 3.1f, 2.5f, 2.1f };
             int challengeTier = game.InDungeon&&game.TierBasedDungeon ? game.DungeonTier : 1;
@@ -122,6 +127,7 @@ namespace Emberfall
             wanderPause=Random.Range(.15f,2f);
             attackCooldown = Random.Range(.5f,1.2f);
             model = CombatModel.Enemy(transform,kind,boss);
+            if(boss)model.ConfigureBossAppearance(bossArchetype);
             model.transform.localScale *= BodyScale;
             CacheBossBoltSocket();
             StatusEffects = gameObject.AddComponent<EnemyStatusEffects>();
@@ -138,6 +144,7 @@ namespace Emberfall
             // A preference only: health/damage, navigation, windup and ordinary
             // pattern zero are unchanged. Call after spawning a Guardian boss.
             arenaBossPattern = IsBoss && pattern >= 1 && pattern <= 3 ? pattern : 0;
+
         }
 
         internal void ConfigureLargeExpedition(LargeExpeditionBoss encounter)
@@ -408,8 +415,8 @@ namespace Emberfall
                 }
                 if(spinRemaining<=0){dodgePending=false;FinishAttack();}return;
             }
-            if (RegroupMobileSupport(dt,effectiveSpeed)) return;
-            if (ReturnToEscapePost(dt,effectiveSpeed,combatTargetPosition)) return;
+            if (!session.InDungeon && RegroupMobileSupport(dt,effectiveSpeed)) return;
+            if (!session.InDungeon && ReturnToEscapePost(dt,effectiveSpeed,combatTargetPosition)) return;
             if (sidestepTime > 0)
             {
                 sidestepTime -= dt;
@@ -548,7 +555,7 @@ namespace Emberfall
             if(Time.time<vortexDragUntil)displacement*=.25f;
             Vector3 next = session==null?MoveWithBodies(displacement,NavigationRadius):session.MoveEnemyWalking(transform.position,displacement,this);
             // Only this explicit three-member roster is tethered. Knockback still uses authoritative traversal directly.
-            if(mobileSupplier!=null&&!mobileSupplier.IsDead&&mobileSupplier.isActiveAndEnabled&&
+            if(!session.InDungeon&&mobileSupplier!=null&&!mobileSupplier.IsDead&&mobileSupplier.isActiveAndEnabled&&
                 (CombatFx.Flat(next-mobileSupplier.transform.position).sqrMagnitude>27.04f||!WorldTraversal.HasLineOfSight(next,mobileSupplier.transform.position)))
                 next=MoveWithBodies(route.Direction(transform.position,mobileSupplier.transform.position,NavigationRadius)*displacement.magnitude,NavigationRadius);
             Vector3 actual=CombatFx.Flat(next-transform.position);
@@ -603,7 +610,9 @@ namespace Emberfall
 
         private bool CanUseBossAttack(BossAttackPolicy.Move move, Vector3 target)
         {
-            if (!BossAttackPolicy.InRange(move, CombatFx.Flat(target - transform.position).magnitude/BodyScale)) return false;
+            float range=CombatFx.Flat(target-transform.position).magnitude/BodyScale;
+            if(move==BossAttackPolicy.Move.Slam&&bossArchetype==2&&BossAttackPolicy.CanEngage(range))return WorldTraversal.HasGroundPath(transform.position,target,.12f);
+            if (!BossAttackPolicy.InRange(move, range)) return false;
             if (move == BossAttackPolicy.Move.Fan || move == BossAttackPolicy.Move.Strike) return WorldTraversal.HasLineOfSight(transform.position, target);
             if (!WorldTraversal.HasGroundPath(transform.position, target, .12f)) return false;
             if (move != BossAttackPolicy.Move.Charge) return true;
@@ -622,7 +631,8 @@ namespace Emberfall
                 if(CanUseBossAttack(fallback,target))return fallback;
                 if(CanUseBossAttack(BossAttackPolicy.Move.Strike,target))return BossAttackPolicy.Move.Strike;
             }
-            BossAttackPolicy.Move preferred = ArenaBossPatternPolicy.Preferred(arenaBossPattern, distance/BodyScale, previousMove, repeatedMove);
+            if(bossArchetype==2&&previousMove==BossAttackPolicy.Move.Fan&&repeatedMove>0&&CanUseBossAttack(BossAttackPolicy.Move.Slam,target))return BossAttackPolicy.Move.Slam;
+            BossAttackPolicy.Move preferred = ArenaBossPatternPolicy.Preferred(arenaBossPattern>0?arenaBossPattern:bossArchetype, distance/BodyScale, previousMove, repeatedMove);
             BossAttackPolicy.Move selected = preferred != fallback && !CanUseBossAttack(preferred, target) ? fallback : preferred;
             return BossAttackPolicy.LegalFallback(selected, distance/BodyScale,
                 advanceBudget.FallbackActive||!CanUseBossAttack(selected,target),
@@ -656,12 +666,14 @@ namespace Emberfall
             attackNumber++;
             if (IsBoss) { BossAttackPolicy.Move move = ToMove(type); repeatedMove = repeatedMove > 0 && previousMove == move ? repeatedMove+1 : 1; previousMove = move; }
             attackType = type;
+            ringVolley=IsBoss&&type==AttackType.Fan&&(bossArchetype==4||attackNumber%3==0);
+            distantSlam=IsBoss&&type==AttackType.Slam&&bossArchetype==2;
             preparing = true;
             session.RecordCombatEngagement();
             dodgeRegistered = dodgePending = false;
             chargeHit = false;
             dodgePlayer = null;
-            targetPoint = (type == AttackType.Spin || type == AttackType.Strike || type == AttackType.Slam && DungeonRole != DungeonEnemyRole.Artillery) ? transform.position : target;
+            targetPoint = (type == AttackType.Spin || type == AttackType.Strike || type == AttackType.Slam && DungeonRole != DungeonEnemyRole.Artillery && !distantSlam) ? transform.position : target;
             if (type == AttackType.Melee && Kind == EnemyKind.Slime)
                 targetPoint = MoveWithBodies( Vector3.ClampMagnitude(CombatFx.Flat(target-transform.position), DungeonRole==DungeonEnemyRole.Leaper ? 3.1f : 1.25f), NavigationRadius);
             windup = IsBoss ? BossAttackPolicy.Windup(ToMove(type), followUp) : Kind == EnemyKind.Wisp ? .72f : Kind == EnemyKind.Guardian ? .85f : Kind == EnemyKind.Slime ? .6f : .48f;
@@ -722,13 +734,13 @@ namespace Emberfall
             }
             else if (IsBoss && (attackType == AttackType.Fan || attackType == AttackType.Bolt))
             {
-                int count = attackType == AttackType.Fan ? 5 : 2;
+                int count = attackType == AttackType.Fan ? FanCount : 2;
                 var directions = new Vector3[count];
                 var lengths = new float[count];
                 Vector3 muzzle = BoltMuzzle(attackOrigin,attackForward);
                 for (int i = 0; i < count; i++)
                 {
-                    float angle = attackType == AttackType.Fan ? (i - 2) * 17f : i == 0 ? -7f : 7f;
+                    float angle = attackType == AttackType.Fan ? FanAngle(i) : i == 0 ? -7f : 7f;
                     Vector3 flight=BoltDirection(muzzle,Quaternion.Euler(0,angle,0)*attackForward);
                     directions[i]=CombatFx.Flat(flight).normalized;
                     float range=BoltSpeed*3f*CombatFx.Flat(flight).magnitude;
@@ -796,7 +808,7 @@ namespace Emberfall
                 {
                     if (attackType == AttackType.Fan)
                     {
-                        for (int i = -2; i <= 2; i++) CombatProjectile.Hostile(session, muzzle, BoltDirection(muzzle,Quaternion.Euler(0,i*17,0)*attackForward), damage, BoltSpeed, sourceName: DisplayName);
+                        for (int i = 0; i < FanCount; i++) CombatProjectile.Hostile(session, muzzle, BoltDirection(muzzle,Quaternion.Euler(0,FanAngle(i),0)*attackForward), damage, BoltSpeed, sourceName: DisplayName);
                     }
                     else
                     {
@@ -1001,7 +1013,7 @@ namespace Emberfall
         }
 
         private string EscapePostDescription
-        {get{return escapePost==null?"":escapePost.Role==EscapeRole.GateGuard?"守门：短追后返岗；可引离金环。 ":escapePost.Role==EscapeRole.Pursuer?"追击：持续追踪入侵者。 ":escapePost.Role==EscapeRole.GateSupplier?"北门供能：留守门组。 ":"侧线：守住侧路，远离后返回。 ";}}
+        {get{return escapePost==null?"":session!=null&&session.InDungeon?"主动追击：发现角色后持续追踪并攻击。 ":escapePost.Role==EscapeRole.GateGuard?"守门：短追后返岗；可引离金环。 ":escapePost.Role==EscapeRole.Pursuer?"追击：持续追踪入侵者。 ":escapePost.Role==EscapeRole.GateSupplier?"北门供能：留守门组。 ":"侧线：守住侧路，远离后返回。 ";}}
         private EscapePostPolicy escapePost;
         private Vector3 escapePostPosition;
         private float escapeChaseMovement;

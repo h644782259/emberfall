@@ -50,7 +50,7 @@ namespace Emberfall
                 if(rank>=2&&!(hero==HeroClass.Ranger&&skill==0))text+="\n追加 "+damage(SkillDamageBudgets.OpeningImpact(hero,skill,rank,1));
             }
             else if(hero==HeroClass.Arcanist&&skill==9)text="每颗 "+damage(MeteorShowerRules.Coefficient(rank))+" · 共 "+MeteorShowerRules.Count(rank)+" 颗\n前方 "+MeteorShowerRules.Front(rank).ToString("0.#")+" 米 · 后方 "+MeteorShowerRules.Rear(rank).ToString("0.#")+" 米";
-            else if(hero==HeroClass.Arcanist&&skill==7)text="升空 / 落地各 "+damage(ElementalistGeometry.SwitchHit(rank));
+            else if(hero==HeroClass.Arcanist&&skill==7)text="升空 / 滞空 / 落地共3次，每次 "+damage(ElementalistGeometry.SwitchHit(rank));
             else if(hero==HeroClass.Arcanist&&skill==6)text="每 0.5 秒 "+damage(ElementalistGeometry.PressTick(rank))+"\n持续 "+ElementalistGeometry.PressDuration(rank)+" 秒 · 持续压倒";
             else if(skill==2&&hero!=HeroClass.Arcanist)
             {

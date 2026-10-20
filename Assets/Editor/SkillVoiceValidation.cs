@@ -22,7 +22,7 @@ namespace Emberfall.Editor
                 {
                     GameAudio.SkillVoiceVersion=version;
                     Require(PlayerPrefs.GetInt(key,0)==version,"Selection persisted");
-                    for(int hero=0;hero<4;hero++)for(int skill=0;skill<10;skill++)
+                    for(int hero=0;hero<4;hero++)for(int skill=0;skill<(hero==1?GameBalance.SkillCount:10);skill++)
                     {
                         if(skill==3||skill==8)continue;
                         string path="Audio/Chants/"+folders[version]+hero+"-"+skill;
@@ -35,7 +35,7 @@ namespace Emberfall.Editor
                 Require(GameAudio.SkillVoiceVersion==3,"Invalid setting must be ignored");
                 PlayerPrefs.SetInt(key,-1);
                 Require(GameAudio.SkillVoiceVersion==0,"Corrupt preference must use original");
-                Debug.Log("PASS: 128 skill chants, four language selections, persistence and invalid preference fallback.");
+                Debug.Log("PASS: 132 skill chants, four language selections, persistence and invalid preference fallback.");
             }
             finally
             {

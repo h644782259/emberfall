@@ -104,7 +104,7 @@ namespace Emberfall
             yield return CombatShaderWarmup.Prewarm();
             yield return WorldBuilder.BuildAsync(dungeon ? ZoneKind.Dungeon : ZoneKind.Wilderness,
                 DungeonLayout, Progression.HighestAdventureTier, CurrentHub, UsesWaveTactics ? runSeed : ChapterSeed,
-                root => world = root, (p, stage) => scenePreparation.Report(start + p * (.72f - start), stage));
+                root => world = root, (p, stage) => scenePreparation.Report(start + p * (.72f - start), stage), ChapterActive?ChapterRoomIndex:RoomChainRun!=null?RoomChainRun.Room.Index:0);
             if (!dungeon) WorldBuilder.ApplyChapterLandmark(world, Progression.Profile.chapterCompletedMask);
             scenePreparation.Report(.74f, "安置角色与镜头");
             Player.Teleport(ChapterActive ? chapterPlan.Entrance : dungeon && RoomChainRun != null ?
@@ -134,7 +134,7 @@ namespace Emberfall
         {
             yield return WorldBuilder.BuildAsync(ZoneKind.Dungeon, DungeonLayout, Progression.HighestAdventureTier,
                 CurrentHub, UsesWaveTactics ? runSeed : ChapterSeed, root => world = root,
-                (p, stage) => scenePreparation.Report(.08f + p * .62f, stage));
+                (p, stage) => scenePreparation.Report(.08f + p * .62f, stage), chapter?ChapterRoomIndex:RoomChainRun.Room.Index);
             scenePreparation.Report(.74f, "准备房间敌人与目标");
             Player.Teleport(chapter ? chapterPlan.Entrance : DungeonPoint(TacticalRoomGeometry.Entrance));
             Camera.main.GetComponent<AdventureCamera>().Snap();

@@ -85,7 +85,7 @@ namespace Emberfall
             long shards=(snapshot==null?0:snapshot.RewardMaterials)+(settlementChest!=null&&settlementChest.rulesRevision<3&&settlementChest.materialKind==RewardMaterialKind.StarAshFragment?settlementChest.materialsDelta:0);
             long stones=snapshot==null?0:snapshot.RewardRefinementStones;
             long[] amounts={coins,xp,shards,stones,settlementChest==null||settlementChest.rulesRevision>=3?0:settlementChest.threadsDelta};
-            string[] labels={"金币","经验","碎片","洗练石","星纹"},icons={"coin","upgrade","shard","gem","core"};
+            string[] labels={"金币","经验","碎片","洗练石","星纹"},icons={"coin","upgrade","shard","refinement","core"};
             var visibleResources=RunRecapPresentation.PositiveRewardIndices(amounts,settlementChest==null||settlementChest.rulesRevision>=3?5:2);
             int resourceCount=visibleResources.Length;
             float resourceHeight=resourceCount==0?0:Mathf.Min(58*u,(contentWidth-8*u*(resourceCount-1))/resourceCount);
@@ -337,7 +337,7 @@ namespace Emberfall
             var snapshot=session.LastRunRecap;
             int[] counts={reward.materialsDelta+(reward.rulesRevision>=3||snapshot==null?0:snapshot.RewardMaterials),reward.rulesRevision>=3?reward.refinementStonesDelta:snapshot==null?0:snapshot.RewardRefinementStones,reward.threadsDelta};
             string[] keys={"shard","refinement","thread"},names={"星烬碎片","装备洗练石","星纹"};
-            for(int n=0;n<counts.Length;n++)if(counts[n]>0)icons.Add(new EntryRewardPreview{Key=keys[n],Name=names[n],Quantity=counts[n],Description=names[n]+"\n数量  "+counts[n],Icon=n==1?UIIconAtlas.Utility("gem"):UIIconAtlas.Reward(n==0?1:2),Rarity=n==1?Rarity.Epic:Rarity.Rare,Tint=n==1?GameBalance.RarityColor(Rarity.Epic):jade});
+            for(int n=0;n<counts.Length;n++)if(counts[n]>0)icons.Add(new EntryRewardPreview{Key=keys[n],Name=names[n],Quantity=counts[n],Description=names[n]+"\n数量  "+counts[n],Icon=n==1?UIIconAtlas.Utility("refinement"):UIIconAtlas.Reward(n==0?1:2),Rarity=n==1?Rarity.Epic:Rarity.Rare,Tint=n==1?GameBalance.RarityColor(Rarity.Epic):jade});
             if(reward.basicAttackMaterialsDelta>0)icons.Add(ResourceItemPreview("basic-attack",reward.basicAttackMaterialsDelta));
             if(reward.affixReforgeStonesDelta>0)icons.Add(ResourceItemPreview("affix-reforge",reward.affixReforgeStonesDelta));
             return icons;
@@ -474,7 +474,7 @@ namespace Emberfall
                 int i=visibleRewards[visible];
                 int columns=RecapRewardColumns(layout);float step=compact?52:76,cell=(w-(columns-1)*8)/columns;Rect tile=new Rect((visible%columns)*(cell+8)*unit,(y+(visible/columns)*step)*unit,cell*unit,(compact?44:68)*unit);
                 Fill(tile,card);
-                DrawIcon(new Rect(tile.x+8*unit,tile.y+(compact?10:15)*unit,(compact?24:32)*unit,(compact?24:32)*unit),i==5?UIIconAtlas.Utility("gem"):i==4?UIIconAtlas.Utility("potion"):i==1?UIIconAtlas.Utility("upgrade"):UIIconAtlas.Reward(i==0?0:i-1),i==0?gold:i==1?jade:GameBalance.RarityColor(i==5?Rarity.Epic:i==4?Rarity.Common:Rarity.Rare));
+                DrawIcon(new Rect(tile.x+8*unit,tile.y+(compact?10:15)*unit,(compact?24:32)*unit,(compact?24:32)*unit),i==5?UIIconAtlas.Utility("refinement"):i==4?UIIconAtlas.Utility("potion"):i==1?UIIconAtlas.Utility("upgrade"):UIIconAtlas.Reward(i==0?0:i-1),i==0?gold:i==1?jade:GameBalance.RarityColor(i==5?Rarity.Epic:i==4?Rarity.Common:Rarity.Rare));
                 if(i==1)DrawExperienceBadge(new Rect(tile.x+8*unit,tile.y+8*unit,(compact?24:32)*unit,(compact?24:32)*unit),compact?.65f*unit:unit);
                 Text(new Rect(tile.x+(compact?38:52)*unit,tile.y+(compact?2:7)*unit,tile.width-(compact?42:60)*unit,20*unit),labels[i],Mathf.RoundToInt((compact?11:13)*unit),muted);
                 Text(new Rect(tile.x+(compact?38:52)*unit,tile.y+(compact?20:29)*unit,tile.width-(compact?42:60)*unit,(compact?22:30)*unit),"+"+amounts[i].ToString("N0"),Mathf.RoundToInt((compact?15:21)*unit),pale,true);

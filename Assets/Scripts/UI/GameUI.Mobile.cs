@@ -20,7 +20,7 @@ namespace Emberfall
             return GUI.Button(r,GUIContent.none,invisibleButton);
         }
 
-        private int mobileSkillPage, mobileSkillPageFrame=-1;
+        private const int mobileSkillPage=0;
         public bool MobileSkillVisible(int skill)
         {if(session==null||!CombatSkillLearned(session.Progression.Profile,skill))return false;for(int button=0;button<MobileSkillPolicy.ButtonCount;button++)if(BoundMobileSkill(button,mobileSkillPage)==skill)return true;return false;}
         public void CancelMobileCast(){mobileTap.Cancel();}
@@ -28,7 +28,6 @@ namespace Emberfall
         {
             if(session.InputBlocked||panel!=Panel.None||session.Player==null)return false;
             Vector2 p=ScreenToUI(screen);
-            if(TouchRect(MobileControls.Layout.SkillPage).Contains(p)){if(mobileSkillPageFrame!=Time.frameCount){CancelMobileCast();mobileSkillPage=(mobileSkillPage+1)%MobileSkillPolicy.PageCount;mobileSkillPageFrame=Time.frameCount;}return true;}
             if(mobileTap.Active)return false;
             for(int i=0;i<MobileSkillPolicy.ButtonCount;i++)
             {
@@ -163,18 +162,6 @@ namespace Emberfall
             var charge=session.Player==null?null:session.Player.GetComponent<SkillChargeController>();
             if(charge!=null&&charge.IsCharging)Bar(TouchRect(26,l.Height-40,128,5),charge.Progress,gold);
         }
-        private bool OtherMobilePageReady()
-        {
-            if(session.Player==null)return false;
-            int otherPage=(mobileSkillPage+1)%MobileSkillPolicy.PageCount;
-            for(int button=0;button<MobileSkillPolicy.ButtonCount;button++)
-            {
-                int skill=BoundMobileSkill(button,otherPage);
-                // Shared buttons (such as the ultimate) are already visible on this page.
-                if(skill>=0&&!MobileSkillVisible(skill)&&session.Player.IsSkillAvailable(skill))return true;
-            }
-            return false;
-        }
         private void DrawMobileHotbar()
         {
             float priorOpacity=controlOpacity;controlOpacity=EffectPreferences.TouchOpacity;
@@ -191,17 +178,6 @@ namespace Emberfall
                 // Solid backing keeps the identity readable against bright terrain.
                 DrawRecoveringSkill(icon,skillArt,skill,ready);
                 DrawMobileSkillAvailability(r,skill);
-            }
-            Rect pageHit=TouchRect(l.SkillPage);blockedRects.Add(pageHit);
-            float pageIcon=(MobileControls.IsIPad?28.8f:24f)*TouchRatio;
-            DrawIcon(new Rect(pageHit.center.x-pageIcon*.5f,pageHit.center.y-pageIcon*.5f,pageIcon,pageIcon),UIIconAtlas.SkillPageArrow(),Color.white);
-            if(OtherMobilePageReady())
-            {
-                float pulse=.5f+.5f*Mathf.Sin(Time.unscaledTime*4);
-                Rect aura=new Rect(pageHit.center.x-pageIcon*.65f,pageHit.center.y-pageIcon*.65f,pageIcon*1.3f,pageIcon*1.3f);
-                DrawIcon(aura,UIIconAtlas.ControlRing(true),new Color(.25f,1f,.85f,.35f+.45f*pulse));
-                float flow=Mathf.Repeat(Time.unscaledTime*.55f,1);
-                DrawIcon(new Rect(aura.x+flow*aura.width-3*TouchRatio,aura.yMax-5*TouchRatio,6*TouchRatio,6*TouchRatio),UIIconAtlas.Utility("gem"),jade);
             }
             controlOpacity=priorOpacity;
         }
@@ -344,10 +320,12 @@ namespace Emberfall
         {
             if(mobileBindingEditor){DrawMobileBindingEditor();return;}
             var layout = MobileControls.Layout;
-            float panelWidth=Mathf.Min(720,layout.Width-24),x=(layout.Width-panelWidth)*.5f,y=12;
+            float panelWidth=Mathf.Min(720,layout.Width-24),x=(layout.Width-panelWidth)*.5f,y=24;
+            Box(TouchRect(x-4,4,panelWidth+8,Mathf.Min(layout.Height,height/TouchRatio)-8),jade,false);
+            // Consistent inner gutter for title, navigation and footer actions.
+            x+=16;panelWidth-=32;
             float titleWidth=panelWidth-52;
             float headerHeight=Mathf.Max(44,Style(TouchFont(23),true).CalcHeight(new GUIContent("设置"),titleWidth*TouchRatio)/TouchRatio+8);
-            Box(TouchRect(x-4,4,panelWidth+8,Mathf.Min(layout.Height,height/TouchRatio)-8),jade,false);
             Text(TouchRect(x,y,titleWidth,headerHeight), "设置", TouchFont(23), pale, true);
             Rect close=TouchRect(x+panelWidth-44,y,44,44);
 
@@ -355,8 +333,8 @@ namespace Emberfall
             string[] tabs = { "存档", "声音与画面", "按键设置" };
             int[] tabOrder={0,1,2};
             float sidebarWidth=120,bodyY=y+headerHeight+8;
-            float bodyHeight=Mathf.Max(48,Mathf.Min(layout.Height,height/TouchRatio)-bodyY-72);
-            float footerY=Mathf.Min(layout.Height,height/TouchRatio)-60,exitButtonWidth=panelWidth-136;
+            float bodyHeight=Mathf.Max(48,Mathf.Min(layout.Height,height/TouchRatio)-bodyY-80);
+            float footerY=Mathf.Min(layout.Height,height/TouchRatio)-68,exitButtonWidth=panelWidth-136;
             if(session.InDungeon)
             {
                 float actionWidth=(exitButtonWidth-8)*.5f;

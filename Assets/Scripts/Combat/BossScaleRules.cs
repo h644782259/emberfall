@@ -4,7 +4,7 @@ namespace Emberfall
     // Actual encounter dimensions, shared by mesh scale, routing and contact.
     public static class BossScaleRules
     {
-        public const float BossMultiplier=1.5f,LargeBossMultiplier=1.45f,TreantMultiplier=1.5f;
+        public const float BossMultiplier=3f,LargeBossMultiplier=2.9f,TreantMultiplier=1.5f;
         internal static bool ReviewLegacyDimensions;
         public static float EnemyMultiplier(bool boss,bool large=false){return !boss||ReviewLegacyDimensions?1:large?LargeBossMultiplier:BossMultiplier;}
         public static float CompanionMultiplier(SummonedCompanion.Kind form){return form==SummonedCompanion.Kind.Treant&&!ReviewLegacyDimensions?TreantMultiplier:1;}

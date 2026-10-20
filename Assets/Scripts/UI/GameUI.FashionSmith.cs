@@ -42,13 +42,20 @@ namespace Emberfall
         private void DrawFashionSmith(Rect body,float u)
         {
             var p=session.Progression;bool enabled=GUI.enabled;GUI.enabled=enabled&&smithFashionQuote==null;
+            var ordered=new System.Collections.Generic.List<FashionData>(p.Profile.fashions.Count);
+            for(int pass=0;pass<2;pass++)foreach(var item in p.Profile.fashions)
+            {
+                var equipped=p.EquippedFashion(item.slot);
+                bool isWorn=equipped!=null&&equipped.id==item.id;
+                if(isWorn==(pass==0))ordered.Add(item);
+            }
             Rect list=body;
             int columns=body.width/u>=660?3:body.width/u>=420?2:1;float cw=(list.width/u-(columns-1)*12)/columns;
             float rowHeight=278;
             smithFashionScroll=BeginTouchScroll("smith-fashion",list,smithFashionScroll,new Rect(0,0,list.width,Mathf.Max(list.height,((p.Profile.fashions.Count+columns-1)/columns)*rowHeight*u)));
-            for(int i=0;i<p.Profile.fashions.Count;i++)
+            for(int i=0;i<ordered.Count;i++)
             {
-                var fashion=p.Profile.fashions[i];Rect tile=new Rect(i%columns*(cw+12)*u,i/columns*rowHeight*u,cw*u,(rowHeight-12)*u);
+                var fashion=ordered[i];Rect tile=new Rect(i%columns*(cw+12)*u,i/columns*rowHeight*u,cw*u,(rowHeight-12)*u);
                 Fill(tile,card);Border(tile,GameBalance.RarityColor(fashion.rarity));
                 Rect fashionIcon=new Rect(tile.x+10*u,tile.y+10*u,48*u,48*u);
                 DrawIcon(fashionIcon,UIIconAtlas.FashionCardIcon(fashion,p.Profile.heroClass,p.Equipped(ItemSlot.Weapon)),GameBalance.RarityColor(fashion.rarity));

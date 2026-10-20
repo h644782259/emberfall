@@ -26,10 +26,11 @@ namespace Emberfall
             Rect action=RewardEquipRect(area);Fill(action,new Color(.08f,.3f,.18f));Border(action,jade);
             Text(action,"穿戴",MobileControls.Active?TouchFont(14):14,pale,true,false,TextAnchor.MiddleCenter);
         }
+        private bool CompactGemRewardMoment => rewardMoment!=null&&rewardMoment.Kind==RewardMomentKind.MechanicExchange&&rewardMoment.Item==null&&rewardMoment.Fashion==null;
         private Rect RewardMomentRect()
         {
             float u=MobileControls.Active?TouchRatio:1;
-            float w=Mathf.Min((RewardMomentSafe?330:196)*u,width-24*u),h=Mathf.Min((RewardMomentSafe?252:RewardUpgradeItem()!=null?104:52)*u,height-84*u);
+            float w=Mathf.Min((CompactGemRewardMoment?330:RewardMomentSafe?330:196)*u,width-24*u),h=Mathf.Min((CompactGemRewardMoment?64:RewardMomentSafe?252:RewardUpgradeItem()!=null?104:52)*u,height-84*u);
             return new Rect(width-w-12*u,64*u,w,h);
         }
         // Runs before panel input, so skip cannot click through to a transaction below.
@@ -62,7 +63,7 @@ namespace Emberfall
                     var item=RewardUpgradeItem();
                     if(item!=null&&RewardEquipRect(RewardMomentRect()).Contains(Mouse))
                     {bool saved=session.Progression.Equip(item.id);Feedback(saved,saved?"装备已穿戴":session.Progression.LastError);if(saved)ClearRewardMoment();}
-                    else if(RewardMomentSafe&&RewardMomentSkipRect(RewardMomentRect()).Contains(Mouse))ClearRewardMoment();
+                    else if(CompactGemRewardMoment||RewardMomentSafe&&RewardMomentSkipRect(RewardMomentRect()).Contains(Mouse))ClearRewardMoment();
                 }
                 BlockUITransition();Event.current.Use();
             }
@@ -86,11 +87,26 @@ namespace Emberfall
             if(rewardMoment.Fashion!=null)return UIIconAtlas.FashionCardIcon(rewardMoment.Fashion,session.Progression.Profile.heroClass);
             return rewardMoment.MaterialsDelta!=0?UIIconAtlas.Reward(1):rewardMoment.ThreadsDelta!=0?UIIconAtlas.Reward(2):rewardMoment.GoldDelta!=0?UIIconAtlas.Reward(0):UIIconAtlas.Utility("bag");
         }
+        private void DrawCompactGemRewardMoment(Rect area,float u)
+        {
+            var rarity=rewardMoment.Attachment!=null?rewardMoment.Attachment.rarity:Rarity.Rare;
+            Color accent=GameBalance.RarityColor(rarity);
+            Fill(area,new Color(.025f,.045f,.065f,.98f));Border(area,accent);
+            Rect icon=new Rect(area.x+8*u,area.center.y-24*u,48*u,48*u);
+            DrawEntryRewardIcon(icon,new EntryRewardPreview{Icon=AuthoredIconArt.ForTint(RewardMomentIcon(),accent),Rarity=rarity},u);
+            Rect tag=new Rect(area.xMax-68*u,area.center.y-12*u,60*u,24*u);
+            Rect name=new Rect(icon.xMax+10*u,area.y,tag.x-icon.xMax-20*u,area.height);
+            string title=RewardMomentTitle();int font=Mathf.RoundToInt(14*u);
+            while(font>Mathf.RoundToInt(10*u)&&Style(font,true,false).CalcSize(new GUIContent(title)).x>name.width)font--;
+            Text(name,title,font,pale,true,false,TextAnchor.MiddleLeft);
+            DrawDetailTag(tag,GameBalance.RarityName(rarity),accent,u);
+        }
         private void DrawRewardMoment()
         {
             if(rewardMoment==null)return;
             if(session.RunChoices.AwaitingChoice){ClearRewardMoment();return;}
             Rect area=RewardMomentRect();float u=MobileControls.Active?TouchRatio:1;
+            if(CompactGemRewardMoment){DrawCompactGemRewardMoment(area,u);return;}
             bool canEquip=RewardUpgradeItem()!=null;
             Color accent=rewardMoment.Attachment!=null?GameBalance.RarityColor(rewardMoment.Attachment.rarity):rewardMoment.Item!=null?GameBalance.RarityColor(rewardMoment.Item.rarity):rewardMoment.Fashion!=null?GameBalance.RarityColor(rewardMoment.Fashion.rarity):jade;
             Fill(area,new Color(.025f,.045f,.065f,.98f));Border(area,accent);

@@ -3,7 +3,7 @@ namespace Emberfall
 {
     public sealed partial class GameUI
     {
-        private readonly MobileOpportunityMeter[] mobileOpportunityMeters=new MobileOpportunityMeter[10];
+        private readonly MobileOpportunityMeter[] mobileOpportunityMeters=new MobileOpportunityMeter[GameBalance.SkillCount];
         private void DrawSkillStock(Rect r,int skill,float u)
         {
             var hero=session.Player;var profile=session.Progression.Profile;
@@ -47,7 +47,7 @@ namespace Emberfall
             string reason=!string.IsNullOrEmpty(rejected)?rejected:targetReason.Length>0?targetReason:
                 state=="缺能"||state=="限疗空"||state=="蓄力"?state:
                 state.Length==0&&window.Window&&!window.Actionable?window.BlockReason:"";
-            if(reason.Length>0&&reason!="冷却")
+            if(reason.Length>0&&reason!="冷却"&&reason!="需落地"&&reason!="空中"&&(session.Player==null||!session.Player.IsJumping))
             {
                 Text(caption,MobileCombatPresentation.SkillRejectionCaption(reason),TouchFont(11),gold,true,false,TextAnchor.MiddleCenter);
             }

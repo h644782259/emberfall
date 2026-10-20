@@ -135,9 +135,9 @@ namespace Emberfall
             DrawPrice(new Rect(balanceStart+(balanceWidth+4)*u,12*u,balanceWidth*u,28*u),p.Profile.mechanicMaterials,true,u);
             InspectRewardItem(new Rect(balanceStart,12*u,balanceWidth*u,28*u),ResourceItemPreview("gold",p.Profile.gold));
             InspectRewardItem(new Rect(balanceStart+(balanceWidth+4)*u,12*u,balanceWidth*u,28*u),ResourceItemPreview("shard",p.Profile.mechanicMaterials));
-            DrawSmithResource(new Rect(balanceStart+2*(balanceWidth+4)*u,12*u,balanceWidth*u,28*u),p.Profile.refinementStones,UIIconAtlas.Utility("gem"),GameBalance.RarityColor(Rarity.Epic),u,"refinement");
+            DrawSmithResource(new Rect(balanceStart+2*(balanceWidth+4)*u,12*u,balanceWidth*u,28*u),p.Profile.refinementStones,UIIconAtlas.Utility("refinement"),GameBalance.RarityColor(Rarity.Epic),u,"refinement");
             DrawSmithResource(new Rect(balanceStart+3*(balanceWidth+4)*u,12*u,balanceWidth*u,28*u),p.Profile.fashionThreads,UIIconAtlas.Reward(2),GameBalance.RarityColor(Rarity.Rare),u,"thread");
-            DrawSmithResource(new Rect(balanceStart+4*(balanceWidth+4)*u,12*u,balanceWidth*u,28*u),p.Profile.affixReforgeStones,UIIconAtlas.Utility("gem"),gold,u,"affix-reforge");
+            DrawSmithResource(new Rect(balanceStart+4*(balanceWidth+4)*u,12*u,balanceWidth*u,28*u),p.Profile.affixReforgeStones,UIIconAtlas.Utility("affix-reforge"),gold,u,"affix-reforge");
             if(PopupCloseButton(new Rect(width-56*u,10*u,42*u,36*u))){smithPreviewMechanic=EquipmentMechanic.None;GUI.enabled=prior;ClosePanel();return;}
             smithCategory=Mathf.Clamp(smithCategory,0,3);
             string[] categories={"强化","镶嵌","洗练","时装"};
@@ -185,9 +185,9 @@ namespace Emberfall
                         float aw=(cardWidth-28)*.5f,buttonHeight=44;
                         Rect action=new Rect(4*u,tile.height-68*u,aw*u,buttonHeight*u);
                         Rect reroll=new Rect(action.xMax+4*u,action.y,aw*u,buttonHeight*u);
-                        if(SmithMaterialAction(action,reason=="数值已满"?"已满":"洗练",GameBalance.RarityColor(Rarity.Epic),u,reason.Length==0,"提升基础词条和已有随机词条数值，只升不降，不新增词条。"+(reason.Length==0?"":"\n"+reason)))
+                        if(SmithMaterialAction(action,"refinement",reason=="数值已满"?"已满":"洗练",GameBalance.RarityColor(Rarity.Epic),u,reason.Length==0,"提升基础词条和已有随机词条数值，只升不降，不新增词条。"+(reason.Length==0?"":"\n"+reason)))
                             Feedback(p.RefineEquipment(item.id,SmithServiceActive),"洗练已保存");
-                        if(SmithMaterialAction(reroll,ProgressionService.HasFullEquipmentAffixes(item)?"满词条":"词条重铸",ProgressionService.HasFullEquipmentAffixes(item)?gold:GameBalance.RarityColor(Rarity.Rare),u,rerollReason.Length==0,"仅重铸随机词条；数值可能降低或词条消失，基础词条与强化等级不变。"+(rerollReason.Length==0?"":"\n"+rerollReason)))
+                        if(SmithMaterialAction(reroll,"affix-reforge",ProgressionService.HasFullEquipmentAffixes(item)?"满词条":"词条重铸",ProgressionService.HasFullEquipmentAffixes(item)?gold:GameBalance.RarityColor(Rarity.Rare),u,rerollReason.Length==0,"仅重铸随机词条；数值可能降低或词条消失，基础词条与强化等级不变。"+(rerollReason.Length==0?"":"\n"+rerollReason)))
                             smithAffixQuote=p.PrepareAffixReforge(item.id,SmithServiceActive);
                     }
                     if(smithCategory==0)
@@ -211,11 +211,13 @@ namespace Emberfall
                             BlockUITransition();
                         }
                         if(capped)DrawSmithMaxBadge(action,"已满级",u);
-                        else DrawIcon(new Rect(action.x+10*u,action.y+11*u,22*u,22*u),UIIconAtlas.Utility("upgrade"),accent);
                         if(!capped)
                         {
-                            DrawIcon(new Rect(action.x+42*u,action.y+13*u,18*u,18*u),UIIconAtlas.Utility("coin"),gold);
-                            Text(new Rect(action.x+66*u,action.y,action.width-72*u,action.height),cost.ToString(),Mathf.RoundToInt(12*u),p.Profile.gold>=cost?accent:new Color(.98f,.28f,.24f),true,false,TextAnchor.MiddleLeft);
+                            string amount=cost.ToString();int priceFont=Mathf.RoundToInt(12*u);
+                            float amountWidth=Style(priceFont,true,false).CalcSize(new GUIContent(amount)).x;
+                            float iconSize=18*u,gap=6*u,start=action.center.x-(iconSize+gap+amountWidth)*.5f;
+                            DrawIcon(new Rect(start,action.center.y-iconSize*.5f,iconSize,iconSize),UIIconAtlas.Utility("coin"),gold);
+                            Text(new Rect(start+iconSize+gap,action.y,amountWidth,action.height),amount,priceFont,p.Profile.gold>=cost?accent:new Color(.98f,.28f,.24f),true,false,TextAnchor.MiddleLeft);
                         }
                     }
                 }
@@ -223,17 +225,6 @@ namespace Emberfall
             }
             EndTouchScroll();
             GUI.enabled=prior;DrawGemPreview(u);DrawSocketPicker(u);DrawAffixConfirmation(u);DrawSmithUpgradeResult(u);
-        }
-        private string PhoneGemFormDescription(MechanicAttachment gem,int variant)
-        {
-            switch(gem.mechanic)
-            {
-                case EquipmentMechanic.CinderTrail:return variant==0?"陨星直伤−20%；完整火场，4跳共40%伤害。":"陨星直伤−20%；火场缩小30%，4跳共57%伤害。";
-                case EquipmentMechanic.FrostEcho:return variant==0?"新星首击80%；延迟回响60%伤害，再次控制。":"范围+35%；首击65%、回响45%伤害，控制更多敌人。";
-                case EquipmentMechanic.ReturningBlade:return variant==0?"普攻−8%；回刃弹射110%，回收强化下一刀。":"取消弹射；完美闪避后3秒内可突进反击175%。";
-                case EquipmentMechanic.VenomSpread:return variant==0?"毒爆−20%；每2秒向附近2个目标传播毒素。":"扇形箭变单发毒矢，伤害240%/360%/480%；无传播。";
-                default:return SmithVariantDescription(gem.mechanic,variant);
-            }
         }
         private void DrawPhoneSocketService(Rect body,float u)
         {
@@ -313,7 +304,6 @@ namespace Emberfall
                 float after=BuildCatalog.GemAttributeValue(gem.mechanic,rarity,nextRank)*100;
                 GoalParagraph(ref y,width,u,gem.upgradeRank+"阶  →  "+nextRank+"阶",13,pale,true,draw);
                 GoalParagraph(ref y,width,u,BuildCatalog.GemAttributeLabel(gem.mechanic)+"  +"+before.ToString("0.#")+"%  →  +"+after.ToString("0.#")+"%",14,jade,true,draw);
-                GoalParagraph(ref y,width,u,"增加 "+(after-before).ToString("0.#")+" 个百分点",12,jade,false,draw);
                 return;
             }
             GoalParagraph(ref y,width,u,"升华 "+gem.ascensionRank+"级  →  "+nextAscension+"级",13,pale,true,draw);
@@ -376,13 +366,13 @@ namespace Emberfall
             }
             EndTouchScroll();
         }
-        private bool SmithMaterialAction(Rect r,string caption,Color materialTint,float u,bool enabled,string reason)
+        private bool SmithMaterialAction(Rect r,string materialKey,string caption,Color materialTint,float u,bool enabled,string reason)
         {
             bool clicked=DrawButton(r,"",ButtonRole.Action,enabled,reason);
             Color textColor=enabled?pale:muted;
             float iconSize=14*u,costWidth=36*u;
             Text(new Rect(r.x+4*u,r.y,r.width-costWidth-8*u,r.height),caption,Mathf.RoundToInt(11*u),textColor,true,false,TextAnchor.MiddleCenter);
-            DrawIcon(new Rect(r.xMax-costWidth,r.center.y-iconSize*.5f,iconSize,iconSize),UIIconAtlas.Utility("gem"),materialTint);
+            DrawIcon(new Rect(r.xMax-costWidth,r.center.y-iconSize*.5f,iconSize,iconSize),UIIconAtlas.Utility(materialKey),materialTint);
             Text(new Rect(r.xMax-costWidth+iconSize,r.y,costWidth-iconSize-3*u,r.height),"×1",Mathf.RoundToInt(10*u),textColor,true,false,TextAnchor.MiddleCenter);
             return clicked;
         }

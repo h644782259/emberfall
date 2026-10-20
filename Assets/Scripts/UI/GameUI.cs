@@ -1503,6 +1503,8 @@ namespace Emberfall
             if(QuietAction(new Rect(middle,w.y+108,64,32),"装备",true,null,mobileInventoryTab==0))SelectInventoryTab(0);
             if(QuietAction(new Rect(middle+76,w.y+108,64,32),"道具",true,null,mobileInventoryTab==2))SelectInventoryTab(2);
             if(QuietAction(new Rect(middle+152,w.y+108,64,32),"时装",true,null,mobileInventoryTab==3))SelectInventoryTab(3);
+            if(QuietAction(new Rect(middle+228,w.y+108,64,32),"宝石",true,null,mobileInventoryTab==4))SelectInventoryTab(4);
+            if(mobileInventoryTab==4){DrawBagGems(InventoryArea(bagArea));return;}
             if(mobileInventoryTab==3){DrawBagFashion(InventoryArea(bagArea));return;}
             if(mobileInventoryTab==2){DrawBagSupplies(InventoryArea(bagArea));return;}
 
@@ -1939,7 +1941,7 @@ namespace Emberfall
             {
                 Fill(new Rect(0,0,width,height),new Color(.12f,.19f,.24f,.26f));
                 float u=MobileControls.Active?TouchRatio:1,w=Mathf.Min(500*u,width-24*u),x=(width-w)*.5f,y=height*.18f;
-                Text(new Rect(x,y-36*u,w,28*u),"幽灵状态",Mathf.RoundToInt(19*u),pale,true,false,TextAnchor.MiddleCenter);
+                Text(new Rect(x,y-36*u,w,28*u),"幽灵状态 · 剩余复活 "+session.DungeonRevivalsRemaining+"/"+GameSession.DungeonRevivalLimit,Mathf.RoundToInt(19*u),pale,true,false,TextAnchor.MiddleCenter);
                 Rect revive=new Rect(x,y,(w-12*u)*.5f,48*u),finish=new Rect(revive.xMax+12*u,y,revive.width,revive.height);
                 blockedRects.Add(revive);blockedRects.Add(finish);
                 int stones=session.Progression.Profile.revivalStones;

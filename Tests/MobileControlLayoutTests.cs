@@ -5,8 +5,8 @@ public static class MobileControlLayoutTests
 {
     static int checks;
     public const float AcceptedPhoneSkillDiameter=52;
-    const float AcceptedPhoneAttackInset=143;
-    const float AcceptedPadJumpTopInset=199.9f;
+    const float AcceptedPhoneAttackInset=131;
+    const float AcceptedPadJumpTopInset=200.9f;
     static void Check(bool value,string message){checks++;if(!value)throw new Exception(message);}
     static bool Near(float a,float b){return Math.Abs(a-b)<.01f;}
     static void Center(MobileControlLayout.Area area,float x,float y,float diameter,string name)
@@ -31,14 +31,14 @@ public static class MobileControlLayoutTests
             double angle=i*Math.PI/6;
             Center(layout.Skills[i],layout.Width-108-144*(float)Math.Cos(angle),layout.Height-44-144*(float)Math.Sin(angle)+shift,AcceptedPhoneSkillDiameter,"restored ordinary arc slot "+i);
         }
-        Center(layout.Attack,layout.Width-AcceptedPhoneAttackInset,layout.Height-61,76,"main-platform basic attack");
-        Center(layout.Dodge,layout.Width-48,layout.Height-42+shift,48,"dodge");
-        Center(layout.Jump,layout.Width-48,layout.Height-97+shift,48,"jump");
-        Center(layout.SkillPage,layout.Width-48,layout.Height-150+shift,44,"page switch");
-        Center(layout.Skills[4],layout.Width-48,layout.Height-211.2f+shift,62.4f,"fixed ultimate inside the compact right control group");
+        Center(layout.Attack,layout.Width-AcceptedPhoneAttackInset,layout.Height-83,76,"main-platform basic attack");
+        Center(layout.Dodge,layout.Width-48,layout.Height-52+shift,48,"dodge");
+        Center(layout.Jump,layout.Width-48,layout.Height-107+shift,48,"jump");
+        Center(layout.SkillPage,layout.Width-48,layout.Height-188+shift,44,"page switch");
+        Center(layout.Skills[4],layout.Width-48,layout.Height-251.2f+shift,62.4f,"fixed ultimate inside the compact right control group");
         Check(Near(layout.Interact.X,layout.Width-156)&&Near(layout.Interact.Y,56)&&Near(layout.Interact.Width,48)&&Near(layout.Interact.Height,48),"phone contextual action clears the restored compact arc");
         var actions=new List<MobileControlLayout.Area>{layout.Attack,layout.Dodge,layout.Jump,layout.SkillPage};actions.AddRange(layout.Skills);
-        foreach(var action in actions)Check(action.X>=layout.Width-252-AcceptedPhoneSkillDiameter*.5f-.01f&&action.Y>=layout.Height-242.4f+shift-.01f,"phone controls remain inside the accepted compact arc bounds");
+        foreach(var action in actions)Check(action.X>=layout.Width-252-AcceptedPhoneSkillDiameter*.5f-.01f&&action.Y>=layout.Height-282.4f+shift-.01f,"phone controls remain inside the accepted compact arc bounds");
         return checks-before;
     }
     public static string RunPhone(){return Run(true);}

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace Emberfall
 {
@@ -17,8 +17,8 @@ namespace Emberfall
         private readonly bool padControls;
         public readonly Area Joystick, MoveZone, Attack, Dodge, Potion, Jump, Cancel, Menu, Inventory, SkillsMenu, Catalog, Interact, SkillPage, DungeonEntrance, Shop, Smith;
         public readonly Area EncounterText, BossHealth, Notice, AdventureStatus, FocusCommand, RecallCommand, CombatView, PlayerStatus, PlayerHealth, PlayerEnergy, Map;
-        public readonly Area[] Skills = new Area[5];
-        public readonly Area[] SkillOpportunities = new Area[10];
+        public readonly Area[] Skills = new Area[9];
+        public readonly Area[] SkillOpportunities = new Area[11];
         public readonly Area CounterOpportunity, ComboOpportunity;
         public MobileControlLayout(float pixelWidth,float pixelHeight,float dpi,int positionPreset=0, bool ipad=false, float[] skillOffsets=null)
         {
@@ -38,91 +38,49 @@ namespace Emberfall
             Joystick=Centered(90,Height-86,128);
             float moveTop=Math.Max(164,Height-172);
             MoveZone=new Area(12,moveTop,175,Height-12-moveTop);
-            Attack=Centered(Width-125,Height-55,76);
-            Dodge=Centered(Width-30,Height-30,48);
-            Jump=Centered(Width-30,Height-99,48);Cancel=Jump;
-            float bottomLift=Width<700?36:0;
-            Potion=Centered(Width*.5f-108,Height-30,52);
-            // Width already excludes Screen.safeArea insets. Never subtract them again.
+            // Four small skills in ascending order (ultimate last), with five full-size
+            // skills following a shared arc around the primary attack button.
+            // Fit the whole cluster to the usable viewport, rather than enlarging all
+            // tablet controls or using a fixed phone size. Scale hit areas together
+            // with their artwork so neighboring buttons remain distinct.
+            float group=Math.Max(.68f,Math.Min(1.1f,Math.Min(Height/528f,(Width*.38f-20)/285f)));
+            float attackX=Width-112*group,attackY=Height-106*group;
+            Attack=Centered(attackX,attackY,76*group);
+            for(int i=0;i<5;i++)
+            {
+                double angle=(-40-i*45)*Math.PI/180;
+                Skills[3+i]=Centered(attackX+85*group*(float)Math.Cos(angle),attackY+85*group*(float)Math.Sin(angle),52*group);
+            }
+            // The two leftmost skills form a straight column at the bottom.
+            Skills[7]=new Area(Skills[6].X,Skills[7].Y,Skills[7].Width,Skills[7].Height);
+            // Move the former upper-right skill beside the lowest skill.
+            Skills[3]=new Area(Skills[7].X-62*group,Skills[7].Y,Skills[7].Width,Skills[7].Height);
+            // Keep the small row attached to the combat arc. The midpoint is an
+            // upper travel limit for its bottom edge, not a fixed row anchor.
+            float arcTop=Skills[3].Y;
+            for(int i=4;i<8;i++)arcTop=Math.Min(arcTop,Skills[i].Y);
+            float topRowBottom=Math.Max(Height*.5f,arcTop-10*group);
+            float topRowY=topRowBottom-21*group;
+            Skills[8]=Centered(Width-56*group,topRowY,42*group);
+            for(int i=0;i<3;i++)Skills[i]=Centered(Width-(230-i*58)*group,topRowY,42*group);
+            Jump=Centered(Width-45*group,attackY-43*group,54*group);
+            Dodge=Centered(Width-45*group,attackY+30*group,54*group);Cancel=Jump;
+            // Align the top row with the outer edge of the mobility buttons.
+            float topRowShift=Jump.X+Jump.Width-(Skills[8].X+Skills[8].Width);
+            Skills[8]=Translate(Skills[8],topRowShift,0);
+            for(int i=0;i<3;i++)Skills[i]=Translate(Skills[i],topRowShift,0);
+            SkillPage=new Area(); // Retained as an empty compatibility field; no hit target.
+            float potionSize=ipad?62.4f:52;
+            Potion=Centered(Width*.5f-(ipad?112:92)-12-potionSize*.5f,Height-34,potionSize);
             Menu=Centered(Width-28,32,44);Inventory=Centered(Width-166,32,44);
             SkillsMenu=Centered(Width-74,32,44);Catalog=Centered(Width-120,32,44);
             Shop=Centered(Width-258,32,44);Smith=Centered(Width-212,32,44);
-            Interact=ipad?new Area(Width-54,92,48,48):new Area(Width-156,56,48,48);
+            Interact=new Area(Skills[3].X-56,Attack.Y-56,48,48);
             DungeonEntrance=new Area(Width*.5f-58,54,116,44);
-            float shift=positionPreset<0?-Math.Min(8,Math.Max(0,Height-320)):positionPreset>0?0:0;
-            // Equal-size skills follow a 30-degree arc with one shared chord length.
-            const float radius=132;float diameter=ipad?48:52;
-            float chord=2*radius*(float)Math.Sin(Math.PI/12);
-            for(int i=0;i<4;i++)
-            {
-                double angle=i*Math.PI/6;
-                Skills[i]=Centered(Width-78-radius*(float)Math.Cos(angle),Height-30-radius*(float)Math.Sin(angle)+shift-bottomLift,diameter);
-            }
-            Skills[4]=Centered(Width-78-radius-chord,Height-30+shift-bottomLift,diameter);
-            SkillPage=Centered(Width-24,Height-158,44);
-            if(ipad)
-            {
-                Attack=ScalePadCombat(Attack);Dodge=ScalePadCombat(Dodge);Jump=ScalePadCombat(Jump);
-                // Separate the existing iPad jump hitbox from the end of its skill arc.
-                Jump=new Area(Jump.X,Jump.Y+8,Jump.Width,Jump.Height);Cancel=Jump;
-                // Give the left skill arc more breathing room; keep a 30.9-unit gap to the right controls.
-                Attack=new Area(Math.Min(Attack.X+12,Dodge.X-Attack.Width-30.9f),Attack.Y,Attack.Width,Attack.Height);
-                Area page=ScalePadCombat(SkillPage);
-                SkillPage=Centered(Width-45,page.Y+page.Height*.5f,68.64f);
-                // Move the arc inward as one unit, preserving equal button spacing.
-                for(int i=0;i<Skills.Length;i++)
-                {
-                    Area skill=ScalePadCombat(Skills[i]);skill.X+=10;Skills[i]=skill;
-                }
-                // Ultimate stays fixed above the page switch, freeing the bottom HUD.
-                Skills[4]=Centered(SkillPage.X+SkillPage.Width*.5f,SkillPage.Y-10-31.2f,62.4f);
-                Menu=Centered(Width-38,38,52.8f);Inventory=Centered(Width-203.6f,38,52.8f);
-                SkillsMenu=Centered(Width-93.2f,38,52.8f);Catalog=Centered(Width-148.4f,38,52.8f);
-                Smith=Centered(Width-258.8f,38,52.8f);Shop=Centered(Width-314,38,52.8f);
-                DungeonEntrance=new Area(Width*.5f-58,76,116,44);
-                Potion=Centered(Width*.5f-151,Height-34,62.4f);
-            }
-            // Align the lowest iPad skill with the bottom edge of the energy strip.
-            if(ipad)
-            {
-                float lift=Height-18-(Skills[0].Y+Skills[0].Height);
-                for(int i=0;i<4;i++){Area skill=Skills[i];skill.Y+=lift;Skills[i]=skill;}
-            }
-            else
-            {
-                // Ordinary skills curve around the upper/left side of attack.
-                // The compact right column keeps ultimate, page, jump and dodge
-                // together at the lower-right without the old narrow-phone lift.
-                Attack=Centered(Width-125,Height-55,76);
-                Dodge=Centered(Width-30,Height-30+shift,48);
-                Jump=Centered(Width-30,Height-85+shift,48);Cancel=Jump;
-                SkillPage=Centered(Width-30,Height-138+shift,44);
-                const float phoneRadius=144,phoneDiameter=52;
-                for(int i=0;i<4;i++)
-                {
-                    double angle=i*Math.PI/6;
-                    Skills[i]=Centered(Width-90-phoneRadius*(float)Math.Cos(angle),Height-32-phoneRadius*(float)Math.Sin(angle)+shift,phoneDiameter);
-                }
-                Skills[4]=Centered(Width-30,Height-199.2f+shift,62.4f);
-            }
-            // Keep the complete combat cluster clear of right and bottom edges.
-            const float edgeInset=18, bottomInset=12;
-            Attack=new Area(Attack.X-edgeInset,Attack.Y-bottomInset,Attack.Width,Attack.Height);
-            Dodge=new Area(Dodge.X-edgeInset,Dodge.Y-bottomInset,Dodge.Width,Dodge.Height);
-            Jump=new Area(Jump.X-edgeInset,Jump.Y-bottomInset,Jump.Width,Jump.Height);Cancel=Jump;
-            SkillPage=new Area(SkillPage.X-edgeInset,SkillPage.Y-bottomInset,SkillPage.Width,SkillPage.Height);
-            for(int i=0;i<Skills.Length;i++){var skill=Skills[i];Skills[i]=new Area(skill.X-edgeInset,skill.Y-bottomInset,skill.Width,skill.Height);}
-            // iPad basic attack sits slightly lower/right inside the surrounding skill arc.
-            Attack=new Area(Attack.X+(ipad?8:0),Math.Min(Attack.Y+(ipad?20:6),Height-20-Attack.Height),Attack.Width,Attack.Height);
-            if(ipad)
-            {
-                var ultimate=Skills[4];
-                Skills[4]=Centered(ultimate.X+ultimate.Width*.5f,ultimate.Y+ultimate.Height*.5f,ultimate.Width*1.15f);
-            }
-            int[] opportunityIdentities={0,1,2,4,5,6,7,9};
+            int[] opportunityIdentities={0,1,2,4,5,6,7,10,9};
             for(int index=0;index<opportunityIdentities.Length;index++)
             {
-                int skill=opportunityIdentities[index],button=index==7?4:index%4;
+                int skill=opportunityIdentities[index],button=index;
                 SkillOpportunities[skill]=SkillOpportunityForButton(button);
             }
             CounterOpportunity=new Area(Attack.X,Attack.Y+Attack.Height+1,Attack.Width/2,13);
@@ -138,17 +96,10 @@ namespace Emberfall
             AdventureStatus=new Area(12,ipad?140.4f:86,188,76);
             // Transient notices replace this left-side information slot, never the battlefield.
             Notice=AdventureStatus;
-            float phoneHealthWidth=Math.Min(160,Math.Max(80,Math.Min(Attack.X-58,Skills[0].X-8)-(Width*.5f-80)));
-            float vitalX=Width*.5f-(ipad?112:80),vitalY=Height-(ipad?58:63);
-            // Numbers stay inside two full-width bars. Compact iPads can lack
-            // the bottom gap; use the free strip above movement in that case.
-            float vitalWidth=ipad?Math.Min(184,Math.Max(120,Skills[0].X-8-vitalX)):phoneHealthWidth;
-            if(ipad&&new Area(vitalX,vitalY,vitalWidth,36).Overlaps(Skills[0]))
-            {
-                vitalX=Math.Max(12,FocusCommand.X-vitalWidth-8);vitalY=MoveZone.Y-44;
-                if(vitalY<AdventureStatus.Y+AdventureStatus.Height+8)
-                {vitalX=AdventureStatus.X+AdventureStatus.Width+8;vitalY=DungeonEntrance.Y+DungeonEntrance.Height+8;}
-            }
+            float phoneHealthWidth=Math.Min(160,Math.Max(80,Math.Min(Attack.X-58,Skills[1].X-8)-(Width*.5f-80)));
+            float vitalX=Width*.5f-(ipad?112:92),vitalY=Height-(ipad?58:63);
+            // Keep the vital bars clear of the two new lower-left skills.
+            float vitalWidth=Math.Min(ipad?184:phoneHealthWidth,Skills[3].X-8-vitalX);
             PlayerStatus=new Area(vitalX,vitalY,vitalWidth,36);
             PlayerHealth=new Area(PlayerStatus.X,PlayerStatus.Y,vitalWidth,16);
             PlayerEnergy=new Area(PlayerStatus.X,PlayerStatus.Y+20,vitalWidth,16);
@@ -167,7 +118,7 @@ namespace Emberfall
                     Attack=Translate(Attack,dx,dy);Dodge=Translate(Dodge,dx,dy);Jump=Translate(Jump,dx,dy);Cancel=Jump;
                     SkillPage=Translate(SkillPage,dx,dy);
                     CounterOpportunity=Translate(CounterOpportunity,dx,dy);ComboOpportunity=Translate(ComboOpportunity,dx,dy);
-                    for(int i=0;i<opportunityIdentities.Length;i++)SkillOpportunities[opportunityIdentities[i]]=SkillOpportunityForButton(i==7?4:i%4);
+                    for(int i=0;i<opportunityIdentities.Length;i++)SkillOpportunities[opportunityIdentities[i]]=SkillOpportunityForButton(i);
                 }
             }
             CombatView=ChooseCombatView(Width*.5f-12,Height*.3f-32,96,64);
@@ -176,7 +127,7 @@ namespace Emberfall
         private static Area Translate(Area area,float dx,float dy)
         {return new Area(area.X+dx,area.Y+dy,area.Width,area.Height);}
         public Area[] CombatButtons()
-        {return new[]{Skills[0],Skills[1],Skills[2],Skills[3],Skills[4],Attack,Dodge,Jump,SkillPage};}
+        {var buttons=new Area[Skills.Length+3];Array.Copy(Skills,buttons,Skills.Length);buttons[Skills.Length]=Attack;buttons[Skills.Length+1]=Dodge;buttons[Skills.Length+2]=Jump;return buttons;}
         public Area CombatButtonBounds()
         {
             float x=Width,y=Height,right=0,bottom=0;

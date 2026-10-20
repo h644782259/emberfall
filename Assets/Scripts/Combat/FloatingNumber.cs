@@ -202,9 +202,12 @@ namespace Emberfall
             float scale=Mathf.Max(.001f,Mathf.Min(burst.width/Mathf.Max(1,captionSize.x),burst.height/Mathf.Max(1,captionSize.y)));
             GUI.matrix=Matrix4x4.TRS(new Vector3(burst.center.x,burst.center.y,0),Quaternion.identity,new Vector3(scale,scale,1));
             Rect label=new Rect(-captionSize.x*.5f,-captionSize.y*.5f,captionSize.x,captionSize.y);
-            float shadow=Mathf.Max(1,Density*.55f)/scale;
+            float shadow=Mathf.Max(1,Density*.85f)/scale;
             criticalNumberStyle.normal.textColor=new Color(.015f,.02f,.03f,.85f);
             GUI.Label(new Rect(label.x+shadow,label.y+shadow,label.width,label.height),caption,criticalNumberStyle);
+            GUI.Label(new Rect(label.x-shadow,label.y+shadow,label.width,label.height),caption,criticalNumberStyle);
+            GUI.Label(new Rect(label.x-shadow,label.y-shadow,label.width,label.height),caption,criticalNumberStyle);
+            GUI.Label(new Rect(label.x+shadow,label.y-shadow,label.width,label.height),caption,criticalNumberStyle);
             criticalNumberStyle.normal.textColor=critical?new Color(1f,.76f,.3f):color;
             GUI.Label(label,caption,criticalNumberStyle);
             GUI.matrix=priorMatrix;GUI.color=priorColor;GUI.depth=priorDepth;
@@ -232,7 +235,7 @@ namespace Emberfall
                 number.lane=slot;number.bounds=box;
             }
         }
-        private float DamageFloatScale {get{return Mathf.Lerp(1.22f,.55f,Mathf.Clamp01(life/Duration));}}
+        private float DamageFloatScale {get{return Mathf.Lerp(1.22f,.92f,Mathf.Clamp01(life/.18f));}}
         private void ReleaseCount(){if(!counted)return;counted=false;ActiveCount=Mathf.Max(0,ActiveCount-1);if(mechanism)MechanismCount=Mathf.Max(0,MechanismCount-1);visible.Remove(this);if(ActiveCount==0)UnwatchFont();}
         public static void ClearForWorldTransition()
         {

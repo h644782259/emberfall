@@ -6,7 +6,7 @@ namespace Emberfall
     {
         private PlayerController owner;private GameSession game;private EnemyController target;
         private int epoch,castId;private float age,duration,radius,scan,nextTick;private CombatDamage damage;
-        private CastFirstHitReceipt receipt;private Material material;
+        private CastFirstHitReceipt receipt;private ElementalistSpellVisual visual;
         private readonly WorldTraversal.Route route=new WorldTraversal.Route();
         internal static void Spawn(PlayerController player,GameSession session,Vector3 at,int rank,CombatDamage tick,int id)
         {
@@ -15,18 +15,7 @@ namespace Emberfall
             var beam=root.AddComponent<TrackingLaser>();beam.owner=player;beam.game=session;beam.epoch=player.CombatEpoch;beam.castId=id;
             beam.duration=5+Mathf.Clamp(rank,1,3);beam.radius=(rank==3?3.2f:3f)*GameBalance.SkillRangeMultiplier(rank);
             beam.damage=tick.WithoutCritical();beam.receipt=player.RetainCastReceipt(id);beam.nextTick=.25f;
-            beam.material=new Material(Resources.Load<Shader>("TrackingLaser"));
-            beam.material.SetColor("_Tint",new Color(.25f,.8f,1f,1));
-            for(int i=0;i<3;i++)
-            {
-                float width=beam.radius*2*(i==0?1f:i==1?.5f:.18f);
-                var part=ProceduralVisuals.Create("Rising laser layer",PrimitiveType.Cylinder,beam.material);part.transform.SetParent(root.transform,false);
-                part.transform.localPosition=new Vector3(0,7,0);part.transform.localScale=new Vector3(width,7,width);
-                var renderer=part.GetComponent<MeshRenderer>();renderer.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;renderer.receiveShadows=false;
-            }
-            var baseLight=ProceduralVisuals.Create("Laser ground footprint",PrimitiveType.Cylinder,beam.material);baseLight.transform.SetParent(root.transform,false);
-            baseLight.transform.localPosition=new Vector3(0,.08f,0);baseLight.transform.localScale=new Vector3(beam.radius*2,.04f,beam.radius*2);
-            var baseRenderer=baseLight.GetComponent<MeshRenderer>();baseRenderer.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;baseRenderer.receiveShadows=false;
+            beam.visual=new ElementalistSpellVisual(root.transform,ElementalistSpellVisual.Kind.Laser,beam.radius);
             GameAudio.Play(SoundCue.Cast);
         }
         private bool Valid(EnemyController enemy)
@@ -60,11 +49,11 @@ namespace Emberfall
                 transform.position=WorldTraversal.Move(transform.position,direction*Mathf.Min(delta.magnitude,4.5f*dt),.2f);
             }
             Vector3 at=transform.position;at.y=WorldTraversal.SurfaceHeight(at,.04f);transform.position=at;
-            material.SetFloat("_Phase",age);material.SetFloat("_Fade",Mathf.Min(Mathf.Clamp01(age/.2f),Mathf.Clamp01((duration-age)/.4f)));
+            visual?.Draw(age,Mathf.Min(Mathf.Clamp01(age/.2f),Mathf.Clamp01((duration-age)/.4f)));
             // At most one damage pulse per frame: a stalled frame must not burst all overdue ticks.
-            if(age>=nextTick){nextTick=age+.5f;owner.HitArea(transform.position,radius,damage,castId:castId,strictRadius:true);}
+            if(age>=nextTick){nextTick=age+.5f;owner.HitArea(transform.position,radius,damage,castId:castId,strictRadius:true,requireSight:false);}
         }
         private void OnDisable(){receipt?.Release();receipt=null;}
-        private void OnDestroy(){if(material!=null)Destroy(material);}
+        private void OnDestroy(){visual?.Dispose();}
     }
 }

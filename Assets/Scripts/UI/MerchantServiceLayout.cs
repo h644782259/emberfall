@@ -20,7 +20,7 @@ namespace Emberfall
         public MobilePanelLayout.Area Tab(int index)
         {if(index<0||index>2)throw new ArgumentOutOfRangeException(nameof(index));return new MobilePanelLayout.Area(x+12+index*108,y+58,100,40);}
         public MobilePanelLayout.Area Tile(int index,bool inlineSale=false)
-        {if(index<0)throw new ArgumentOutOfRangeException(nameof(index));return new MobilePanelLayout.Area(index%Columns*(tileWidth+8),index/Columns*(inlineSale?158:130),tileWidth,inlineSale?150:122);}
-        public float GridHeight(int count,bool inlineSale=false){return Math.Max(0,(count+Columns-1)/Columns*(inlineSale?158:130));}
+        {if(index<0)throw new ArgumentOutOfRangeException(nameof(index));return new MobilePanelLayout.Area(index%Columns*(tileWidth+8),index/Columns*(inlineSale?138:130),tileWidth,inlineSale?130:122);}
+        public float GridHeight(int count,bool inlineSale=false){return Math.Max(0,(count+Columns-1)/Columns*(inlineSale?138:130));}
     }
 }

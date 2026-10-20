@@ -10,9 +10,15 @@ namespace Emberfall
             if(icon==null)return;
             icon=UIIconAtlas.ForDisplay(icon,Mathf.Max(rect.width,rect.height)*Mathf.Abs(GUI.matrix.lossyScale.x));
             Color previous=GUI.color;
-            GUI.color=new Color(intensity,intensity,intensity,opacity*controlOpacity);
-            if(MobileControls.Active)GUI.DrawTexture(rect,icon,ScaleMode.ScaleToFit,true,0,Color.white,0,rect.width*.5f);
-            else GUI.DrawTexture(rect,icon,ScaleMode.ScaleToFit,true);
+            Color tint=new Color(intensity,intensity,intensity,opacity*controlOpacity);
+            // Rounded textures use the explicit tint argument; GUI.color alone
+            // does not reliably dim this overload, especially newly authored art.
+            if(MobileControls.Active)
+            {
+                GUI.color=Color.white;
+                GUI.DrawTexture(rect,icon,ScaleMode.ScaleToFit,true,0,tint,0,rect.width*.5f);
+            }
+            else {GUI.color=tint;GUI.DrawTexture(rect,icon,ScaleMode.ScaleToFit,true);}
             GUI.color=previous;
         }
 

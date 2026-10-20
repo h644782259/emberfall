@@ -20,7 +20,7 @@ namespace Emberfall
    Vector2 point=Event.current.mousePosition;
    if(entryRewardPopupRect.Contains(point))
    {
-    if(entryRewardCloseRect.Contains(point))entryRewardSelection=null;
+    if(panel!=Panel.Inventory&&entryRewardCloseRect.Contains(point))entryRewardSelection=null;
     if(entryRewardSelection==null)Event.current.Use();
    }
    else if(!entryRewardAnchor.Contains(point))entryRewardSelection=null;
@@ -35,10 +35,10 @@ namespace Emberfall
    if(!entryRewardViewport.Overlaps(entryRewardAnchor)){entryRewardPopupVisible=false;return;}
    bool comparing=entryRewardPopup.GearSlot.HasValue||entryRewardPopup.AppearanceSlot.HasValue;
    bool compact=CompactRewardItem(entryRewardPopup);
-   float w=Mathf.Min((comparing?(IsWornReward(entryRewardPopup)?340:620):compact?InventoryGridGeometry.ItemPopupWidth:320)*u,width-24*u),textWidth=w-40*u;
+   float w=Mathf.Min((comparing?(IsWornReward(entryRewardPopup)?340:620):compact?InventoryGridGeometry.ItemPopupWidth:320)*u,width-24*u),textWidth=w-(comparing?40:16)*u;
    float contentHeight=DrawRewardDetailRows(entryRewardPopup,textWidth/u,u,false)*u;
-   bool showClose=MobileControls.Active||(entryRewardSelection??"").StartsWith("merchant:");
-   float headerHeight=comparing?(showClose?48:0):92;
+   bool showClose=panel!=Panel.Inventory&&(MobileControls.Active||(entryRewardSelection??"").StartsWith("merchant:"));
+   float headerHeight=comparing?(showClose?48:0):entryRewardPopup.PreviewBagSlot>=0?64:92;
    float bagAction=entryRewardPopup.BagSlot>=0?52:0;
    float h=Mathf.Min(contentHeight+(headerHeight+10+bagAction)*u,height-24*u);
    float x=entryRewardAnchor.xMax+10*u;
@@ -51,8 +51,8 @@ namespace Emberfall
    if(!comparing){Fill(box,ink);Border(box,entryRewardPopup.QualityColor,2*u);}
    if(!comparing)
    {
-    float closeInset=(MobileControls.Active||(entryRewardSelection??"").StartsWith("merchant:"))?40*u:0;
-    DrawEntryRewardIcon(new Rect(x+w-56*u-closeInset,y+8*u,40*u,40*u),entryRewardPopup,u);
+    float closeInset=showClose?40*u:0;
+    DrawEntryRewardIcon(new Rect(x+w-48*u-closeInset,y+8*u,40*u,40*u),entryRewardPopup,u);
     Text(new Rect(x+8*u,y+4*u,w-76*u-closeInset,28*u),(entryRewardPopup.Name??"").Split('\n')[0],Mathf.RoundToInt(14*u),pale,true,false);
     if(compact)
     {
@@ -61,9 +61,9 @@ namespace Emberfall
      string amount=quantity.Success?quantity.Groups[1].Value:lines.Length>1?lines[1]:entryRewardPopup.Quantity.ToString();
      Text(new Rect(x+8*u,y+32*u,w-76*u-closeInset,22*u),"数量："+amount,Mathf.RoundToInt(11*u),muted,false);
     }
-    DrawItemDetailTags(new Rect(x+8*u,y+60*u,w-24*u,22*u),entryRewardPopup,u);
+    DrawItemDetailTags(new Rect(x+8*u,y+(entryRewardPopup.PreviewBagSlot>=0?32:60)*u,w-16*u,22*u),entryRewardPopup,u);
    }
-   entryRewardPopupScroll=BeginTouchScroll("entry-reward-popup",new Rect(x+12*u,y+headerHeight*u,w-24*u,h-(headerHeight+10+bagAction)*u),entryRewardPopupScroll,new Rect(0,0,textWidth,contentHeight),showScrollbar:false);
+   entryRewardPopupScroll=BeginTouchScroll("entry-reward-popup",new Rect(x+(comparing?12:8)*u,y+headerHeight*u,w-(comparing?24:16)*u,h-(headerHeight+10+bagAction)*u),entryRewardPopupScroll,new Rect(0,0,textWidth,contentHeight),showScrollbar:false);
    DrawRewardDetailRows(entryRewardPopup,textWidth/u,u,true);
    EndTouchScroll();
    if(entryRewardPopup.BagSlot>=0)
@@ -216,7 +216,7 @@ namespace Emberfall
        var f=col==0?currentFashion:selectedFashion;
        int basis=ProgressionService.FashionBaseStat(f,pair.Key),rank=ProgressionService.FashionRankStat(f,pair.Key);
        float start=34+Mathf.Min(72,cardWidth*.28f),space=cardWidth-start-6;
-       string prefix=pair.Key=="暴击几率"?"×":"";
+       string prefix="";
        DrawComparedValue(new Rect((x+start)*u,y*u,space*.55f*u,34*u),prefix+basis+"%",col==0||selectedWorn?0:basis.CompareTo(ProgressionService.FashionBaseStat(currentFashion,pair.Key)),u,false);
        DrawComparedValue(new Rect((x+start+space*.55f)*u,y*u,space*.45f*u,34*u),"+"+rank+"%",item.Clear||item.UnenhancedReward||col==0||selectedWorn?0:rank.CompareTo(ProgressionService.FashionRankStat(currentFashion,pair.Key)),u,true);
        continue;
@@ -334,9 +334,9 @@ namespace Emberfall
    if(chapter&&session.SelectedChapterNode==ChapterNode.StarPlatform)
    foreach(var gem in BuildCatalog.DroppableGemsFor(session.Progression.Profile.heroClass))foreach(var rarity in new[]{Rarity.Epic,Rarity.Legendary})
     result.Add(new EntryRewardPreview{Key="gem:"+gem+":"+rarity,Clear=true,Rarity=rarity,Name=BuildCatalog.GemName(gem),Icon=UIIconAtlas.Utility("gem"),Tint=GameBalance.RarityColor(rarity),Description=GemRewardDescription(gem,rarity)});
-   if(!(chapter&&session.SelectedChapterNode==ChapterNode.StarPlatform))result.Add(new EntryRewardPreview{Key="refinement",Clear=true,Rarity=Rarity.Epic,Name="装备洗练石\n"+ProgressionService.ChestStackMinimum(true,tier)+"～"+ProgressionService.ChestStackMaximum(true,tier),Icon=UIIconAtlas.Utility("gem"),Tint=GameBalance.RarityColor(Rarity.Epic),Description="装备洗练石\n数量  "+ProgressionService.ChestStackMinimum(true,tier)+"～"+ProgressionService.ChestStackMaximum(true,tier)+"\n提高装备属性数值，不会降低。"});
+   if(!(chapter&&session.SelectedChapterNode==ChapterNode.StarPlatform))result.Add(new EntryRewardPreview{Key="refinement",Clear=true,Rarity=Rarity.Epic,Name="装备洗练石\n"+ProgressionService.ChestStackMinimum(true,tier)+"～"+ProgressionService.ChestStackMaximum(true,tier),Icon=UIIconAtlas.Utility("refinement"),Tint=GameBalance.RarityColor(Rarity.Epic),Description="装备洗练石\n数量  "+ProgressionService.ChestStackMinimum(true,tier)+"～"+ProgressionService.ChestStackMaximum(true,tier)+"\n提高装备属性数值，不会降低。"});
    if(!(chapter&&session.SelectedChapterNode==ChapterNode.StarPlatform))result.Add(new EntryRewardPreview{Key="shard",Clear=true,Rarity=Rarity.Rare,Name="星烬碎片\n"+ProgressionService.ChestStackMinimum(false,tier)+"～"+ProgressionService.ChestStackMaximum(false,tier),Icon=UIIconAtlas.Utility("shard"),Tint=jade,Description="星烬碎片\n数量："+ProgressionService.ChestStackMinimum(false,tier)+"～"+ProgressionService.ChestStackMaximum(false,tier)+"\n用于机制宝石兑换、升阶与升华。"});
-   if(AdventureRewardRules.ChestFashion(mode,chapter))foreach(var rarity in new[]{Rarity.Legendary})foreach(var slot in new[]{FashionSlot.Weapon,FashionSlot.Wings})
+   if(AdventureRewardRules.ChestFashion(mode,chapter))foreach(var rarity in new[]{Rarity.Common,Rarity.Rare,Rarity.Epic,Rarity.Legendary})foreach(var slot in new[]{FashionSlot.Weapon,FashionSlot.Wings})
     result.Add(new EntryRewardPreview{Key="fashion:"+slot+":"+rarity,AppearanceSlot=slot,Clear=true,Rarity=rarity,Name=ProgressionService.FashionName(slot,rarity,session.Progression.Profile.heroClass),Icon=UIIconAtlas.FashionCardIcon(slot,(int)rarity,session.Progression.Profile.heroClass),Tint=GameBalance.RarityColor(rarity),Description=ProgressionService.FashionName(slot,rarity,session.Progression.Profile.heroClass)+"\n"+(slot==FashionSlot.Weapon?"兵装":"羽翼")+" · "+GameBalance.RarityName(rarity)+"\n"+ProgressionService.FashionBonus(slot,rarity)});
    if(AdventureRewardRules.ChestAffixReforge(chapter?(int)session.SelectedChapterNode:mode,chapter)){var reforge=ResourceItemPreview("affix-reforge",1);reforge.Clear=true;result.Add(reforge);}
    PrioritizeEntryPity(result,mode,chapter);

@@ -17,7 +17,7 @@ static class WorldTraversal {public static bool ground=true,sight=true;public st
 static class EnemyImpactRegion { public static bool Contains(Vector3 a,Vector3 b,Vector3 c,float r)=>false; }
 class Transform {public Vector3 position;}
 class Harness {
-public float BodyScale=1,BossChargeHalfWidth=1.3f,ImpactRadius=2.5f,BladeContactHalfWidth=.2f; public Transform transform=new Transform();public BossAdvanceBudget advanceBudget=new BossAdvanceBudget();public int arenaBossPattern,repeatedMove;public BossAttackPolicy.Move previousMove;public enum AttackType {Strike,Melee};public enum EnemyKind{Goblin};public AttackType attackType=AttackType.Strike;public EnemyKind Kind;public Vector3 attackForward=new Vector3(0,0,1),attackOrigin,targetPoint,BladeStart,BladeEnd;
+public float BodyScale=1,BossChargeHalfWidth=1.3f,ImpactRadius=2.5f,BladeContactHalfWidth=.2f; public Transform transform=new Transform();public BossAdvanceBudget advanceBudget=new BossAdvanceBudget();public int arenaBossPattern,repeatedMove,bossArchetype;public BossAttackPolicy.Move previousMove;public enum AttackType {Strike,Melee};public enum EnemyKind{Goblin};public AttackType attackType=AttackType.Strike;public EnemyKind Kind;public Vector3 attackForward=new Vector3(0,0,1),attackOrigin,targetPoint,BladeStart,BladeEnd;
 Vector3 ClipPath(Vector3 a,Vector3 b,bool c)=>b;
 METHODS
 }
@@ -25,7 +25,7 @@ class Program {
 static int n;static void C(bool b,string m){n++;if(!b)throw new Exception(m);}
 static void Main(){
 var h=new Harness();
-foreach(int pattern in new[]{0,1,2,3})foreach(float height in new[]{0f,1f,3f}){
+foreach(int pattern in new[]{0,1,2,3,4})foreach(float height in new[]{0f,1f,3f}){
 h.arenaBossPattern=pattern;h.repeatedMove=0;WorldTraversal.ground=true;WorldTraversal.sight=true;
 var p=new Vector3(0,height,1);
 C(h.SelectBossMove(1,p)==BossAttackPolicy.Move.Strike,"close target overrides ranged/charge preference");
@@ -37,7 +37,10 @@ C(h.CanUseBossAttack(BossAttackPolicy.Move.Strike,p),"jump height cannot prevent
 WorldTraversal.sight=false;
 C(!h.CanUseBossAttack(BossAttackPolicy.Move.Strike,p),"wall still blocks strike");
 }
-WorldTraversal.sight=true;
+WorldTraversal.sight=true;WorldTraversal.ground=true;h.bossArchetype=2;h.previousMove=BossAttackPolicy.Move.Fan;h.repeatedMove=1;
+C(h.SelectBossMove(10,new Vector3(0,0,10))==BossAttackPolicy.Move.Slam,"priest follows fan with targeted bombardment");
+WorldTraversal.ground=false;C(!h.CanUseBossAttack(BossAttackPolicy.Move.Slam,new Vector3(0,0,10)),"bombardment cannot pass cover");
+h.bossArchetype=0;WorldTraversal.ground=true;
 C(h.InsideImpact(new Vector3()),"exact overlap is hittable");
 C(h.InsideImpact(new Vector3(0,0,1)),"forward strike hits");
 C(!h.InsideImpact(new Vector3(0,0,-1)),"rear escape remains valid");

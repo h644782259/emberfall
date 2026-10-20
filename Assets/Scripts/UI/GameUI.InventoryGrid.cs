@@ -7,6 +7,7 @@ namespace Emberfall
         {
             if(mobileInventoryTab==tab)return;
             mobileInventoryTab=tab;mobileInventoryDetail=false;inventoryComparisonOpen=false;inventoryPopupItem=null;
+            entryRewardSelection=entryRewardHoverKey=null;entryRewardPopupVisible=false;entryRewardPopup=null;
             CancelMobileScroll();
         }
         private float inventoryActionUntil=-1;
@@ -74,7 +75,6 @@ namespace Emberfall
             var p=session.Progression;var current=p.Equipped(candidate.slot);var next=p.PreviewEquippedItem(candidate);
             Fill(area,card);Fill(new Rect(area.x,area.y,area.width,u),jade*.4f);
             Text(new Rect(area.x+8*u,area.y+4*u,area.width-60*u,26*u),"属性对比 · "+candidate.name,Mathf.RoundToInt(12*u),pale,true);
-            if(PopupCloseButton(new Rect(area.xMax-48*u,area.y,44*u,44*u))){inventoryComparisonOpen=false;return;}
             Rect body=new Rect(area.x+6*u,area.y+46*u,area.width-12*u,Mathf.Max(20*u,area.height-50*u));
             string comparison="当前 → 候选"+(IsEquipped(candidate)?"（已穿戴）":"")+"\n攻击 "+(current==null?0:current.attack)+" → "+next.attack+"   防御 "+(current==null?0:current.defense)+" → "+next.defense+"\n生命 "+(current==null?0:current.health)+" → "+next.health+"\n"+EquipmentComparisonPresentation.Changes(current,candidate,p)+"\n"+EquipmentComparisonPresentation.Description(candidate,p);
             float h=Style(Mathf.RoundToInt(12*u),false,true).CalcHeight(new GUIContent(comparison),body.width-18*u)+12*u;
@@ -227,10 +227,13 @@ namespace Emberfall
             string[] labels={"评分","攻击","防御","生命","暴击率","暴击伤害","攻击加成"};
             float inner=r.width-24*u,statsWidth=compactCompare?(inner-12*u)*.52f:inner,labelWidth=96*u,valueWidth=(statsWidth-labelWidth)*.5f;
             var detail=ActualEquipmentPreview(next);detail.AllowActions=MobileControls.Active||IsEquipped(item);
+            // The comparison cards can be much shorter than the reserved scroll viewport.
+            // Only their visible bounds should keep outside clicks from dismissing them.
+            float detailHeight=DrawRewardDetailRows(detail,inner/u-8,u,false)*u;
+            if(inventoryPopupCompare)inventoryPopupRect=new Rect(r.x+12*u,r.y,inner-8*u,Mathf.Min(r.height-12*u,detailHeight));
             inventoryDetailScroll=BeginTouchScroll("equipment-detail",new Rect(r.x+12*u,bodyY,inner,r.yMax-bodyY-12*u),inventoryDetailScroll,new Rect(0,0,inner-8*u,DrawRewardDetailRows(detail,inner/u-8,u,false)*u));
             DrawRewardDetailRows(detail,inner/u-8,u,true);
             EndTouchScroll();
-            if(MobileControls.Active&&PopupCloseButton(new Rect(r.xMax-68*u,r.y+4*u,44*u,44*u))){inventoryComparisonOpen=false;GUI.enabled=prior;return;}
             float mechanismY=compactCompare?r.y+66*u:bodyY+(inventoryPopupCompare?7:4)*rowHeight+8*u;
             float mechanismX=compactCompare?r.x+24*u+statsWidth:r.x+12*u,mechanismWidth=compactCompare?inner-statsWidth-12*u:inner;
             GUI.enabled=prior;
@@ -279,11 +282,12 @@ namespace Emberfall
             {
                 float statsTop=0;
                 var detail=new EntryRewardPreview{AllowActions=MobileControls.Active||session.Progression.EquippedFashion(appearance.slot)?.id==appearance.id,Key="fashion:"+appearance.id,Name=ProgressionService.FashionName(appearance.slot,appearance.AppearanceRarity,session.Progression.Profile.heroClass),Icon=UIIconAtlas.FashionCardIcon(appearance,session.Progression.Profile.heroClass,session.Progression.Equipped(ItemSlot.Weapon)),Rarity=appearance.rarity,AppearanceSlot=appearance.slot,Description=ProgressionService.FashionBonus(appearance)};
+                float cardHeight=DrawRewardDetailRows(detail,r.width/u-32,u,false)*u;
+                inventoryPopupRect=new Rect(r.x+12*u,r.y,r.width-32*u,Mathf.Min(r.height-8*u,cardHeight));
                 inventoryDetailScroll=BeginTouchScroll("fashion-detail",new Rect(r.x+12*u,r.y+statsTop*u,r.width-24*u,r.height-(statsTop+8)*u),inventoryDetailScroll,new Rect(0,0,r.width-32*u,DrawRewardDetailRows(detail,r.width/u-32,u,false)*u));
                 DrawRewardDetailRows(detail,r.width/u-32,u,true);
                 EndTouchScroll();
             }
-            if(MobileControls.Active&&PopupCloseButton(new Rect(r.xMax-22*u,r.y,22*u,22*u))){inventoryComparisonOpen=false;BlockUITransition();}
             float actionWidth=(r.width-16*u)*.5f;
             if(potion)
             {

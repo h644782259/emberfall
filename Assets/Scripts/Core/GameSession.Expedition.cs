@@ -178,6 +178,7 @@ namespace Emberfall
 
         private void ResetExpedition(bool dungeon)
         {
+            DungeonRevivalsUsed=0;
             ClearDungeonSettlement();
             if(!enteringChapter)ResetChapterRun();
             MechanismEvidence.Reset();RunChoices.Reset(); ResetWaveTerrain();  DungeonSelectionOpen = false; AbandonSideEvent();

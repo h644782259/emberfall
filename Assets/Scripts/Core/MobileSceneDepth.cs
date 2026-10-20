@@ -62,7 +62,8 @@ namespace Emberfall
                 case "Emberfall/Travelling Sword Energy": return !SoftDepthSimplified;
                 // Ray-marched volumes need scene depth for actual occlusion, not just soft edges.
                 case "Emberfall/Continuous Ground Flame":
-                case "Emberfall/Continuous Skill Volume": return true;
+                case "Emberfall/Continuous Skill Volume":
+                case "Emberfall/Elementalist Sculpted Volume": return true;
                 default: return false;
             }
         }

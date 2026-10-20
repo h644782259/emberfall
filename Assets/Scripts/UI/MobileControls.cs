@@ -61,7 +61,7 @@ namespace Emberfall
         public static bool SkillPositionPreviewActive { get { return skillPositionDraft!=null; } }
         private static float[] skillPositionDraft;
         private static bool skillPositionDraftIPad;
-        private static string SkillPositionKey { get { return "Emberfall.CombatGroupPosition.v1."+(IsIPad?"ipad":"phone"); } }
+        private static string SkillPositionKey { get { return "Emberfall.CombatGroupPosition.v2.singlepanel."+(IsIPad?"ipad":"phone"); } }
         public static float[] SavedSkillPositions()
         {
             var values=new float[2];
@@ -138,7 +138,7 @@ namespace Emberfall
         }
         // Screen-space third, intersected with the safe area; all visible HUD wins.
         private bool IsMovementStart(Vector2 screen)
-        { return SafeArea.Contains(screen) && screen.x < Screen.width / 3f && (ui == null || !ui.IsScreenPointOverHUD(screen)); }
+        { return SafeArea.Contains(screen) && screen.x < Screen.width*.5f && screen.y < Screen.height*.5f && (ui == null || !ui.IsScreenPointOverHUD(screen)); }
         private void Update()
         {
             if (!Active || session == null || !session.HasStarted) { ResetInput(); return; }
@@ -294,6 +294,38 @@ namespace Emberfall
         private void ActionCircle(Rect rect,string icon,bool ready)
         {
             float opacity=EffectPreferences.TouchOpacity;
+            if(icon=="blink"||icon=="jump"||icon=="attack")
+            {
+                GUI.color=new Color(.035f,.04f,.05f,.72f*opacity);GUI.DrawTexture(rect,UIIconAtlas.ControlDisc(),ScaleMode.ScaleToFit,true);
+                GUI.color=new Color(.75f,.79f,.82f,.6f*opacity);GUI.DrawTexture(rect,UIIconAtlas.ControlRing(),ScaleMode.ScaleToFit,true);
+                float glyph=rect.width*.84f;GUI.color=new Color(1,1,1,(ready?.85f:.425f)*opacity);
+                GUI.DrawTexture(new Rect(rect.center.x-glyph*.5f,rect.center.y-glyph*.5f,glyph,glyph),(icon=="attack"?UIIconAtlas.BasicAttackGlyph():UIIconAtlas.MobilityGlyph(icon=="jump")),ScaleMode.ScaleToFit,true);
+                if(icon=="blink"&&session.Player!=null&&session.Player.DodgeCooldown>.01f)
+                {
+                    // Restore the white silhouette upward as the same 2.1 s blink recovers.
+                    Rect glyphRect=new Rect(rect.center.x-glyph*.5f,rect.center.y-glyph*.5f,glyph,glyph);
+                    GUI.color=new Color(.25f,.25f,.25f,opacity);
+                    GUI.DrawTexture(glyphRect,UIIconAtlas.MobilityGlyph(false),ScaleMode.ScaleToFit,true);
+                    float filled=glyph*Mathf.Clamp01(1-session.Player.DodgeCooldown/2.1f);
+                    if(filled>0)
+                    {
+                        GUI.BeginGroup(new Rect(glyphRect.x,glyphRect.yMax-filled,glyph,filled));
+                        GUI.color=new Color(1,1,1,.85f*opacity);
+                        GUI.DrawTexture(new Rect(0,filled-glyph,glyph,glyph),UIIconAtlas.MobilityGlyph(false),ScaleMode.ScaleToFit,true);
+                        GUI.EndGroup();
+                    }
+                }
+                GUI.color=Color.white;return;
+            }
+            if(icon=="potion"&&session.Player!=null&&session.Player.PotionCooldownRemaining>0)
+            {
+                GUI.color=new Color(.025f,.045f,.065f,.5f*opacity);GUI.DrawTexture(rect,UIIconAtlas.ControlDisc(),ScaleMode.ScaleToFit,true);
+                float potionSize=rect.width*.84f;Rect art=new Rect(rect.center.x-potionSize*.5f,rect.center.y-potionSize*.5f,potionSize,potionSize);
+                GUI.color=new Color(.25f,.25f,.25f,opacity);GUI.DrawTexture(art,UIIconAtlas.Utility("potion"),ScaleMode.ScaleToFit,true);
+                float filled=potionSize*Mathf.Clamp01(1-session.Player.PotionCooldownRemaining/PlayerController.PotionCooldownDuration);
+                if(filled>0){GUI.BeginGroup(new Rect(art.x,art.yMax-filled,potionSize,filled));GUI.color=new Color(1,1,1,opacity);GUI.DrawTexture(new Rect(0,filled-potionSize,potionSize,potionSize),UIIconAtlas.Utility("potion"),ScaleMode.ScaleToFit,true);GUI.EndGroup();}
+                GUI.color=new Color(.65f,.76f,.84f,.8f*opacity);GUI.DrawTexture(rect,UIIconAtlas.ControlRing(),ScaleMode.ScaleToFit,true);GUI.color=Color.white;return;
+            }
             GUI.color=new Color(.025f,.045f,.065f,.18f*opacity);GUI.DrawTexture(rect,UIIconAtlas.ControlDisc(),ScaleMode.ScaleToFit,true);
             if(ready){GUI.color=new Color(.32f,.88f,1f,.12f*opacity);GUI.DrawTexture(rect,UIIconAtlas.ControlRing(true),ScaleMode.ScaleToFit,true);}
             GUI.color=ready?new Color(.35f,1f,.76f,.85f*opacity):new Color(.65f,.76f,.84f,.8f*opacity);

@@ -40,7 +40,7 @@ namespace Emberfall
         private AudioSource ambientSource;
         private AudioClip ambientClip;
         private readonly AudioClip[] musicClips=new AudioClip[12];
-        private readonly AudioClip[] skillClips=new AudioClip[40];
+        private readonly AudioClip[] skillClips=new AudioClip[4*GameBalance.SkillCount];
         private readonly AudioClip[] basicAttackClips = new AudioClip[4];
         private int musicTheme=-1,requestedTheme=-1;
         private float musicFade=1f;
@@ -126,11 +126,11 @@ namespace Emberfall
 
         public static void PlaySkill(HeroClass hero,int skill)
         {
-            if(muted||quitting||lifecycle.BackgroundPaused||!Application.isPlaying||(int)hero<0||(int)hero>3||skill<0||skill>=10)return;
-            EnsureInstance();int index=(int)hero*10+skill;
+            if(muted||quitting||lifecycle.BackgroundPaused||!Application.isPlaying||(int)hero<0||(int)hero>3||skill<0||skill>=GameBalance.SkillCount||(skill==10&&hero!=HeroClass.Arcanist))return;
+            EnsureInstance();int index=(int)hero*GameBalance.SkillCount+skill;
             if(instance.skillClips[index]==null)instance.skillClips[index]=SynthesizeSkill(hero,skill);
             instance.PlayInternal((int)SoundCue.Cast,instance.skillClips[index]);
-            if(hero!=HeroClass.Arcanist||skill!=6&&skill!=7&&skill!=9)instance.PlayChant(hero,hero==HeroClass.Arcanist&&skill==2?7:skill);
+            instance.PlayChant(hero,skill);
         }
 
         public static void PlayBasicAttack(HeroClass hero)

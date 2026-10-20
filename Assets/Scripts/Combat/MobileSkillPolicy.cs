@@ -2,15 +2,15 @@ using System;
 using System.Collections.Generic;
 namespace Emberfall
 {
-    /// <summary>Seven normal active skills use two mobile pages; ultimate keeps its fixed slot.</summary>
+    /// <summary>All active skills are visible on one mobile panel; ultimate keeps its fixed slot.</summary>
     public static class MobileSkillPolicy
     {
-        public const int ButtonCount=5;
-        public const int PageCount=2;
-        private static readonly int[] activeSkills={0,1,2,4,5,6,7,9};
+        public const int ButtonCount=9;
+        public const int PageCount=1;
+        private static readonly int[] activeSkills={6,7,-1,0,4,5,2,1,9};
         public static int SkillAtButton(int button,int page=0)
-        {if(button<0||button>=ButtonCount||page<0||page>=PageCount)return -1;if(button==4)return 9;int index=page*4+button;return index<7?activeSkills[index]:-1;}
-        public static int[] DefaultBindings(bool summoner=false,bool arcanist=false){return summoner?new[]{0,1,5,7,2,4,6,-1,9}:new[]{0,1,2,4,5,6,7,arcanist?10:-1,9};}
+        {return button<0||button>=ButtonCount||page!=0?-1:activeSkills[button];}
+        public static int[] DefaultBindings(bool summoner=false,bool arcanist=false){return new[]{6,7,arcanist?10:-1,0,4,5,2,1,9};}
         public static bool ValidBindings(int[] values)
         {
             if(values==null||values.Length!=9||values[8]!=9)return false;
@@ -19,7 +19,7 @@ namespace Emberfall
             return true;
         }
         public static int BindingIndex(int button,int page)
-        {return button<0||button>=5||page<0||page>=2?-1:button==4?8:page*4+button;}
+        {return button<0||button>=ButtonCount||page!=0?-1:button;}
         public static bool SwapBinding(int[] values,int index,int skill)
         {
             if(!ValidBindings(values)||index<0||index>=8||skill==9)return false;

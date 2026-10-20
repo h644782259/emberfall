@@ -10,22 +10,22 @@ namespace UnityEngine {
  public class Skin{public GUIStyle label=new GUIStyle();}public class Texture2D{public static Texture2D whiteTexture=new Texture2D();}
  public static class GUI{public struct Draw{public Rect Rect;public string Text;public Color Color;public int Font;public float EffectiveAlpha;}public static List<Draw> Fills=new List<Draw>();public static List<Draw> Draws=new List<Draw>();public static Skin skin=new Skin();public static Color color;public static void DrawTexture(Rect r,Texture2D t){Fills.Add(new Draw{Rect=r,Color=color});}public static void Label(Rect r,GUIContent c,GUIStyle style)=>Label(r,c.text,style);public static void Label(Rect r,string text,GUIStyle style){Draws.Add(new Draw{Rect=r,Text=text,Color=style.normal.textColor,Font=style.fontSize,EffectiveAlpha=style.normal.textColor.a*color.a});}}
  public class Camera{public static Camera main;public float nearClipPlane;public Vector3 WorldToScreenPoint(Vector3 p)=>p;}public static class Time{public static float unscaledTime;}
- public static class Mathf{public static float Min(float a,float b)=>Math.Min(a,b);public static float Max(float a,float b)=>Math.Max(a,b);public const float PI=(float)Math.PI;public static float Sin(float x)=>(float)Math.Sin(x);public static float Cos(float x)=>(float)Math.Cos(x);public static int RoundToInt(float x)=>(int)Math.Round(x);public static float Clamp(float v,float a,float b)=>Math.Max(a,Math.Min(v,b));}
+ public static class Mathf{public static float Clamp01(float x)=>Math.Max(0,Math.Min(1,x));public static int CeilToInt(float x)=>(int)Math.Ceiling(x);public static float Min(float a,float b)=>Math.Min(a,b);public static float Max(float a,float b)=>Math.Max(a,b);public const float PI=(float)Math.PI;public static float Sin(float x)=>(float)Math.Sin(x);public static float Cos(float x)=>(float)Math.Cos(x);public static int RoundToInt(float x)=>(int)Math.Round(x);public static float Clamp(float v,float a,float b)=>Math.Max(a,Math.Min(v,b));}
  public class Transform{public Vector3 position;}
 }
 namespace Emberfall {
  public static class EffectPreferences{public static float TouchVisualScale=1,TouchOpacity=1,InterfaceTextScale=1;}public static class GameFont{public static Font Shared=new Font();}
  public class SkillChargeController{public bool IsCharging;public int SkillIndex;public float Progress=.5f;}public class EnemyController{public Transform transform=new Transform();public string DisplayName;}
  public class PlayerController{
- public int CombatEpoch=1;public float Energy=100;public float Cooldown;public float SkillCooldownRemaining(int skill)=>Cooldown;public SkillChargeController Charge=new SkillChargeController();public CombatOpportunityState SkillWindow;public int LastSkill;public CombatOpportunityState SkillOpportunityWindow(int skill){LastSkill=skill;return skill==3||skill==8?default:SkillWindow;}
+ public string BlinkFollowupName=>"追击";public float PotionCooldownRemaining,BlinkFollowupRemaining;public int CombatEpoch=1;public float Energy=100;public float Cooldown;public float SkillCooldownRemaining(int skill)=>Cooldown;public SkillChargeController Charge=new SkillChargeController();public CombatOpportunityState SkillWindow;public int LastSkill;public CombatOpportunityState SkillOpportunityWindow(int skill){LastSkill=skill;return skill==3||skill==8?default:SkillWindow;}
  public float Health=50,MaxHealth=100,DodgeCooldown;public bool IsJumping;public EnemyController MobilePinnedTarget;public CombatOpportunityState Counter,Combo;public int LegacyQueries;public string Reason="";
  public CombatOpportunityState BasicOpportunityWindow(bool mastery=false)=>mastery?Combo:Counter;
  // Reproduces the old actor contract: readiness ignores absent/remote/occluded targets.
  public CombatOpportunityState BasicOpportunity(){LegacyQueries++;return new CombatOpportunityState(CombatOpportunityKind.Counter,1.2f);}
  public string MobilePinnedActionReason(int skill)=>Reason;public T GetComponent<T>()where T:class=>Charge as T;
  }
- public enum HeroClass{Arcanist}public static class GameBalance{public static bool IsPassive(int skill)=>skill==3||skill==8;public static float SkillEnergyCost(HeroClass c,int skill)=>10;}public class Profile{public int potions=3;public int[] skillRanks={1,1,1,1,1,1,1,1,1,1};public HeroClass heroClass;}public class Progression{public Profile Profile=new Profile();}public class GameSession{public bool InputBlocked;public bool ChallengeRun,InDungeon;public int HealingCharges;public PlayerController Player=new PlayerController();public Progression Progression=new Progression();public string Failure="";public string ControlFailure(string key)=>key=="attack"||key.StartsWith("skill")?Failure:"";public void ReportControlFailure(string key,string reason){}}
- public sealed partial class MobileControls{
+ public enum HeroClass{Arcanist,Vanguard}public static class GameBalance{public const int SkillCount=11;public static bool IsPassive(int skill)=>skill==3||skill==8;public static float SkillEnergyCost(HeroClass c,int skill)=>10;}public class Profile{public int potions=3;public int[] skillRanks={1,1,1,1,1,1,1,1,1,1,1};public HeroClass heroClass;}public class Progression{public Profile Profile=new Profile();}public class GameSession{public bool InputBlocked;public bool ChallengeRun,InDungeon;public int HealingCharges;public PlayerController Player=new PlayerController();public Progression Progression=new Progression();public string Failure="";public string ControlFailure(string key)=>key=="attack"||key.StartsWith("skill")?Failure:"";public void ReportControlFailure(string key,string reason){}}
+ public sealed partial class MobileControls{public static bool IsIPad;
  GameSession session=new GameSession();Rect PotionVisualRect(){float size=36*EffectPreferences.TouchVisualScale;return new Rect(Potion.center.x-size/2,Potion.center.y-size/2,size,size);}Rect Potion=new Rect(23,82,54,54),Dodge=new Rect(385,233,62,62),Attack=new Rect(Layout.Attack.X,Layout.Attack.Y,Layout.Attack.Width,Layout.Attack.Height);public static MobileControlLayout Layout=new MobileControlLayout(568,320,163);Vector2 ToUI(Vector2 p)=>p;void Circle(Rect r,Color c,string text){}
  static int n;static void C(bool b,string s){n++;if(!b)throw new Exception(s);}
  public static void Run(){var v=new MobileControls();var hero=v.session.Player;
@@ -44,6 +44,11 @@ namespace Emberfall {
  void Fill(Rect r,Color c){GUI.color=c;GUI.DrawTexture(r,Texture2D.whiteTexture);}void Bar(Rect r,float f,Color c){}
  void Text(Rect r,string t,int font,Color c,bool bold,bool wrap,TextAnchor anchor){var s=new GUIStyle();s.fontSize=font;s.normal.textColor=c;GUI.Label(r,t,s);}
  static void C(bool value,string why){if(!value)throw new Exception(why);}
+ public static void RunPageRegression(){var view=new GameUI();var slot=view.TouchRect(MobileControls.Layout.Skills[0]);
+ view.mobileBindings=MobileSkillPolicy.DefaultBindings(arcanist:true);
+ foreach(int page in new[]{0,1,0,1}){view.mobileSkillPage=page;for(int button=0;button<5;button++){int skill=view.BoundMobileSkill(button,page);if(skill>=0)view.DrawMobileSkillAvailability(slot,skill);}C(true,"page finishes after laser status draw");}
+ C(view.mobileOpportunityMeters[10]!=null,"laser on second page has opportunity meter storage");
+ Console.WriteLine("PASS: both mobile pages complete, including skill 10, and return navigation remains drawable");}
  public static void Run(){var view=new GameUI();var hero=view.session.Player;var a=MobileControls.Layout.Skills[1];var slot=view.TouchRect(a);
  foreach(float unit in new[]{1f,1.5f,2f})foreach(float compact in new[]{.86f,1f}) {
  view.TouchRatio=unit;EffectPreferences.TouchVisualScale=compact;slot=view.TouchRect(a);slot=new Rect(slot.center.x-slot.width*compact/2,slot.center.y-slot.height*compact/2,slot.width*compact,slot.height*compact);
@@ -72,7 +77,7 @@ namespace Emberfall {
 }
 class Program {
  static void C(bool b,string s){if(!b)throw new Exception(s);}
- static void Main(){Emberfall.GameUI.Run();Emberfall.MobileControls.Run();
+ static void Main(string[] args){if(args.Length>0&&args[0]=="--page-only"){Emberfall.GameUI.RunPageRegression();return;}Emberfall.GameUI.Run();Emberfall.MobileControls.Run();
  var meter=new Emberfall.MobileOpportunityMeter();var box=new Rect(0,0,48,14);object owner=new object();Time.unscaledTime=0;
  var state=new Emberfall.CombatOpportunityState(Emberfall.CombatOpportunityKind.Counter,1.5f,duration:3);GUI.Fills.Clear();meter.Draw(box,state,owner,1,1,1);C(GUI.Fills.Count==26,"new opportunity receives one entrance emphasis");Time.unscaledTime=1;
  GUI.Fills.Clear();meter.Draw(box,state,owner,1,1,1);C(GUI.Fills.Count==25,"persistent window never restarts emphasis");C(GUI.Fills.Skip(1).Count(x=>x.Color.g>.7f)==12,"arc uses actual total grant duration");

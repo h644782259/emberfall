@@ -192,7 +192,7 @@ namespace Emberfall
             string name=key=="basic-attack"?BasicAttackGrowth.MaterialName:key=="revival"?"复活石":key=="affix-reforge"?"词条重铸石":key=="thread"?"星纹":key=="shard"?"星烬碎片":key=="refinement"?"装备洗练石":"金币";
             Rarity rarity=key=="basic-attack"||key=="affix-reforge"?Rarity.Legendary:key=="revival"||key=="refinement"?Rarity.Epic:key=="gold"?Rarity.Common:Rarity.Rare;
             return new EntryRewardPreview{Key=key,Name=name,Quantity=count,Rarity=rarity,
-                Icon=key=="thread"?UIIconAtlas.Reward(2):UIIconAtlas.Utility(key=="revival"?"core":key=="refinement"||key=="affix-reforge"?"gem":key=="gold"?"coin":"shard"),
+                Icon=key=="basic-attack"||key=="refinement"||key=="affix-reforge"?UIIconAtlas.Utility(key):key=="thread"?UIIconAtlas.Reward(2):UIIconAtlas.Utility(key=="revival"?"core":key=="gold"?"coin":"shard"),
                 Description=name+"\n数量  "+count};
         }
         private void DrawBagSupplies(MobilePanelLayout.Area area)

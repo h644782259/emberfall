@@ -43,6 +43,16 @@ namespace Emberfall
                 builder.Add("ActorModules/BossPlate",new Vector3(side*.36f,.53f,0),new Vector3(.23f,.57f,.43f),Quaternion.Euler(0,side*80,side*12));
             }
         });
+        internal static Mesh GravityPlanet => Composite("Fractured gravity planet",builder=>
+        {
+            // Forty sculpted interlocking basalt plates, combined into one draw.
+            for(int i=0;i<40;i++)
+            {
+                float y=1-2*(i+.5f)/40f,angle=i*2.399963f;
+                Vector3 normal=new Vector3(Mathf.Cos(angle)*Mathf.Sqrt(1-y*y),y,Mathf.Sin(angle)*Mathf.Sqrt(1-y*y));
+                builder.AddRock(normal*.34f,new Vector3(.39f,.30f,.43f),Quaternion.LookRotation(normal)*Quaternion.Euler(i*17,i*31,i*13));
+            }
+        });
         internal static Mesh GroundBreak => Composite("Broken ground slabs",builder=>
         {
             for(int i=0;i<9;i++)

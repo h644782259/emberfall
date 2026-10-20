@@ -571,7 +571,7 @@ namespace Emberfall
         private int epoch;
         private Color color;
         private GameObject fallingOrb, trapCore;
-        private Material orbMaterial;
+        private Material orbMaterial;private ElementalistSpellVisual meteorWake;private Transform meteorWakeRoot;
         private bool fireVisual, poisonVisual, lightningVisual, solidImpactSpawned;
         private SkillPerformanceVfx performance;private CombatModel performanceModel;
         private SkillVisualRecipe visualRecipe;
@@ -623,7 +623,10 @@ namespace Emberfall
                 area.fallingOrb.GetComponent<MeshFilter>().sharedMesh=AuthoredProjectileMeshes.Load("MeteorRock")??ProceduralVisuals.WeatheredRock;
                 area.fallingOrb.transform.SetParent(obj.transform, false);
                 area.fallingOrb.transform.localPosition = Vector3.up * 9f;
-                area.fallingOrb.transform.localScale = Vector3.one * 1.3f;
+                area.fallingOrb.transform.localScale = Vector3.one * Mathf.Clamp(size*.7f,1.3f,2.2f);
+                area.meteorWakeRoot=new GameObject("Meteor combustion wake").transform;
+                area.meteorWakeRoot.SetParent(obj.transform,false);
+                area.meteorWake=new ElementalistSpellVisual(area.meteorWakeRoot,ElementalistSpellVisual.Kind.Meteor,.9f);
 
             }
         }
@@ -655,7 +658,10 @@ namespace Emberfall
             {
                     fallingOrb.transform.localPosition = PhysicalSkillMotion.BallisticPosition(Vector3.up*9f,Vector3.up*.5f,age,Mathf.Max(.01f,delay));
                 fallingOrb.transform.Rotate(Time.deltaTime*120f,Time.deltaTime*70f,0,Space.Self);
-                if (age >= delay) { Destroy(fallingOrb); fallingOrb = null; }
+                orbMaterial.SetFloat("_Phase",age);
+                if(meteorWakeRoot!=null)meteorWakeRoot.localPosition=fallingOrb.transform.localPosition;
+                meteorWake?.Draw(age,Mathf.Clamp01(age/.1f));
+                if (age >= delay) { meteorWake?.Dispose();meteorWake=null;Destroy(fallingOrb); fallingOrb = null; }
             }
             bool arrowVisualEmitted=false;
             CombatImpactBatch.Begin();try
@@ -785,6 +791,7 @@ namespace Emberfall
         {
             OnDisable();
             pendingTickTargets.Clear();
+            meteorWake?.Dispose();
             if (orbMaterial != null) Destroy(orbMaterial);
         }
     }

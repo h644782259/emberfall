@@ -92,26 +92,34 @@ namespace Emberfall
             ClosePanel();
         }
 
+        private int lastAnimatedCombo;
+        private float comboImpactTime;
         private void DrawComboCounter()
         {
             int count=session.ComboHitCount;
-            if(count<=0||panel!=Panel.None||session.Paused||session.IsDead)return;
+            if(count<=0){lastAnimatedCombo=0;return;}
+            if(panel!=Panel.None||session.Paused||session.IsDead)return;
+            if(count!=lastAnimatedCombo){lastAnimatedCombo=count;comboImpactTime=Time.unscaledTime;}
+            float hitAge=Time.unscaledTime-comboImpactTime;
+            float kick=Mathf.Clamp01(1-hitAge/.22f);
             float u=MobileControls.Active?TouchRatio:1;
-            Rect r=new Rect(width-244*u,Mathf.Clamp(height*.46f,30*u,height-90*u),208*u,54*u);
+            Rect r=new Rect(width*.62f-104*u,Mathf.Clamp(height*.50f,30*u,height-90*u),208*u,54*u);
             if(MobileControls.Active)
             {
                 var layout=MobileControls.Layout;
                 // Keep combo feedback in the open field left of the upper skill column.
                 // A viewport anchor stays below navigation even on compact phones.
-                float centerX=Mathf.Min(layout.Width*.74f,layout.Skills[4].X-96);
-                r=new Rect((centerX-80)*u,(layout.Height*.4f-27)*u,160*u,54*u);
+                float centerX=Mathf.Min(layout.Width*.62f,layout.Skills[4].X-96);
+                r=new Rect((centerX-80)*u,(layout.Height*.50f-27)*u,160*u,54*u);
             }
             var previous=GUI.matrix;
-            GUIUtility.RotateAroundPivot(-7,r.center);
+            r.x+=Mathf.Sin(hitAge*95)*4*u*kick;r.y-=Mathf.Sin(hitAge*70)*3*u*kick;
+            GUIUtility.ScaleAroundPivot(Vector2.one*(1+.16f*kick),r.center);
+            GUIUtility.RotateAroundPivot(-5,r.center);
             var style=new GUIStyle(Style(Mathf.RoundToInt(30*u),true,false));
-            style.fontStyle=FontStyle.BoldAndItalic;style.alignment=MobileControls.Active?TextAnchor.MiddleCenter:TextAnchor.MiddleRight;
+            style.fontStyle=FontStyle.BoldAndItalic;style.alignment=TextAnchor.MiddleCenter;
             style.padding=new RectOffset(0,Mathf.RoundToInt(8*u),0,0);
-            string combo="连击 x"+count;
+            string combo=count+"连击";
             while(style.fontSize>Mathf.RoundToInt(12*u)&&style.CalcSize(new GUIContent(combo)).x>r.width-16*u)style.fontSize--;
             style.clipping=TextClipping.Clip;
             style.normal.textColor=new Color(.12f,.05f,.015f,.95f);

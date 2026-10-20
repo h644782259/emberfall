@@ -5,6 +5,7 @@ Original fictional chants are never modified. No speech service at game runtime.
 """
 from pathlib import Path
 import re
+import sys
 import math
 import array
 import subprocess
@@ -15,7 +16,7 @@ import wave
 ROOT = Path(__file__).resolve().parents[1]
 ENGLISH = [
     ['Whirlwind Slash', 'Earth Shatter', 'Blade Storm', '', 'Sky Cleaver', 'Vanguard Charge', 'Banner of Life', 'Earth Rupture', '', 'Final Judgment'],
-    ['Frost Nova', 'Meteor', 'Arcane Storm', '', 'Chain Lightning', 'Frostfire Walker', 'Frozen Thunder', 'Void Vortex', '', 'Cataclysm'],
+    ['Frost Nova', 'Meteor', 'Void Vortex', '', 'Chain Lightning', 'Frostfire Walker', 'Rising Gravity', 'Gravity Switch', '', 'Meteor Shower', 'Astral Pillar'],
     ['Arrow Fan', 'Shock Trap', 'Arrow Rain', '', 'Wind Leap', 'Venom Cage', 'Piercing Gale', 'Phantom Volley', '', 'Starfall Arrows'],
     ['Spirit Blast', 'Thorn Cage', 'Spirit Wolf', '', 'Astral Turret', 'Soul Spear', 'Ember Wings', 'Gravity Mark', '', 'Ancient Treant'],
 ]
@@ -60,28 +61,38 @@ def main():
     base = ROOT / 'Assets/Resources/Audio/Chants'
     template = (base / '0-0.wav.meta').read_text()
     with tempfile.TemporaryDirectory(prefix='emberfall-chants-') as temp:
-        for language, voice in [('Cantonese', 'Sinji'), ('English', 'Samantha'), ('Mandarin', 'Tingting')]:
+        languages = [('Cantonese', 'Sinji'), ('English', 'Samantha'), ('Mandarin', 'Tingting')]
+        if '--elementalist-rework' in sys.argv:
+            languages.append(('', 'Samantha'))
+        for language, voice in languages:
             folder = base / language
             folder.mkdir(exist_ok=True)
             folder_meta = Path(str(folder) + '.meta')
             if not folder_meta.exists():
                 folder_meta.write_text(f'fileFormatVersion: 2\nguid: {uuid.uuid4().hex}\nfolderAsset: yes\nDefaultImporter:\n  externalObjects: {{}}\n  userData: \n  assetBundleName: \n  assetBundleVariant: \n')
             for hero in range(4):
-                for skill in range(10):
+                for skill in range(11 if hero == 1 else 10):
+                    if '--elementalist-rework' in sys.argv and (hero != 1 or skill not in (0,2,6,7,9,10)):
+                        continue
                     if skill in (3, 8):
                         continue
-                    phrase = ENGLISH[hero][skill] if language == 'English' else names[hero * 10 + skill]
+                    phrase = ENGLISH[hero][skill] if language == 'English' else ('巡星天柱' if skill == 10 else names[hero * 10 + skill])
+                    if language == '':
+                        phrase = {0:'Iss ah, vey rah!',2:'Voh rah, neh kha thoom!',6:'Ohm rah, vey thah!',7:'Kah roh, ah veh!',9:'Ohr dah, seh rah, thoom!',10:'Zeh lah, koh rai!'}[skill]
                     aiff = Path(temp) / 'voice.aiff'
-                    output = folder / f'{hero}-{skill}.wav'
+                    destination = folder / f'{hero}-{skill}.wav'
+                    output = Path(temp) / 'processed.wav'
                     subprocess.run(['say', '-v', voice, '-r', str([190,175,205,175][hero]), '-o', str(aiff), phrase], check=True)
                     subprocess.run(['afconvert', '-f', 'WAVE', '-d', 'LEI16@22050', '-c', '1', str(aiff), str(output)], check=True)
                     with wave.open(str(output)) as audio:
                         assert audio.getnframes() > 4000, f'Empty speech: {language} {phrase}'
                     process_chant(output, hero)
+                    destination.write_bytes(output.read_bytes())
+                    output=destination
                     meta = Path(str(output) + '.meta')
                     if not meta.exists():
                         meta.write_text(re.sub(r'guid: \w+', f'guid: {uuid.uuid4().hex}', template))
-            print(f'{language}: generated 32 clips', flush=True)
+            print(f'{language}: generated selected active skill clips', flush=True)
 
 if __name__ == '__main__':
     main()

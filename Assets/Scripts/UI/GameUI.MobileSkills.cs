@@ -37,11 +37,11 @@ namespace Emberfall
             if(skillSection!=0)return;
             float u=TouchRatio,bodyHeight=(RouteSkillReturnAvailable?layout.Body.Height:layout.Height-layout.Body.Y-12)-64;
             DrawBasicAttackNode(TouchRect(layout.Body.X,layout.Body.Y,layout.Body.Width,54),u);
-            float leftWidth=layout.Body.Width*(MobileControls.IsIPad?.44f:.36f);
+            float leftWidth=layout.Body.Width*.55f;
             float treeHeight=bodyHeight;
             var listArea=new MobilePanelLayout.Area(layout.Body.X,layout.Body.Y+64,leftWidth,treeHeight);
             float listWidth=listArea.Width-16;
-            mobileSkillTreeStep=Mathf.Clamp((bodyHeight-8)/7,44,108);
+            mobileSkillTreeStep=Mathf.Clamp((bodyHeight-8)/7,64,78);
             float listHeight=DrawMobileSkillTree(listWidth,false);
             mobileSkillListScroll=BeginTouchScroll("mobile-skill-list",MobilePanelRect(listArea),mobileSkillListScroll,new Rect(0,0,listWidth*u,Mathf.Max(listArea.Height,listHeight)*u));
             DrawMobileSkillTree(listWidth,true);EndTouchScroll();
@@ -69,81 +69,35 @@ namespace Emberfall
         private Rect MobileSkillTreeNode(int skill,float width)
         {
             float step=width/3;
-            return TouchRect(4+GameBalance.SkillTreeColumn(skill)*step,4+GameBalance.SkillTreeRow(skill)*mobileSkillTreeStep,step-8,CompactSkillTree?40:82);
+            return TouchRect(4+GameBalance.SkillTreeColumn(skill)*step,4+GameBalance.SkillTreeRow(skill)*mobileSkillTreeStep,step-8,48);
         }
         private float DrawMobileSkillTree(float width,bool draw)
         {
-            if(!MobileControls.IsIPad)return DrawPhoneSkillList(width,draw);
-            if(!draw)return 7*mobileSkillTreeStep+70;
-            var p=session.Progression.Profile;
-            float branchWidth=width/3;
-            Fill(TouchRect(width*.5f-1,CompactSkillTree?44:86,2,Mathf.Max(0,2*mobileSkillTreeStep-(CompactSkillTree?40:82))),jade*.5f);
-            DrawBlinkFollowupNode(TouchRect(4+branchWidth,4+2*mobileSkillTreeStep,branchWidth-8,CompactSkillTree?40:82),TouchRatio);
-            var nodes=skillTreeNodes;
+            float treeHeight=6*mobileSkillTreeStep+56;
+            if(!draw)return treeHeight;
+            var p=session.Progression.Profile;var nodes=skillTreeNodes;
             for(int skill=0;skill<nodes.Length;skill++)nodes[skill]=MobileSkillTreeNode(skill,width);
+            Rect followup=TouchRect(4+width/3,4+2*mobileSkillTreeStep,width/3-8,48);
+            Fill(new Rect(followup.center.x-TouchRatio,nodes[0].yMax,2*TouchRatio,followup.y-nodes[0].yMax),jade*.5f);
             for(int child=0;child<GameBalance.SkillCountFor(p.heroClass);child++)foreach(int parent in GameBalance.SkillPrerequisites[child])
             {
-                Rect a=nodes[parent],b=nodes[child];
-                Color c=p.skillRanks[parent]>0?jade:muted*.45f;float mid=b.y-12*TouchRatio;
-                DrawSkillTreeLine(new Rect(a.center.x-TouchRatio,a.yMax,2*TouchRatio,Mathf.Max(0,mid-a.yMax)),nodes,c);
-                DrawSkillTreeLine(new Rect(Mathf.Min(a.center.x,b.center.x),mid,Mathf.Max(2*TouchRatio,Mathf.Abs(a.center.x-b.center.x)),2*TouchRatio),nodes,c);
-                DrawSkillTreeLine(new Rect(b.center.x-TouchRatio,mid,2*TouchRatio,b.y-mid),nodes,c);
+                Rect a=nodes[parent],b=nodes[child];float mid=b.y-8*TouchRatio;
+                Color tint=p.skillRanks[parent]>0?jade:muted*.45f;
+                DrawSkillTreeLine(new Rect(a.center.x-TouchRatio,a.yMax,2*TouchRatio,Mathf.Max(0,mid-a.yMax)),nodes,tint);
+                DrawSkillTreeLine(new Rect(Mathf.Min(a.center.x,b.center.x),mid,Mathf.Max(2*TouchRatio,Mathf.Abs(a.center.x-b.center.x)),2*TouchRatio),nodes,tint);
+                DrawSkillTreeLine(new Rect(b.center.x-TouchRatio,mid,2*TouchRatio,b.y-mid),nodes,tint);
             }
             for(int skill=0;skill<GameBalance.SkillCountFor(p.heroClass);skill++)
             {
-                int rank=p.skillRanks[skill];bool canLearn=Attention.LearnableSkills.Contains(skill);
-                Rect node=MobileSkillTreeNode(skill,width);Color accent=!basicAttackSelected&&!blinkFollowupSelected&&selectedSkill==skill?gold:rank>0?jade:muted;
-                // Branch positions and connectors use the shared skill prerequisite graph.
-                if(CompactSkillTree)
-                {
-                    Surface(node,new Color(accent.r*.025f,accent.g*.035f,accent.b*.045f,.98f));
-                    SurfaceFrame(node,new Color(accent.r,accent.g,accent.b,!basicAttackSelected&&!blinkFollowupSelected&&selectedSkill==skill?.8f:.22f));
-                    Rect compactIcon=new Rect(node.x+3*TouchRatio,node.y+2*TouchRatio,24*TouchRatio,24*TouchRatio);
-                    DrawSkillIdentity(compactIcon,p.heroClass,skill,rank,rank>0||canLearn,48);
-                    string compactName=GameBalance.SkillName(p.heroClass,skill);int compactFont=9;
-                    Rect compactNameRect=new Rect(node.x+31*TouchRatio,node.y+2*TouchRatio,node.width-34*TouchRatio,20*TouchRatio);
-                    if(Style(TouchFont(compactFont),true).CalcSize(new GUIContent(compactName)).x>compactNameRect.width)compactFont=8;
-                    Text(compactNameRect,compactName,TouchFont(compactFont),rank>0?pale:muted,true,false,TextAnchor.MiddleLeft);
-                    Text(new Rect(node.x+4*TouchRatio,node.y+22*TouchRatio,node.width-8*TouchRatio,16*TouchRatio),"Lv."+GameBalance.SkillRequiredLevels[skill]+" · "+(rank>0?GameBalance.SkillRankName(rank):"锁定"),TouchFont(8),accent,false,false,TextAnchor.MiddleCenter);
-                    Badge(compactIcon,canLearn);
-                    if(MobileSkillRowClicked(new Rect(node.x,node.y-2*TouchRatio,node.width,44*TouchRatio))&&(basicAttackSelected||blinkFollowupSelected||selectedSkill!=skill)){basicAttackSelected=false;blinkFollowupSelected=false;selectedSkill=skill;mobileSkillDetailScroll=Vector2.zero;mobileSkillStatus=null;CancelMobileScroll();}
-                    continue;
-                }
-                Rect icon=new Rect(node.center.x-18*TouchRatio,node.y+5*TouchRatio,36*TouchRatio,36*TouchRatio);
-                DrawSkillIdentity(icon,p.heroClass,skill,rank,rank>0||canLearn,48);
-                if(!basicAttackSelected&&!blinkFollowupSelected&&selectedSkill==skill)DrawIcon(new Rect(node.center.x+20*TouchRatio,node.y+2*TouchRatio,12*TouchRatio,12*TouchRatio),UIIconAtlas.Utility("confirm"),gold);
-                Text(new Rect(node.x+4*TouchRatio,node.y+44*TouchRatio,node.width-8*TouchRatio,22*TouchRatio),GameBalance.SkillName(p.heroClass,skill),TouchFont(10),rank>0||canLearn?pale:muted,true,false,TextAnchor.MiddleCenter);
-                SkillStateTag(new Rect(node.x+3*TouchRatio,node.y+64*TouchRatio,(node.width-10*TouchRatio)*.45f,18*TouchRatio),"Lv."+GameBalance.SkillRequiredLevels[skill],muted,TouchFont(9));
-                SkillStateTag(new Rect(node.x+node.width*.46f,node.y+64*TouchRatio,node.width*.54f-3*TouchRatio,18*TouchRatio),rank>0?GameBalance.SkillRankName(rank):"未解锁",accent,TouchFont(9));
-                Badge(icon,canLearn);
-                if(MobileSkillRowClicked(node)&&(basicAttackSelected||blinkFollowupSelected||selectedSkill!=skill))
-                {basicAttackSelected=false;blinkFollowupSelected=false;selectedSkill=skill;mobileSkillDetailScroll=Vector2.zero;mobileSkillStatus=null;CancelMobileScroll();}
-            }
-            return 7*mobileSkillTreeStep+70;
-        }
-
-        private float DrawPhoneSkillList(float width,bool draw)
-        {
-            const float rowHeight=64;
-            float height=GameBalance.SkillCountFor(session.Progression.Profile.heroClass)*rowHeight+90;
-            if(!draw)return height;
-            var p=session.Progression.Profile;
-            for(int skill=0;skill<GameBalance.SkillCountFor(p.heroClass);skill++)
-            {
-                int rank=p.skillRanks[skill];bool selected=!basicAttackSelected&&!blinkFollowupSelected&&selectedSkill==skill;
-                bool learnable=Attention.LearnableSkills.Contains(skill);
-                Color accent=selected?gold:rank>0?jade:muted;
-                Rect row=TouchRect(2,skill*rowHeight+2,width-4,58);
-                Surface(row,new Color(.018f,.036f,.054f,.99f));SurfaceFrame(row,new Color(accent.r,accent.g,accent.b,selected?.9f:.35f));
-                Rect icon=new Rect(row.x+6*TouchRatio,row.y+10*TouchRatio,36*TouchRatio,36*TouchRatio);
+                int rank=p.skillRanks[skill];bool learnable=Attention.LearnableSkills.Contains(skill);
+                bool selected=!basicAttackSelected&&!blinkFollowupSelected&&selectedSkill==skill;Rect node=nodes[skill];
+                Rect icon=DrawCompactSkillTreeCard(node,GameBalance.SkillName(p.heroClass,skill),"Lv."+GameBalance.SkillRequiredLevels[skill]+" · "+(rank>0?GameBalance.SkillRankName(rank):"锁定"),selected,rank>0,TouchRatio);
                 DrawSkillIdentity(icon,p.heroClass,skill,rank,rank>0||learnable,48);Badge(icon,learnable);
-                Text(new Rect(row.x+48*TouchRatio,row.y+4*TouchRatio,row.width-54*TouchRatio,30*TouchRatio),GameBalance.SkillName(p.heroClass,skill),TouchFont(12),rank>0?pale:muted,true,true,TextAnchor.MiddleLeft);
-                Text(new Rect(row.x+48*TouchRatio,row.y+35*TouchRatio,row.width-54*TouchRatio,19*TouchRatio),"Lv."+GameBalance.SkillRequiredLevels[skill]+" · "+(rank>0?GameBalance.SkillRankName(rank):"锁定"),TouchFont(10),accent,false,false,TextAnchor.MiddleLeft);
-                if(MobileSkillRowClicked(row)&&!selected)
+                if(MobileSkillRowClicked(node)&&!selected)
                 {basicAttackSelected=false;blinkFollowupSelected=false;selectedSkill=skill;mobileSkillDetailScroll=Vector2.zero;mobileSkillStatus=null;CancelMobileScroll();}
             }
-            DrawBlinkFollowupNode(TouchRect(2,GameBalance.SkillCountFor(p.heroClass)*rowHeight+2,width-4,84),TouchRatio);
-            return height;
+            DrawBlinkFollowupNode(followup,TouchRatio);
+            return treeHeight;
         }
 
         // Remove every node footprint from a connector, including nodes skipped by

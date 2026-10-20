@@ -15,10 +15,13 @@ with tempfile.TemporaryDirectory(prefix='mobile-opportunity-h05-') as t:
  (p/'Fixture.cs').write_text((root/'Tests/MobileOpportunityPresentationTests.cs').read_text());(p/'NuGet.Config').write_text('<configuration><packageSources><clear /></packageSources></configuration>');proj=p/'Test.csproj';proj.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework><OutputType>Exe</OutputType></PropertyGroup></Project>');env=dict(os.environ,DOTNET_CLI_HOME=str(p/'cli'),DOTNET_NOLOGO='1')
  def run(oracle=None):
   q=subprocess.run([dotnet,'build',str(proj),'--configfile',str(p/'NuGet.Config'),'-v:q'],env=env,capture_output=True,text=True);print(q.stdout+q.stderr);q.check_returncode()
-  q=subprocess.run([dotnet,str(p/'bin/Debug/net8.0/Test.dll')],env=env,capture_output=True,text=True);print(q.stdout+q.stderr)
+  q=subprocess.run([dotnet,str(p/'bin/Debug/net8.0/Test.dll')]+(['--page-only'] if '--page-only' in sys.argv else []),env=env,capture_output=True,text=True);print(q.stdout+q.stderr)
   if oracle:assert q.returncode and oracle in q.stdout+q.stderr
   else:q.check_returncode()
  run()
+ if '--page-only' in sys.argv:
+  f=p/'GameUI.MobileFeedback.cs';original=f.read_text();f.write_text(original.replace('new MobileOpportunityMeter[GameBalance.SkillCount]','new MobileOpportunityMeter[10]'))
+  run('IndexOutOfRangeException');print('PASS: old ten-slot allocation rejected');sys.exit(0)
  for name,before,after,oracle in [
  ('GameUI.MobileFeedback.cs','if(!session.InputBlocked)meter.Draw','meter.Draw','pause resume same window never replays acquisition emphasis'),
  ('MobileOpportunityMeter.cs','style.normal.textColor=tint;GUI.color=Color.white;','style.normal.textColor=tint;GUI.color=new Color(1,1,1,opacity);','outer clock opacity applied once'),

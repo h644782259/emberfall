@@ -16,7 +16,7 @@ namespace Emberfall
             internal bool Paused;
         }
         private static readonly string[] BedNames={"Wind","Void","Fire","Arrows","Roots","Spirit","Ice","Earth","Lightning"};
-        private readonly AudioClip[] skillBeds=new AudioClip[9],chants=new AudioClip[40];
+        private readonly AudioClip[] skillBeds=new AudioClip[9],chants=new AudioClip[4*GameBalance.SkillCount];
         private readonly SkillBed[] sustained=new SkillBed[4];
         private AudioSource chantSource;
         private PlayerController chantOwner;
@@ -24,7 +24,7 @@ namespace Emberfall
         private bool chantPaused;
         private float nextChant;
         private static readonly string[] ChantFolders = { "", "Cantonese/", "English/", "Mandarin/" };
-        private static readonly string[] ChantLabels = { "原版（虚构咒语）", "粤语", "English", "普通话" };
+        private static readonly string[] ChantLabels = { "原版", "粤语", "English", "普通话" };
         public static int SkillVoiceVersion
         {
             get { int value=PlayerPrefs.GetInt("Emberfall.SkillVoiceVersion",0);return value>=0&&value<4?value:0; }
@@ -35,8 +35,8 @@ namespace Emberfall
                 if(instance==null)return;
                 if(instance.chantSource!=null)instance.chantSource.Stop();
                 instance.chantOwner=null;instance.chantPaused=false;instance.nextChant=0;
-                for(int hero=0;hero<4;hero++)for(int skill=0;skill<10;skill++)
-                    instance.chants[hero*10+skill]=skill==3||skill==8?null:LoadChant(hero,skill);
+                for(int hero=0;hero<4;hero++)for(int skill=0;skill<(hero==1?GameBalance.SkillCount:10);skill++)
+                    instance.chants[hero*GameBalance.SkillCount+skill]=skill==3||skill==8?null:LoadChant(hero,skill);
             }
         }
         public static string SkillVoiceVersionName { get { return ChantLabels[SkillVoiceVersion]; } }
@@ -55,10 +55,10 @@ namespace Emberfall
             var game=GameSession.Instance;
             if(game==null||game.Player==null)yield break;
             for(int hero=0;hero<4;hero++)
-            for(int skill=0;skill<10;skill++)
+            for(int skill=0;skill<(hero==1?GameBalance.SkillCount:10);skill++)
             {
                 if(skill==3||skill==8)continue;
-                int index=hero*10+skill;
+                int index=hero*GameBalance.SkillCount+skill;
                 if(instance.chants[index]!=null&&instance.skillClips[index]!=null)continue;
                 if(instance.chants[index]==null)instance.chants[index]=LoadChant(hero,skill);
                 if(instance.skillClips[index]==null)instance.skillClips[index]=SynthesizeSkill((HeroClass)hero,skill);
@@ -115,7 +115,7 @@ namespace Emberfall
         {
             var game=GameSession.Instance;
             if(game==null||game.Player==null||Time.unscaledTime<nextChant)return;
-            var clip=chants[(int)hero*10+skill];if(clip==null)return;
+            var clip=chants[(int)hero*GameBalance.SkillCount+skill];if(clip==null)return;
             if(chantSource==null)chantSource=NewSkillSource(false,56);
             if(chantSource.isPlaying||chantPaused)return;
             chantOwner=game.Player;chantEpoch=chantOwner.CombatEpoch;chantPaused=false;

@@ -178,4 +178,32 @@ namespace Emberfall
             return p;
         }
     }
+    public sealed class GemFormRuntime
+    {
+        private readonly float[] timers=new float[10],bonuses=new float[10];
+        private readonly int[] ranks=new int[16],variants=new int[16];
+        public void Configure(System.Collections.Generic.List<MechanicAttachment> attachments)
+        {
+            System.Array.Clear(ranks,0,ranks.Length);System.Array.Clear(timers,0,timers.Length);
+            if(attachments==null)return;
+            foreach(var gem in attachments)if(gem.mounted&&BuildCatalog.IsAttributeGem(gem.mechanic))
+            {int i=(int)gem.mechanic-(int)EquipmentMechanic.WeaponPower;ranks[i]=System.Math.Max(0,System.Math.Min(3,gem.ascensionRank));variants[i]=gem.variant==1?1:0;}
+        }
+        public void Trigger(GemFormTrigger trigger){if((int)trigger>=6)timers[(int)trigger]=4;}
+        public void Reset(){System.Array.Clear(timers,0,timers.Length);}
+        public void Advance(float dt){if(dt<=0||float.IsNaN(dt)||float.IsInfinity(dt))return;for(int i=6;i<10;i++)timers[i]=System.Math.Max(0,timers[i]-dt);}
+        public StatBlock Evaluate(StatBlock basis,float health,float energy,bool moving)
+        {
+            System.Array.Clear(bonuses,0,bonuses.Length);
+            for(int i=0;i<16;i++)if(ranks[i]>0)
+            {
+                var gem=(EquipmentMechanic)((int)EquipmentMechanic.WeaponPower+i);var trigger=GemFormRules.Trigger(gem,variants[i]);
+                bool active=trigger==GemFormTrigger.Healthy?health>=.8f:trigger==GemFormTrigger.LowHealth?health<=.5f:trigger==GemFormTrigger.LowEnergy?energy<.5f:trigger==GemFormTrigger.HighEnergy?energy>=.5f:trigger==GemFormTrigger.Moving?moving:trigger==GemFormTrigger.Still?!moving:timers[(int)trigger]>0;
+                if(active)bonuses[BuildCatalog.GemAttribute(gem)]+=GemFormRules.Value(gem,variants[i],ranks[i]);
+            }
+            for(int i=0;i<10;i++)if(bonuses[i]>0)GemFormRules.Apply(ref basis,i,bonuses[i]);
+            return basis;
+        }
+    }
+
 }

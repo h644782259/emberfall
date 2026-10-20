@@ -72,7 +72,7 @@ namespace Emberfall
             if(IsAttributeGem(gem)||gem==EquipmentMechanic.None)return gem;
             return gem==EquipmentMechanic.CinderTrail?EquipmentMechanic.WeaponPower:gem==EquipmentMechanic.ReturningBlade?EquipmentMechanic.WeaponRuin:gem==EquipmentMechanic.FrostEcho?EquipmentMechanic.RelicWard:gem==EquipmentMechanic.VenomSpread?EquipmentMechanic.RelicPrecision:EquipmentMechanic.RelicVitality;
         }
-        public static int GemAttribute(EquipmentMechanic gem){if(gem==EquipmentMechanic.RelicLeech)return 9;if(gem>=EquipmentMechanic.WeaponFlow&&gem<=EquipmentMechanic.RelicWard)return new[]{6,7,6,8,3,5}[(int)gem-(int)EquipmentMechanic.WeaponFlow];return IsAttributeGem(gem)?(int)gem-(int)EquipmentMechanic.WeaponPower:MechanicAttribute(gem);}
+        public static int GemAttribute(EquipmentMechanic gem){if(gem==EquipmentMechanic.RelicLeech)return 9;if(gem>=EquipmentMechanic.WeaponFlow&&gem<=EquipmentMechanic.RelicWard)return gem==EquipmentMechanic.WeaponFlow||gem==EquipmentMechanic.ArmorFlow?6:gem==EquipmentMechanic.WeaponTempo?7:gem==EquipmentMechanic.ArmorStride?8:gem==EquipmentMechanic.RelicVitality?3:5;return IsAttributeGem(gem)?(int)gem-(int)EquipmentMechanic.WeaponPower:MechanicAttribute(gem);}
         public static float GemAttributeValue(EquipmentMechanic gem,Rarity rarity,int rank)
         {float[] basis={.03f,.015f,.06f,.05f,.08f,.01f,.04f,.015f,.02f,.0025f};int attribute=GemAttribute(gem);return basis[Math.Max(0,Math.Min(9,attribute))]*(1+(int)rarity)*(1+.2f*rank);}
         public static string AttributeLabel(int attribute)
@@ -85,48 +85,11 @@ namespace Emberfall
         public static float MechanicAttributeValue(EquipmentMechanic gem,int rank)
         {return (rank+1)*(gem==EquipmentMechanic.CinderTrail?.02f:gem==EquipmentMechanic.VenomSpread?.005f:.03f);}
         public static string GemFormName(EquipmentMechanic gem,int variant)
-        {
-            if(gem==EquipmentMechanic.WeaponRuin)return variant==0?"碎魂重击":"孤注裂魂";
-            if(gem==EquipmentMechanic.RelicPower)return variant==0?"灵能接续":"终章回响";
-            if(gem==EquipmentMechanic.RelicPrecision)return variant==0?"连携轮转":"终章回转";
-            if(gem==EquipmentMechanic.RelicRuin)return variant==0?"闪身追击":"踏影回击";
-            if(IsAttributeGem(gem))return MechanicSlot(gem)==ItemSlot.Weapon?(variant==0?"锐势":"背水"):MechanicSlot(gem)==ItemSlot.Armor?(variant==0?"坚韧":"守御"):(variant==0?"回流":"蓄能");
-            if(gem==EquipmentMechanic.TwinSummonResonance)return variant==0?"双契强袭":"双契守护";
-            if(gem==EquipmentMechanic.CinderTrail)return variant==0?"燎原余烬":"凝焰火核";
-            if(gem==EquipmentMechanic.FrostEcho)return variant==0?"凝霜回响":"扩散霜环";
-            if(gem==EquipmentMechanic.ReturningBlade)return variant==0?"回刃弹射":"闪避反击";
-            return variant==0?"毒种传播":"收束毒矢";
-        }
+        {return GemFormRules.Name(CurrentGem(gem),variant);}
         public static string GemFormDescription(EquipmentMechanic gem,int variant,int ascension)
-        {
-            int rank=Math.Max(1,Math.Min(3,ascension));
-            if(gem==EquipmentMechanic.WeaponRuin)return variant==0?"暴击伤害 +"+(.15f*rank*100).ToString("0.#")+"%。":"暴击伤害 +"+(.225f*rank*100).ToString("0.#")+"%，暴击率 -"+(2*rank)+"%。";
-            if(gem==EquipmentMechanic.RelicPower)return variant==0?"6秒内释放两种不同技能，回复"+(8+4*rank)+"点能量；间隔8秒。":"大招后8秒内，接下来的3次其他技能各返还"+(6+2*rank)+"点能量。";
-            if(gem==EquipmentMechanic.RelicPrecision)return variant==0?"6秒内衔接三种不同技能，所有技能冷却减少"+(.5f+.5f*rank).ToString("0.#")+"秒；间隔8秒。":"释放大招后，其他技能冷却减少"+(1+rank)+"秒，包含充能技能。";
-            if(gem==EquipmentMechanic.RelicRuin)return variant==0?"完美闪避后4秒内，下次技能在目标处追加"+((.4f+.3f*rank)*100).ToString("0")+"%攻击的范围追击；间隔6秒。":"6秒内释放两种不同技能，刷新闪避；4秒内完美闪避触发"+((.6f+.4f*rank)*100).ToString("0")+"%攻击的周身冲击；间隔8秒。";
-            if(IsAttributeGem(gem))
-            {
-                string value=(GemAscensionValue(gem,rank)*100).ToString("0");
-                if(MechanicSlot(gem)==ItemSlot.Weapon)return (variant==0?"生命≥80%时，伤害 +":"生命≤50%时，伤害 +")+(variant==0?value:(GemAscensionValue(gem,rank)*150).ToString("0"))+"%。";
-                if(MechanicSlot(gem)==ItemSlot.Armor)return (variant==0?"生命≤50%时，受到伤害 -":"生命≥80%时，受到伤害 -")+value+"%。";
-                return (variant==0?"能量低于50%时，回复速度 +":"能量达到50%时，回复速度 +")+value+"%。";
-            }
-            if(gem==EquipmentMechanic.TwinSummonResonance)return variant==0?"普通伙伴上限2；伤害 +60%、生命 +20%，强化协同进攻。":"普通伙伴上限2；伤害 +25%、生命 +65%，强化生存与牵制。";
-            string description=MechanicDescription(gem);int split=description.IndexOf("变体B：",StringComparison.Ordinal);
-            if(split>=0)description=variant==0?description.Substring(0,split):description.Substring(split);
-            return description.Replace("变体A：","").Replace("变体B：","").Trim();
-        }
-        public static string RelicFormStrength(EquipmentMechanic gem,int variant,int rank)
-        {
-            if(rank<=0)return "未解锁";
-            if(gem==EquipmentMechanic.RelicPower)return "返能 "+(variant==0?8+4*rank:6+2*rank);
-            if(gem==EquipmentMechanic.RelicPrecision)return "回转 "+(variant==0?.5f+.5f*rank:1+rank).ToString("0.#")+"秒";
-            return "追击 "+((variant==0?.4f+.3f*rank:.6f+.4f*rank)*100).ToString("0")+"%";
-        }
-        public static string GemAscensionLabel(EquipmentMechanic gem)
-        {return gem==EquipmentMechanic.WeaponRuin?"暴击伤害":MechanicSlot(gem)==ItemSlot.Weapon?"生命≥80%时伤害":MechanicSlot(gem)==ItemSlot.Armor?"生命≤50%时减伤":"能量<50%时回复";}
-        public static float GemAscensionValue(EquipmentMechanic gem,int rank)
-        {return (gem==EquipmentMechanic.WeaponRuin?.15f:MechanicSlot(gem)==ItemSlot.Relic?.2f:.05f)*Math.Max(0,Math.Min(3,rank));}
+        {return GemFormRules.Description(CurrentGem(gem),variant,Math.Max(1,Math.Min(3,ascension)));}
+        public static string GemAscensionLabel(EquipmentMechanic gem){return GemAttributeLabel(gem);}
+        public static float GemAscensionValue(EquipmentMechanic gem,int rank){return GemFormRules.Value(gem,0,rank);}
         public static float AscensionPower(int rank){return 1+.2f*Math.Max(0,Math.Min(3,rank));}
         public static float AscensionRange(int rank){return 1+.1f*Math.Max(0,Math.Min(3,rank));}
         public static int GemPrice(Rarity rarity){return rarity==Rarity.Common?4:rarity==Rarity.Rare?8:rarity==Rarity.Epic?12:24;}
@@ -335,10 +298,10 @@ namespace Emberfall
         public FashionSlot slot;
         public Rarity rarity;
         public string name;
-        // Preserve the collected visual identity while quality is upgraded.
+        // Quality determines the collected silhouette; ranks add details without changing its tier.
         public int appearanceTier=-1;
         public int upgradeRank;
-        public Rarity VisualRarity {get{return (Rarity)System.Math.Min(3,(int)AppearanceRarity+System.Math.Max(0,upgradeRank));}}
+        public Rarity VisualRarity {get{return AppearanceRarity;}}
         public Rarity AppearanceRarity {get{return appearanceTier>=0&&appearanceTier<=3?(Rarity)appearanceTier:rarity;}}
     }
     public enum EnemyKind { Slime, Goblin, Wisp, Guardian }
@@ -674,7 +637,7 @@ namespace Emberfall
             {
                 "向角色前方较长的矩形区域释放冰刺，持续4.2至5.4秒，将普通/精英敌人抛起；目标受重力下落，回到冰刺高度后会再次被击飞。首领保留霜痕，并可打断其带青色符号的预警。", "在瞄准地点降下陨星，造成范围爆发，将普通/精英敌人垂直抛起后自然落地；主冲击可打断带青色符号的首领预警。", "创造旋转的虚空漩涡，将敌人吸向中心并反复撕裂。升阶增大主体与吸附范围。",
                 "被动：永久提高法术攻击与生命，学习后自动生效。", "雷霆在敌人间跳跃，逐个造成伤害并短暂眩晕。", "踏焰疾行，撞击敌人并留下灼烧火径。",
-                "召唤持续翻滚的大型重力球，周围气流螺旋上升；将范围内普通与精英怪物压倒在地，持续造成伤害。", "以角色为圆心反转重力，将周围普通与精英怪物抬到空中，再受重力坠落；首领承受伤害但免疫浮空。", "被动：受伤后释放元素反击并回复能量，具有内置冷却。",
+                "召唤持续翻滚的大型重力球，周围气流螺旋上升；将范围内普通与精英怪物压倒在地，持续造成伤害。", "以角色为圆心反转重力，将周围普通与精英怪物抬到空中，再受重力坠落；升空、滞空、落地共造成3次范围伤害，首领承受伤害但免疫浮空。", "被动：受伤后释放元素反击并回复能量，具有内置冷却。",
                 "向角色前方大片矩形和身后小片矩形区域持续召来陨石；命中普通与精英怪物时将其砸起，随后自然坠地。无需奥能，释放后可自由行动。"
             },
             {
@@ -747,10 +710,10 @@ namespace Emberfall
         public static string SkillEvolution(HeroClass hero, int skill, int rank)
         {
             int stage = Math.Max(1, Math.Min(3, rank)) - 1;
-            if(skill==10)return "持续"+(6+stage)+"秒，每0.5秒造成"+(45+stage*10)+"%攻击伤害。伤害范围与同阶陨星术相同，自动追踪并切换目标；无目标时停留，继续寻找。";
+            if(skill==10)return "持续"+(6+stage)+"秒，每0.5秒造成"+((45+stage*10)*1.5f).ToString("0.#")+"%攻击伤害。对地面光圈内的所有敌人造成范围伤害，自动追踪并切换目标；无目标时停留，继续寻找。";
             if(hero==HeroClass.Arcanist&&skill==9)return "持续召唤"+(14+stage*4)+"颗陨石，覆盖前方大矩形与后方小矩形；陨石可砸飞普通与精英怪物，首领免疫浮空。";
             if(hero==HeroClass.Arcanist&&skill==2)return "旋转漩涡持续吸附，撕裂"+(9+stage*2)+"次；升阶扩大范围。";
-            if(hero==HeroClass.Arcanist&&skill==7)return "以自身为中心抬升敌群，随后自然坠地；升空与落地各造成"+(150+stage*45)+"%攻击伤害，首领免疫浮空。";
+            if(hero==HeroClass.Arcanist&&skill==7)return "以自身为中心抬升敌群，随后自然坠地；升空、滞空、落地共3次，每次造成"+(150+stage*45)+"%攻击伤害，首领免疫浮空。";
             if(hero==HeroClass.Arcanist&&skill==6)return "重力球持续"+(5+stage)+"秒，持续压倒范围内普通与精英怪物；每0.5秒造成"+(45+stage*10)+"%攻击伤害，首领免疫倒地。";
             if(hero==HeroClass.Vanguard&&skill==4)return new[]{
                 "向前释放大型剑气，以每秒7米推进9米，宽6.8米；造成300%攻击伤害并击退怪物。每个目标命中一次，遇障碍停止；首领遵循控制抗性。",
@@ -882,4 +845,29 @@ namespace Emberfall
         public static string Description(HeroClass hero,int tier)
         {return hero==HeroClass.Vanguard?"前方 "+Range(tier).ToString("0.0")+" 米、"+Angle(tier).ToString("0")+"°扇形挥斩":tier==1?"单体单发攻击":tier==2?"向前连续发射两次，间隔0.12秒":"向前方60°扇形发射 "+Shots(tier)+" 枚"+(hero==HeroClass.Ranger?"箭矢":"法球");}
     }
+    // Every form targets its gem's own attribute; shared rules drive UI and combat.
+    public enum GemFormTrigger { Healthy, LowHealth, LowEnergy, HighEnergy, Moving, Still, Hit, Cast, Hurt, Dodge }
+    public static class GemFormRules
+    {
+        private static readonly GemFormTrigger[] first={GemFormTrigger.Healthy,GemFormTrigger.Still,GemFormTrigger.Healthy,GemFormTrigger.Still,GemFormTrigger.Healthy,GemFormTrigger.LowHealth,GemFormTrigger.LowEnergy,GemFormTrigger.HighEnergy,GemFormTrigger.Moving,GemFormTrigger.Hit,GemFormTrigger.Healthy,GemFormTrigger.LowHealth,GemFormTrigger.Healthy,GemFormTrigger.HighEnergy,GemFormTrigger.HighEnergy,GemFormTrigger.LowHealth};
+        private static readonly GemFormTrigger[] second={GemFormTrigger.Cast,GemFormTrigger.Hit,GemFormTrigger.Cast,GemFormTrigger.Hurt,GemFormTrigger.Hurt,GemFormTrigger.Cast,GemFormTrigger.Cast,GemFormTrigger.Cast,GemFormTrigger.Cast,GemFormTrigger.LowEnergy,GemFormTrigger.Cast,GemFormTrigger.Hurt,GemFormTrigger.Cast,GemFormTrigger.Cast,GemFormTrigger.Hurt,GemFormTrigger.Hit};
+        private static readonly string[] names={"锐势","施法强袭","凝神鹰眼","连击鹰眼","裂魂锋芒","施法裂魂","静息丰盈","承伤生机","满盈铁壁","受击固甲","濒危坚守","施法守御","匮能回流","施法涌能","充盈疾咏","施法回转","疾行踏风","施法踏风","命中灵汐","匮能灵汐","满盈疾咏","施法疾咏","濒危涌泉","受击涌泉","满盈轻羽","施法轻羽","充盈长生","施法长生","充盈星佑","受击星佑","背水噬生","连击噬生"};
+        private static int Index(EquipmentMechanic gem){return Math.Max(0,Math.Min(15,(int)gem-(int)EquipmentMechanic.WeaponPower));}
+        public static GemFormTrigger Trigger(EquipmentMechanic gem,int variant){return (variant==1?second:first)[Index(gem)];}
+        public static string Name(EquipmentMechanic gem,int variant){return names[Index(gem)*2+(variant==1?1:0)];}
+        private static readonly float[] values={.05f,.025f,.15f,.08f,.12f,.025f,.20f,.025f,.08f,.0025f};
+        public static float Value(EquipmentMechanic gem,int variant,int rank)
+        {return values[BuildCatalog.GemAttribute(gem)]*Math.Max(0,Math.Min(3,rank))*(variant==1?1.5f:1f);}
+        public static string Description(EquipmentMechanic gem,int variant,int rank)
+        {
+            var trigger=Trigger(gem,variant);
+            string[] conditions={"生命≥80%时","生命≤50%时","能量低于50%时","能量≥50%时","移动时","停止移动时","造成伤害后4秒内","释放技能后4秒内","受到伤害后4秒内","释放技能后4秒内"};
+            return conditions[(int)trigger]+"，"+BuildCatalog.GemAttributeLabel(gem)+" +"+(Value(gem,variant,rank)*100).ToString("0.###")+"%。"+((int)trigger>=6?"重复触发刷新持续时间，不叠层。":"");
+        }
+        public static void Apply(ref StatBlock stats,int attribute,float value)
+        {
+            switch(attribute){case 0:stats.Damage*=1+value;break;case 1:stats.CritChance=Math.Min(1,stats.CritChance+value);break;case 2:stats.CritDamageBonus+=value;break;case 3:stats.MaxHealth*=1+value;break;case 4:stats.Armor*=1+value;break;case 5:stats.DamageReduction=Math.Min(.5f,stats.DamageReduction+value);break;case 6:stats.EnergyRecovery+=value;break;case 7:stats.CooldownReduction=Math.Min(.4f,stats.CooldownReduction+value);break;case 8:stats.MoveSpeed*=1+value;break;case 9:stats.LifeSteal+=value;break;}
+        }
+    }
+
 }

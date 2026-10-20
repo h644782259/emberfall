@@ -63,11 +63,11 @@ namespace Emberfall
         private static readonly int[] WingMovePercents = { 2, 4, 6, 8 };
         private static readonly int[] WingArmorPercents = { 2, 3, 5, 8 };
         private static readonly int[] WeaponPercents = { 2, 4, 6, 9 };
-        // Preserve the overall 40% fashion chance; every new fashion is legendary.
+        // Preserve the overall 40% fashion chance while restoring four quality tiers.
         public static Rarity? RollFashionRarity(int roll)
         {
             if(roll<0||roll>=100)throw new ArgumentOutOfRangeException("roll");
-            return roll<40?(Rarity?)Rarity.Legendary:null;
+            return roll<18?Rarity.Common:roll<30?Rarity.Rare:roll<38?Rarity.Epic:roll<40?(Rarity?)Rarity.Legendary:null;
         }
 
         public static string FashionName(FashionSlot slot,Rarity rarity)
@@ -86,7 +86,7 @@ namespace Emberfall
             int primary = slot == FashionSlot.Wings ? WingHealthPercents[rank] : WeaponPercents[rank];
             int secondary = slot == FashionSlot.Wings ? WingArmorPercents[rank] : WeaponPercents[rank];
             return slot == FashionSlot.Wings ? "生命 +" + primary + "% · 防御 +" + secondary + "% · 移动速度 +"+WingMovePercents[rank]+"%"
-                : "攻击 +" + primary + "% · 暴击几率 ×" + (100 + secondary) + "%";
+                : "攻击 +" + primary + "% · 暴击率 +" + secondary + "%";
         }
 
         public static int WeaponFashionPercent(Rarity rarity) { return WeaponPercents[(int)rarity]; }
@@ -213,7 +213,7 @@ namespace Emberfall
                 // A failed save leaves the active role and durable reward flags intact.
                 string migrationFailure;
                 bool migrationRequired=loaded.enhancementMigrationPending||loaded.chapterTierMigrationPending;
-                if(loaded.fashionQualityRevision<1){loaded.fashionQualityRevision=1;migrationRequired=true;}
+                if(loaded.fashionQualityRevision<2){loaded.fashionQualityRevision=2;migrationRequired=true;}
                 if(loaded.rewardInventoryRevision<1){loaded.rewardInventoryRevision=1;migrationRequired=true;}
                 if(loaded.skillStockVersion<1){SkillStockRules.Normalize(loaded);loaded.skillStockVersion=1;migrationRequired=true;}
                 if(loaded.variantKnowledgeRevision<1){loaded.variantKnowledgeRevision=1;migrationRequired=true;}
@@ -815,7 +815,6 @@ namespace Emberfall
                 stats.CritDamageBonus+=item.criticalDamageBonus;equipmentAttackPercent+=item.attackPercent;
             }
             stats.Damage*=1+equipmentAttackPercent;
-            float gemCritPenalty=0;
             if(Profile.attachments!=null)foreach(var a in Profile.attachments)if(a.mounted&&BuildCatalog.GemCompatible(a.mechanic,Profile.heroClass))
             {
                 if(BuildCatalog.IsAttributeGem(a.mechanic))
@@ -823,22 +822,8 @@ namespace Emberfall
                     float value=BuildCatalog.GemAttributeValue(a.mechanic,a.rarity,a.upgradeRank);
                     int attribute=BuildCatalog.GemAttribute(a.mechanic);
                     ApplyGemAttribute(ref stats,attribute,value);
-                    int ascension=Math.Max(0,a.ascensionRank);
-                    if(a.mechanic==EquipmentMechanic.WeaponRuin)
-                    {
-                        stats.CritDamageBonus+=BuildCatalog.GemAscensionValue(a.mechanic,ascension)*(a.variant==1?1.5f:1f);
-                        if(a.variant==1)gemCritPenalty+=.02f*ascension;
-                        continue;
-                    }
-                    switch(BuildCatalog.MechanicSlot(a.mechanic))
-                    {
-                        case ItemSlot.Weapon:if(a.variant==1)stats.GemLowHealthDamage+=.075f*ascension;else stats.GemHealthyDamage+=.05f*ascension;break;
-                        case ItemSlot.Armor:if(a.variant==1)stats.GemHealthyGuard+=.05f*ascension;else stats.GemLowHealthGuard+=.05f*ascension;break;
-                        case ItemSlot.Relic:
-                            if(a.mechanic==EquipmentMechanic.RelicVitality||a.mechanic==EquipmentMechanic.RelicWard||a.mechanic==EquipmentMechanic.RelicLeech)
-                            {if(a.variant==1)stats.GemHighEnergyRecovery+=.2f*ascension;else stats.GemLowEnergyRecovery+=.2f*ascension;}
-                            break; // Original relic forms trigger through skill/dodge combinations.
-                    }
+                    // Ascended forms are conditional and evaluated by the player runtime.
+
                 }
                 else ApplyGemAttribute(ref stats,BuildCatalog.MechanicAttribute(a.mechanic),BuildCatalog.MechanicAttributeValue(a.mechanic,a.upgradeRank));
             }
@@ -879,7 +864,7 @@ namespace Emberfall
             {
                 float bonus = (WeaponPercents[(int)weaponFashion.rarity]+5*weaponFashion.upgradeRank) / 100f;
                 stats.Damage *= 1f + bonus;
-                stats.CritChance = Math.Min(1f, stats.CritChance * (1f + (WeaponPercents[(int)weaponFashion.rarity]+3*weaponFashion.upgradeRank)/100f));
+                stats.CritChance = Math.Min(1f, stats.CritChance + (WeaponPercents[(int)weaponFashion.rarity]+3*weaponFashion.upgradeRank)/100f);
                 if(weaponFashion.upgradeRank>=2)stats.CritDamageBonus+=.05f*(weaponFashion.upgradeRank-1);
             }
             if (Profile.masteryRanks != null && Profile.masteryRanks.Length >= 3)
@@ -888,7 +873,6 @@ namespace Emberfall
                 stats.MaxHealth *= 1f + Clamp(Profile.masteryRanks[1], 0, MaximumMasteryRank) * .005f;
                 stats.Armor *= 1f + Clamp(Profile.masteryRanks[2], 0, MaximumMasteryRank) * .0075f;
             }
-            stats.CritChance=Math.Max(0,stats.CritChance-gemCritPenalty);
             if(Profile.heroClass==HeroClass.Vanguard){
                 if(Profile.martialSpecialization==MartialSpecialization.Assault){stats.Damage*=1.15f;stats.Armor*=.9f;}
                 else if(Profile.martialSpecialization==MartialSpecialization.Survival){stats.Armor*=1.25f;stats.MaxHealth*=1.1f;stats.Damage*=.92f;}
@@ -1855,9 +1839,11 @@ namespace Emberfall
             if(r.primaryKind==1)r.primarySlot=(int)AdventureRewardRules.EquipmentSlot(profile.pendingChestMode,profile.pendingChestMode==3?slotRoll:0);
             else if(r.primaryKind==2)
             {
-                r.rarityIndex=(int)Rarity.Legendary;r.appearanceTier=(int)Rarity.Legendary;
-                bool weapon=profile.fashions.Exists(f=>f.slot==FashionSlot.Weapon&&f.AppearanceRarity==Rarity.Legendary);
-                bool wings=profile.fashions.Exists(f=>f.slot==FashionSlot.Wings&&f.AppearanceRarity==Rarity.Legendary);
+                int fashionRoll=Clamp(quantityRoll,0,40);
+                Rarity quality=fashionRoll<18?Rarity.Common:fashionRoll<30?Rarity.Rare:fashionRoll<38?Rarity.Epic:Rarity.Legendary;
+                r.primaryRarity=quality;r.rarityIndex=(int)quality;r.appearanceTier=(int)quality;
+                bool weapon=profile.fashions.Exists(f=>f.slot==FashionSlot.Weapon&&f.AppearanceRarity==quality);
+                bool wings=profile.fashions.Exists(f=>f.slot==FashionSlot.Wings&&f.AppearanceRarity==quality);
                 r.slotIndex=(int)(weapon&&!wings?FashionSlot.Wings:wings&&!weapon?FashionSlot.Weapon:(FashionSlot)slotRoll);
             }
             else if(r.primaryKind==4)
@@ -1882,7 +1868,8 @@ namespace Emberfall
             else if(roll.primaryKind==2)
             {
                 var slot=(FashionSlot)roll.slotIndex;
-                preview.fashion=new FashionData{id="fashion-"+(int)slot+"-3",slot=slot,rarity=Rarity.Legendary,appearanceTier=3,name=FashionName(slot,Rarity.Legendary,profile.heroClass)};
+                var quality=(Rarity)roll.rarityIndex;
+                preview.fashion=new FashionData{id="fashion-"+(int)slot+"-"+roll.rarityIndex,slot=slot,rarity=quality,appearanceTier=roll.rarityIndex,name=FashionName(slot,quality,profile.heroClass)};
             }
             else if(roll.primaryKind==4){preview.gemMechanic=BuildCatalog.CurrentGem(roll.gemMechanic);preview.gemRarity=roll.gemRarity;}
             return preview;
@@ -1906,7 +1893,7 @@ namespace Emberfall
             if(r==null||r.rulesRevision!=3||string.IsNullOrEmpty(r.id)||r.id.Length>80||r.rewardKind!=ChestRewardKind.SingleChest||r.choice!=-1||r.gold!=0||r.primaryKind<1||r.primaryKind>8||r.primaryCount<1||r.primaryCount>ChestStackMaximum(false,100))return false;
             if(r.primaryKind==7||r.primaryKind==8)return r.primaryCount==1&&r.primaryRarity==Rarity.Legendary;
             if(r.primaryKind==1)return r.primaryCount==1&&r.primarySlot>=0&&r.primarySlot<=2&&(r.primaryRarity==Rarity.Epic||r.primaryRarity==Rarity.Legendary);
-            if(r.primaryKind==2)return r.primaryCount==1&&r.rarityIndex==(int)Rarity.Legendary&&r.slotIndex>=0&&r.slotIndex<=1;
+            if(r.primaryKind==2)return r.primaryCount==1&&r.rarityIndex>=0&&r.rarityIndex<=3&&r.slotIndex>=0&&r.slotIndex<=1;
             if(r.primaryKind==4)return r.primaryCount==1&&r.gemMechanic!=EquipmentMechanic.None&&Enum.IsDefined(typeof(EquipmentMechanic),r.gemMechanic)&&(r.gemRarity==Rarity.Epic||r.gemRarity==Rarity.Legendary);
             return true;
         }
@@ -1922,9 +1909,9 @@ namespace Emberfall
             }
             else if(receipt.primaryKind==2)
             {
-                var slot=(FashionSlot)receipt.slotIndex;string id="fashion-"+(int)slot+"-3";
+                var slot=(FashionSlot)receipt.slotIndex;var quality=(Rarity)receipt.rarityIndex;string id="fashion-"+(int)slot+"-"+receipt.rarityIndex;
                 if(candidate.fashions.Exists(f=>f.id==id)){receipt.primaryKind=6;receipt.primaryCount=8;receipt.rarityIndex=-1;receipt.slotIndex=-1;}
-                else {receipt.name=FashionName(slot,Rarity.Legendary,candidate.heroClass);candidate.fashions.Add(new FashionData{id=id,slot=slot,rarity=Rarity.Legendary,appearanceTier=3,name=receipt.name});}
+                else {receipt.name=FashionName(slot,quality,candidate.heroClass);candidate.fashions.Add(new FashionData{id=id,slot=slot,rarity=quality,appearanceTier=(int)quality,name=receipt.name});}
             }
             else if(receipt.primaryKind==4)
             {
@@ -2033,13 +2020,13 @@ namespace Emberfall
                 FashionSlot slot=roll.rulesRevision>=2?(FashionSlot)roll.slotIndex:roll.choice==0?FashionSlot.Weapon:FashionSlot.Wings;
                 string id="fashion-"+(int)slot+"-"+(int)rarity.Value;
                 bool owned=candidate.fashions.Exists(x=>x.id==id);
-                receipt.rarityIndex=(int)Rarity.Legendary;receipt.appearanceTier=(int)rarity.Value;receipt.slotIndex=(int)slot;receipt.name=FashionName(slot,rarity.Value,candidate.heroClass);
+                receipt.rarityIndex=(int)rarity.Value;receipt.appearanceTier=(int)rarity.Value;receipt.slotIndex=(int)slot;receipt.name=FashionName(slot,rarity.Value,candidate.heroClass);
                 // Preserve the saved draw, but reconcile ownership at grant time.
                 // Existing saves may have frozen a duplicate before appearance/quality were separated.
                 receipt.duplicate=owned||(roll.rulesRevision>=2&&roll.duplicate);
                 if(receipt.duplicate)
                 {receipt.duplicateGold=800;receipt.duplicateThreads=8;receipt.gold+=receipt.duplicateGold;}
-                else candidate.fashions.Add(new FashionData{id=id,slot=slot,rarity=Rarity.Legendary,appearanceTier=(int)rarity.Value,name=receipt.name});
+                else candidate.fashions.Add(new FashionData{id=id,slot=slot,rarity=rarity.Value,appearanceTier=(int)rarity.Value,name=receipt.name});
             }
             if(Profile.pendingAdventureChest){
                 int before=candidate.inventory.Count;
@@ -2991,7 +2978,7 @@ namespace Emberfall
 
         private static GameProfile CreateProfile(HeroClass heroClass)
         {
-            var profile = new GameProfile { chapterTierRevision=2,equipmentEnhancementRevision=1,heroClass = heroClass,chestRulesRevision=2, variantKnowledgeRevision = 1, fashionQualityRevision = 1 };
+            var profile = new GameProfile { chapterTierRevision=2,equipmentEnhancementRevision=1,heroClass = heroClass,chestRulesRevision=2, variantKnowledgeRevision = 1, fashionQualityRevision = 2 };
             SkillStockRules.Normalize(profile);profile.skillStockVersion=1;
             profile.skillRanks[0] = 1;
             profile.equippedSkills=GameBalance.DefaultLoadout(heroClass);
@@ -3276,7 +3263,7 @@ namespace Emberfall
                 else
                 {
                     if(receipt.appearanceTier<0||receipt.appearanceTier>3)receipt.appearanceTier=receipt.rarityIndex;
-                    receipt.rarityIndex=(int)Rarity.Legendary;
+                    receipt.rarityIndex=receipt.appearanceTier;
                     receipt.name=FashionName((FashionSlot)receipt.slotIndex,(Rarity)receipt.appearanceTier,profile.heroClass);
                 }
                 if (string.IsNullOrWhiteSpace(receipt.summary)) receipt.summary = receipt.name + " · " + receipt.gold + " 金币";
@@ -3400,7 +3387,7 @@ namespace Emberfall
                 }
                 if(fashion.appearanceTier<0||fashion.appearanceTier>3)fashion.appearanceTier=(int)fashion.rarity;
                 fashion.upgradeRank=Clamp(fashion.upgradeRank,0,MaximumFashionRank);
-                fashion.rarity=Rarity.Legendary;
+                fashion.rarity=fashion.AppearanceRarity;
                 string expectedId = "fashion-" + (int)fashion.slot + "-" + fashion.appearanceTier;
                 if (!fashionIds.Add(expectedId)) continue;
                 fashion.id = expectedId;
