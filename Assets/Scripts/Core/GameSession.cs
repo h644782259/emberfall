@@ -762,7 +762,7 @@ namespace Emberfall
             if(!Progression.ConsumeRevivalStone()){Notify(Progression.LastError);return false;}
             DungeonRevivalsUsed++;
             Player.ReviveAtCurrentPosition();IsDead=false;RevivalPending=false;Paused=false;uiBlocking=false;
-            LastRunSummary=null;UpdateTimeScale();Notify("已复活");return true;
+            LastRunSummary=null;UpdateTimeScale();return true;
         }
         public void OnPlayerDied()
         {

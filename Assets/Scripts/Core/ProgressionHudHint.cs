@@ -25,6 +25,7 @@ namespace Emberfall
         {
             title=step=null;if(p==null||roomPriority)return false;
             var goal=p.SelectedProgressionGoal(inCamp);
+            if(goal.Identity=="main/complete")return false;
             title=goal.Title;step=goal.Step;
             return true;
         }

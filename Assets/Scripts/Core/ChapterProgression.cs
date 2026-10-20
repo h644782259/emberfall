@@ -21,7 +21,7 @@ namespace Emberfall
             Get(node);
             if(node==ChapterNode.ForestCourt)return "金环护援使6米内可见同伴减伤30%；引开、遮挡或击杀可断供；单个2.1米荆棘脉冲圈，可绕行";
             if(node==ChapterNode.Redrock)return "守岗敌人形成交火，需要选择突破路线；单条热涌短线受墙阻挡，可绕端点";
-            return "首段有效打断进入2秒恢复；破坏全部锚进入6秒暴露、受伤+35%。未反制则追加扫射；扫向与安全锚位置按本局种子变化。";
+            return "首段有效打断进入2秒恢复；破坏全部锚进入6秒暴露、受伤+35%。未反制则追加扫射；每次挑战的扫射方向与安全锚位置会变化。";
         }
         public const float BaseHealthMultiplier=1.35f,BaseDamageMultiplier=1.25f;
 

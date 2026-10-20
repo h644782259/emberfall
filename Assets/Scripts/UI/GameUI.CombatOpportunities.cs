@@ -95,18 +95,7 @@ namespace Emberfall
         }
         private string DesktopSkillOpportunityCaption(int skill,bool locked,bool lacksEnergy,float cooldown,out bool actionable)
         {
-            actionable=false;var hero=session.Player;
-            if(skill<0||locked||hero==null||hero.IsDead||session.InputBlocked||!session.HasStarted)return "";
-            string failure=session.ControlFailure("skill"+skill);
-            if(!string.IsNullOrEmpty(failure))return failure;
-            var pending=hero.GetComponent<SkillChargeController>();
-            if(pending!=null&&(pending.IsCharging||pending.ConsumedThisFrame))return pending.IsCharging&&pending.SkillIndex==skill?"蓄力":"";
-            if(cooldown>.01f)return ""; // Preserve the existing central cooldown overlay.
-            if(lacksEnergy)return "缺能";
-            var opportunity=HudSkillOpportunity(skill);actionable=opportunity.Actionable;
-            // The dedicated row owns the live window label and clock. This
-            // in-slot channel only explains why the action cannot run now.
-            return opportunity.Window?opportunity.BlockReason:"";
+            actionable=false;return "";
         }
         private string DesktopBasicOpportunityCaption()
         {

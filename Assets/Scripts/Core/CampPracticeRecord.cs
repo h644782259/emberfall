@@ -91,6 +91,6 @@ namespace Emberfall
         public void Mechanism(string key){if(Started&&!Finished&&!string.IsNullOrEmpty(key))Count(mechanisms,key);}
         public void Finish(string reason){if(Finished)return;Finished=true;EndReason=reason;}
         public bool ComparableConditions(CampPracticeRecord other){return other!=null&&Finished&&other.Finished&&Survived&&other.Survived&&(Elapsed==Duration||ObjectiveCompleted)&&(other.Elapsed==other.Duration||other.ObjectiveCompleted)&&Scenario==other.Scenario&&Duration==other.Duration&&Seed==other.Seed&&RulesVersion==other.RulesVersion&&HeroIdentity==other.HeroIdentity&&Level==other.Level;}
-        public string Comparison(CampPracticeRecord other){return !ComparableConditions(other)?"提前结束或场景 / 时长 / 种子 / 职业等级 / 目标规则不同，不能直接比较":Configuration==other.Configuration?"同配置、同场景实测；操作差异仍影响结果":"配置不同的 A/B 实测；同场景时长，详见各自固定快照，操作差异仍影响结果";}
+        public string Comparison(CampPracticeRecord other){return !ComparableConditions(other)?"提前结束或场景 / 时长 / 战斗条件 / 职业等级 / 目标规则不同，不能直接比较":Configuration==other.Configuration?"同配置、同场景实测；操作差异仍影响结果":"配置不同的 A/B 实测；同场景时长，详见各自固定快照，操作差异仍影响结果";}
     }
 }

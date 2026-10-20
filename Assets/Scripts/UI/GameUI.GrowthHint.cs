@@ -43,6 +43,7 @@ namespace Emberfall
             if (!MobileControls.Active && !session.InDungeon && !session.SpecialAdventure && !session.IsDead && !session.PracticeActive)
             {
                 var goal = session.Progression.SelectedProgressionGoal(session.IsInCamp);
+                if(goal.Identity=="main/complete"){title=detail=null;return false;}
                 title = goal.Title;
                 detail = goal.Step + " · 点击查看与定位";
                 return true;

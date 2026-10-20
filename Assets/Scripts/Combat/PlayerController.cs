@@ -672,30 +672,18 @@ namespace Emberfall
 
         private Bounds EnemyAimBounds(EnemyController enemy)
         {
-            Renderer[] renderers;
-            if(!aimGeometry.TryGetValue(enemy,out renderers))
-            {
-                CombatModel enemyModel=enemy.GetComponentInChildren<CombatModel>();
-                renderers=enemyModel!=null?enemyModel.GetComponentsInChildren<Renderer>():new Renderer[0];
-                aimGeometry.Add(enemy,renderers);
-            }
-            Bounds bounds=new Bounds(enemy.transform.position+Vector3.up,Vector3.one);
-            bool found=false;
-            for(int i=0;i<renderers.Length;i++)
-                if(renderers[i]!=null && renderers[i].enabled)
-                {
-                    if(!found) { bounds=renderers[i].bounds; found=true; }
-                    else bounds.Encapsulate(renderers[i].bounds);
-                }
-            return bounds;
+            // Match selectable bounds to the hittable body; weapons and transient effects
+            // must not enlarge the target or require per-renderer bounds queries each frame.
+            float height=enemy.PhysicalBodyHeight,radius=enemy.ProjectileHitRadius;
+            return new Bounds(enemy.ImpactFeet+Vector3.up*(height*.5f),new Vector3(radius*2,height,radius*2));
         }
 
         internal Vector3 EnemyBodyPoint(EnemyController enemy)
         {
             if(enemy==null) return aimPoint+Vector3.up;
-            Bounds bounds=EnemyAimBounds(enemy);
+            // Aim at the collision body's centre, not combined weapon/VFX renderer bounds.
             Vector3 at=enemy.ImpactFeet;
-            at.y=Mathf.Clamp(bounds.center.y,at.y+.35f,at.y+(enemy.IsBoss?enemy.PhysicalBodyHeight*.5f:3f));
+            at.y+=enemy.PhysicalBodyHeight*.5f;
             return at;
         }
 
@@ -839,7 +827,7 @@ namespace Emberfall
                 // PlayAction commits this frame's release pose before its socket is sampled.
                 // The projectile and its collision sweep start at the same physical point.
                 Vector3 muzzle=BasicAttackMuzzle(ranger);
-                Vector3 target=ValidAimTarget(AimTarget)?EnemyBodyPoint(AimTarget):new Vector3(aimPoint.x,muzzle.y,aimPoint.z);
+                Vector3 target=ValidAimTarget(AimTarget)?EnemyBodyPoint(AimTarget):BasicAttackRayTarget(muzzle,aimPoint-muzzle);
                 int tier=BasicAttackGrowth.Tier(session.Progression.Profile,HeroClass);
                 var damage=Damage(SkillDamageBudgets.BasicCoefficient(HeroClass)*(mobilityTime>0?1f+.12f*mobilityRank:1f),true)*BasicAttackGrowth.ProjectileMultiplier(tier);
                 var hitBudget=new BasicAttackHitBudget(tier);
@@ -1341,6 +1329,7 @@ namespace Emberfall
             blinkInvulnerableUntil = Time.time + BlinkProtectionDuration;
             if(FrostStrideActive){burnStrideTime=0;guardTime=0;}
             transform.position = destination;
+            BeginBlinkTurn(origin);
             dodgeCooldown = 2.1f;
             blinkFollowupEpoch=CombatEpoch;blinkFollowupUntil=BlinkFollowupLearned?Time.time+Mathf.Min(1.2f,dodgeCooldown):0;
             traversalFrame = Time.frameCount;
@@ -1436,7 +1425,7 @@ namespace Emberfall
             if(failure==null) return true;
             session.ReportControlFailure("skill"+skill,rank<=0?"未学":skillRuntime.Remaining(skill)>0?"冷却":Energy<GameBalance.SkillEnergyCost(HeroClass,skill)?"缺能":!SkillHealingHasEffect(skill,rank)?"无需治疗":!StockTargetReady(skill,rank)?"无目标":HeroClass==HeroClass.Vanguard&&skill==6&&session.ChallengeRun&&session.InDungeon&&session.HealingCharges<=0?"无充能":"无落点");
             if (CombatReviewEvents.Enabled && Energy<GameBalance.SkillEnergyCost(HeroClass,skill)) CombatReviewEvents.Emit("noenergy",CombatReviewObjectId.Get(this),skill:skill);
-            if(!MobileControls.Active&&skillFeedbackCooldown<=0) { session.Notify(failure); skillFeedbackCooldown=.8f; }
+            if(!MobileControls.Active&&skillFeedbackCooldown<=0&&Energy>=GameBalance.SkillEnergyCost(HeroClass,skill)) { session.Notify(failure); skillFeedbackCooldown=.8f; }
             return false;
         }
 

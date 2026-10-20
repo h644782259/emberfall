@@ -32,7 +32,7 @@ namespace Emberfall
     if(!ChangeZone(true))return false;
     IsDead=false;Paused=false;uiBlocking=false;
     if(RoomChainRun.Failed)return false;
-    Notify("已按原种子、阶数与分支从第一房重试");return !RoomChainRun.Failed;
+    Notify("已按原条件从第一房重新挑战");return !RoomChainRun.Failed;
    }
    catch(System.Exception error){IsDead=false;FailRoomGeneration("重试构建异常",error);return false;}
    finally{retryingRoomChain=false;changingZone=false;SelectedArenaMode=previousSelection;SelectedDungeonTier=previousTier;if(RoomChainRun==null)ChallengeRun=previousChallenge;UpdateTimeScale();}

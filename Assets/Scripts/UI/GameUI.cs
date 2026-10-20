@@ -403,6 +403,7 @@ namespace Emberfall
                 PrepareRewardMoment();
                 bool priorEnabled = GUI.enabled;
                 GUI.enabled = priorEnabled && panel == Panel.None && !session.InputBlocked;
+                PortalNameplate.DrawBehindHUD();
                 DrawHUD();
                 if(session.Player!=null&&session.Player.HurtFlash>0)
                 {
@@ -1107,6 +1108,8 @@ namespace Emberfall
             DrawMapMarker(new Rect(x-size*.5f,y-size*.5f,size,size),color);
         }
 
+        private Rect bossStatusAnchor;
+        private int bossStatusFrame=-1;
         private void DrawEnemyTargetPanel(EnemyController target)
         {
             if(target==null||!target.IsBoss)return;
@@ -1126,6 +1129,7 @@ namespace Emberfall
             if(boss||elite)SkillStateTag(tag,tier,gold,Mathf.RoundToInt(10*u));
             else Text(tag,tier,Mathf.RoundToInt(9*u),muted,false,false,TextAnchor.MiddleRight);
             Rect bar=new Rect(r.x+inset*u,r.y+(boss?38:elite?29:27)*u,w-2*inset*u,(boss?22:elite?16:7)*u);
+            bossStatusAnchor=bar;bossStatusFrame=Time.frameCount;
             Bar(bar,target.Health/Mathf.Max(1,target.MaxHealth),new Color(.78f,.18f,.21f));
             if(boss||elite)Text(bar,Mathf.CeilToInt(target.Health)+" / "+Mathf.CeilToInt(target.MaxHealth)+(boss?"  ·  "+(Mathf.Clamp01(target.Health/Mathf.Max(1,target.MaxHealth))*100).ToString("0.#")+"%":""),Mathf.RoundToInt((boss?11:10)*u),pale,true,false,TextAnchor.MiddleCenter);
             if(r.Contains(Mouse))tooltip=target.TraitDescription;
@@ -1149,12 +1153,7 @@ namespace Emberfall
                 Fill(cooldown,ink);Border(cooldown,jade);
                 DrawIcon(new Rect(cooldown.x+4,cooldown.y+4,36,36),UIIconAtlas.Utility("blink"),new Color(1,1,1,.4f));
                 Text(cooldown,session.Player.DodgeCooldown.ToString("0.0"),18,Color.white,true,false,TextAnchor.MiddleCenter);
-                if(session.Player.BlinkFollowupRemaining>0)
-                {
-                    Rect cue=new Rect(cooldown.x-166,cooldown.y+7,158,30);
-                    Fill(cue,ink);Border(cue,gold);
-                    Text(cue,"左键 · "+session.Player.BlinkFollowupName,14,gold,true,false,TextAnchor.MiddleCenter);
-                }
+
             }
 
             float x = bar.x;
@@ -1799,7 +1798,7 @@ namespace Emberfall
             if (DrawSaveFlowConfirmation()) return;
             if (panel == Panel.SaveSelection) { DrawSaveSelection(); return; }
             if (MobileControls.Active) { DrawMobilePause(); return; }
-            Rect w = Modal(780, 620, "设置", desktopPauseTab==0?"手动保存需确认覆盖":"");
+            Rect w = Modal(780, 620, "设置", "");
             Rect close=new Rect(w.xMax-60,w.y+20,44,44);
 
             if(PopupCloseButton(close)){session.SetPaused(false);BlockUITransition();return;}
@@ -1816,25 +1815,25 @@ namespace Emberfall
             if(PrimaryButton(new Rect(exitStart+12+exitButtonWidth,w.yMax-70,exitButtonWidth,48),"保存并退出",gold))RequestExit(false);
             if(desktopPauseTab==0)
             {
-                if(PrimaryButton(new Rect(w.x+212,w.y+210,536,48),"保存",gold))RequestManualSave();
-                if(NavigationButton(new Rect(w.x+212,w.y+272,536,48),"读取存档",jade))OpenSaveSelection();
-                if(NavigationButton(new Rect(w.x+212,w.y+334,536,48),"存档位置 / 迁移",jade))
+                if(PrimaryButton(new Rect(w.x+212,w.y + 110,536,48),"保存",gold))RequestManualSave();
+                if(NavigationButton(new Rect(w.x+212,w.y + 172,536,48),"读取存档",jade))OpenSaveSelection();
+                if(NavigationButton(new Rect(w.x+212,w.y + 234,536,48),"存档位置 / 迁移",jade))
                 {saveReturnPause=true;panel=Panel.SaveLocation;session.SetUIBlocking(true);session.SetPaused(false);}
             }
             else if (desktopPauseTab == 1)
             {
-                if (ToggleButton(new Rect(w.x + 212, w.y + 210, 260, 42), GameAudio.Muted ? "声音：已静音" : "声音：已开启", !GameAudio.Muted))
+                if (ToggleButton(new Rect(w.x + 212, w.y + 110, 260, 42), GameAudio.Muted ? "声音：已静音" : "声音：已开启", !GameAudio.Muted))
                 { GameAudio.Muted = !GameAudio.Muted; if (!GameAudio.Muted) GameAudio.Play(SoundCue.UI); }
-                if (Button(new Rect(w.x+212,w.y+262,536,42),"技能语音："+GameAudio.SkillVoiceVersionName+"  ›",jade))
+                if (Button(new Rect(w.x+212,w.y + 162,536,42),"技能语音："+GameAudio.SkillVoiceVersionName+"  ›",jade))
                     GameAudio.SkillVoiceVersion=(GameAudio.SkillVoiceVersion+1)%4;
-                DrawAccessibilityStrip(new Rect(w.x + 212, w.y + 308, 536, 35));
-                DrawDesktopGraphicsSettings(new Rect(w.x + 212, w.y + 350, 536, 188));
+                DrawAccessibilityStrip(new Rect(w.x + 212, w.y + 208, 536, 35));
+                DrawDesktopGraphicsSettings(new Rect(w.x + 212, w.y + 250, 536, 188));
             }
             else
             {
-                if (NavigationButton(new Rect(w.x + 212, w.y + 210, 260, 42), "自定义快捷键", gold)) OpenBindings();
-                if (NavigationButton(new Rect(w.x + 488, w.y + 210, 260, 42), "操作指南", jade)) OpenControls();
-                if (NavigationButton(new Rect(w.x+212,w.y+272,536,44),"技能按键配置",jade))
+                if (NavigationButton(new Rect(w.x + 212, w.y + 110, 260, 42), "自定义快捷键", gold)) OpenBindings();
+                if (NavigationButton(new Rect(w.x + 488, w.y + 110, 260, 42), "操作指南", jade)) OpenControls();
+                if (NavigationButton(new Rect(w.x+212,w.y + 172,536,44),"技能按键配置",jade))
                 {session.SetPaused(false);skillSection=0;TogglePanel(Panel.Skills);BlockUITransition();}
             }
         }
@@ -1980,6 +1979,12 @@ namespace Emberfall
             string notice=PlatformText(session.Notification);
             float noticeHeight=Mathf.Max(40,Style(14,true,true,TextAnchor.MiddleCenter).CalcHeight(new GUIContent(notice),522)+12);
             Rect r = new Rect((width - 550) * .5f, overlay ? height - noticeHeight - 9 : 90, 550, noticeHeight);
+            if(session.InDungeon&&!overlay)
+            {
+                float available=Mathf.Min(282,width*.26f);
+                noticeHeight=Style(12,false,true).CalcHeight(new GUIContent(notice),available-20)+16;
+                r=new Rect(16,Mathf.Max(height*.55f,height-noticeHeight-80),available,noticeHeight);
+            }
             Box(r, gold);
             Text(new Rect(r.x + 14, r.y + 6, r.width - 28, r.height - 12),notice,14,pale,true,true,TextAnchor.MiddleCenter);
         }

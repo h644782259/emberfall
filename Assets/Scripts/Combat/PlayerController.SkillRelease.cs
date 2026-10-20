@@ -35,7 +35,6 @@ namespace Emberfall
                 {
                     float remaining = skillRuntime.Remaining(slot);
                     session.ReportControlFailure("skill"+slot,remaining>0?"冷却":"缺能");
-                    if(!MobileControls.Active&&remaining<=0)session.Notify("能量不足：需要 " + GameBalance.SkillEnergyCost(HeroClass,slot) + " 点；普攻命中回复 8 点，持续回复每秒 4 点。");
                     skillFeedbackCooldown = .8f;
                 }
                 return false;

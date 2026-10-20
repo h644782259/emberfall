@@ -93,7 +93,10 @@ namespace Emberfall
             if(!inventoryComparisonOpen)return;
             var e=Event.current;
             Vector2 point=e.mousePosition;
-            if(e.type==EventType.MouseDown&&e.button==0&&!inventoryPopupRect.Contains(point))
+            if(e.type==EventType.MouseDown&&e.button==0&&inventoryPopupAnchor.Contains(point)&&
+                inventoryLastClick==inventoryPopupItem&&Time.unscaledTime-inventoryLastClickAt<.4f)
+            {DesktopInventoryClick(inventoryPopupItem);e.Use();return;}
+            if(e.type==EventType.MouseDown&&e.button==0&&!inventoryPopupRect.Contains(point)&&!inventoryPopupAnchor.Contains(point))
             {DismissEquippedItemDetails();e.Use();return;}
             if(!MobileControls.Active)
             {
@@ -131,7 +134,15 @@ namespace Emberfall
             if(!twice)return;
             inventoryLastClick=null;
             var p=session.Progression;
-            if(id=="@potion")session.DrinkPotion();
+            if(id.StartsWith("@bag:"))
+            {
+                int slot;
+                if(!int.TryParse(id.Substring(5),out slot)||slot<0||slot>=3)return;
+                string outcome;bool saved=p.OpenGemBag((ItemSlot)slot,out outcome);
+                Feedback(saved,outcome);
+                entryRewardSelection=null;entryRewardPopup=null;entryRewardPopupVisible=false;
+            }
+            else if(id=="@potion")session.DrinkPotion();
             else
             {
                 bool fashion=id.StartsWith("@fashion:");

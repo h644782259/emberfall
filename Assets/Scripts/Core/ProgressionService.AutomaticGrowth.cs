@@ -5,7 +5,7 @@ namespace Emberfall
     {
         public readonly string Id,Title;public readonly int Category,Target,Gold,Shards;
         public int RevivalStones;
-        public int Refinement => Id.StartsWith("trial/")||Gold==0?0:Math.Min(30,Math.Max(2,Gold/1000));
+        public int Refinement => (Id.StartsWith("trial/")||Id.StartsWith("trial-any/"))||Gold==0?0:Math.Min(30,Math.Max(2,Gold/1000));
         public int Reforge => Gold>=10000?2:Gold>=6000?1:0;
         public int GearSlot => Id=="level/30"||Id=="level/100"?0:Id=="level/60"?1:Id=="kills/10000"?2:-1;
         public Rarity GearRarity => Rarity.Epic;
@@ -33,6 +33,23 @@ namespace Emberfall
         }
         public int Progress(GameProfile p)
         {
+            if(Id.StartsWith("trial-any/"))
+            {
+                int step=int.Parse(Id.Split('/')[1]);
+                for(int hero=0;hero<4;hero++)
+                {
+                    string old="trial/"+hero+"/"+step;
+                    if(p.achievementReceipts!=null&&p.achievementReceipts.Contains(old))return 1;
+                    if(step==2&&p.growthRewardReceipts!=null&&p.growthRewardReceipts.Contains("growth/"+hero+"/practice"))return 1;
+                    int mask=0;bool ability=false;
+                    if((int)p.heroClass==hero){mask=p.tutorialMask;ability=p.classTutorialCompleted;}
+                    else if(p.classStates!=null&&hero<p.classStates.Length&&p.classStates[hero]!=null)
+                    {mask=p.classStates[hero].tutorialMask;ability=p.classStates[hero].classTutorialCompleted;}
+                    if(step==2?ability:(mask&(1<<step))!=0)return 1;
+                }
+                return 0;
+            }
+            if(Id.StartsWith("fashion-legendary/")){int count=0;if(p.fashions!=null)foreach(var f in p.fashions)if(f!=null&&f.rarity==Rarity.Legendary)count++;return count;}
             if(Id.StartsWith("gem-goal/"))return GemGoalProgress(p,false);
             if(Id.StartsWith("refine-max/"))return p.refinementMaxCount;
             if(Id.StartsWith("refine/"))return p.refinementCount;
@@ -108,12 +125,10 @@ namespace Emberfall
                 for(int level=unlock;level<=100;level+=10)
                     all.Add(new AchievementDefinition("chapter-band/"+node+"/"+level,name+" · 通关Lv"+level,2,level,level*10,4));
             }
-            for(int hero=0;hero<4;hero++)
-            {
-                string name=GameBalance.ClassName((HeroClass)hero);
-                string[] tasks={"普攻命中并回复能量","成功闪避一次预警攻击",new[]{"完美闪避后反击命中","碎冰命中或刷新灼烧","引爆三层毒素","召唤物命中目标"}[hero],"穿戴一件装备"};
-                for(int step=0;step<4;step++)all.Add(new AchievementDefinition("trial/"+hero+"/"+step,name+" · "+tasks[step],1,1,step==2?50:25,1));
-            }
+            string[] tasks={"普攻命中并回复能量","成功闪避一次预警攻击","完成任意职业的战斗技巧","穿戴一件装备"};
+            for(int step=0;step<4;step++)all.Add(new AchievementDefinition("trial-any/"+step,tasks[step],1,1,step==2?50:25,1));
+            all.Add(new AchievementDefinition("fashion-legendary/1","传奇风采 · 获得1件传说时装",3,1,2000,20));
+            all.Add(new AchievementDefinition("fashion-legendary/2","华彩收藏 · 获得2件传说时装",3,2,4000,40));
             for(int count=1;count<=Math.Min(3,MaximumMountedGemsPerSlot*3);count++)
             {
                 all.Add(new AchievementDefinition("gem-goal/core/1/"+count,"收集任意 "+count+" 个宝石",3,count,count*100,2));
@@ -153,6 +168,13 @@ namespace Emberfall
         public bool AchievementClaimed(string id)
         {
             if(Profile.achievementReceipts!=null&&Profile.achievementReceipts.Contains(id))return true;
+            if(id.StartsWith("trial-any/"))
+            {
+                string step=id.Split('/')[1];
+                for(int hero=0;hero<4;hero++)
+                    if(Profile.achievementReceipts!=null&&Profile.achievementReceipts.Contains("trial/"+hero+"/"+step)||
+                       step=="2"&&Profile.growthRewardReceipts!=null&&Profile.growthRewardReceipts.Contains("growth/"+hero+"/practice"))return true;
+            }
             var achievement=Array.Find(Achievements,a=>a.Id==id);
             return achievement!=null&&id.StartsWith("gem-goal/")&&achievement.GemGoalProgress(Profile,true)>=achievement.Target;
         }

@@ -15,7 +15,7 @@ namespace Emberfall
             Objective = Branch==RoomBranch.Seal?RoomObjective.Purify:Branch==RoomBranch.Supply?RoomObjective.Hunt:RoomTactics.Objective(seed,index);
             Layout = index < 4 ? 20 + RoomTactics.Terrain(seed,index)*2 + (RoomTactics.Mirror(seed)<0?1:0) : 10+index;
             if(Branch!=RoomBranch.None)Layout=20+(Branch==RoomBranch.Seal?0:4)+(RoomTactics.Mirror(seed)<0?1:0);
-            Interlude = false; Boss = index == 4; EnemyCount = Interlude ? 0 : Boss ? 21 : Branch==RoomBranch.Seal?24:30;
+            Interlude = false; Boss = index == 4; EnemyCount = Interlude ? 0 : Boss ? 1 : Branch==RoomBranch.Seal?24:30;
         }
     }
     public sealed class RoomChainState

@@ -8,7 +8,7 @@ namespace Emberfall
         {
             bool selling=merchantMode==2;
             bool confirming=selling&&action=="确认出售";
-            bool clicked=DrawButton(r,"",ButtonRole.Primary,enabled,enabled?null:action);
+            bool clicked=DrawButton(r,"",ButtonRole.Primary,enabled,enabled||selling&&action=="已锁定"?null:action);
             Color textColor=enabled?pale:muted;
             string amount=(selling?"+":"")+Money(price);int font=Mathf.RoundToInt(14*u);
             float amountWidth=Style(font,true,false).CalcSize(new GUIContent(amount)).x;

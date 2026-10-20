@@ -10,7 +10,7 @@ namespace Emberfall
             if(ChapterActive&&ChapterRun.DoorUnlocked&&!ChapterFinished&&chapterPlan!=null){destination=chapterPlan.Exit;return true;}
             if(InDungeon)return false;
             var goal=Progression.SelectedProgressionGoal(IsInCamp);
-            if((goal.Identity??"").StartsWith("main/chapter/")||goal.Identity=="main/complete"){destination=ChapterEntrancePosition;return true;}
+            if((goal.Identity??"").StartsWith("main/chapter/")){destination=ChapterEntrancePosition;return true;}
             if((goal.Identity??"").StartsWith("main/tier/")){destination=DungeonEntrancePosition;return true;}
             return false;
         }
@@ -67,7 +67,7 @@ namespace Emberfall
                 IsDead=false;Paused=false;uiBlocking=false;
                 if(ChapterFinished)return false;
                 if(chapterRetryTactic.HasValue)RunChoices.RestoreChapterTactic(chapterRetryTactic.Value);
-                Notify((targetTier.HasValue?"挑战第 "+receipt.Tier+" 阶":"已按原条件从节点起点重试")+" · "+ChapterObjectiveStatus);return true;
+                return true;
             }
             catch(System.Exception error){IsDead=false;FailChapter("重试生成异常："+error.Message);return false;}
             finally {enteringChapter=false;changingZone=false;UpdateTimeScale();}
@@ -129,7 +129,7 @@ namespace Emberfall
             {redrockRouteOwner=Progression.SaveFilePath;previousRedrockSplit=ChapterRoomGeometry.RedrockSplitRoute(seed);}
             if(ChapterRun!=null&&!ChapterRun.Finished&&!ChapterRun.Failed&&SelectedChapterTactic>=0)RunChoices.ChooseChapterTactic(Progression.Profile,receipt.Node,MobileControls.Active,SelectedChapterTactic);
             foreach(var tactic in RunChoices.Active)chapterRetryTactic=tactic;
-            UpdateTimeScale();Notify(ChapterDefinition.Get(receipt.Node).Story+" · "+ChapterObjectiveStatus);return true;
+            UpdateTimeScale();return true;
         }
         private ThreatAdmissionPolicy chapterThreatAdmission;
         private void ResetChapterRun()

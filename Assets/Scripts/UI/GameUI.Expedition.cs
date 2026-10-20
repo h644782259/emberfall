@@ -173,40 +173,26 @@ namespace Emberfall
             foreach(var enemy in session.Enemies)
             {
                 if(enemy==null||!enemy.IsBoss||enemy.IsDead||!enemy.enabled||!enemy.gameObject.activeInHierarchy)continue;
-                if(enemy.IsBossParalyzed){message="首领瘫痪 · 受到伤害 +35%";opportunity=true;progress=enemy.BossParalysisRemaining/EnemyController.BossParalysisDuration;break;}
+                if(enemy.IsBossParalyzed){message="瘫痪中";opportunity=true;progress=enemy.BossParalysisRemaining/EnemyController.BossParalysisDuration;break;}
                 var mechanic=enemy.GetComponent<LargeExpeditionBoss>();
                 var state=mechanic==null?null:mechanic.State;
                 if(state!=null&&state.Phase==LargeBossPhase.Windup)
-                {message=state.IsFollowup?"追加扫射蓄力 · 用控制技能打断":"环流扫射蓄力 · 打断或摧毁供能锚";remaining=state.Remaining;progress=1-remaining/LargeBossPhaseState.WindupSeconds;break;}
+                {message="蓄力中";remaining=state.Remaining;progress=1-remaining/LargeBossPhaseState.WindupSeconds;break;}
                 if(state!=null&&state.Phase==LargeBossPhase.Beam)
-                {message=state.LiveAnchorMask!=0?"环流扫射 · 避开光束，摧毁供能锚":"追加扫射 · 避开光束";remaining=state.Remaining;progress=remaining/LargeBossPhaseState.BeamSeconds;break;}
+                {message="扫射中";remaining=state.Remaining;progress=remaining/LargeBossPhaseState.BeamSeconds;break;}
                 if(enemy.IsPreparingAttack)
-                {message=enemy.CanBeSkillInterrupted?"首领正在蓄力 · 控制技能可打断":"首领正在蓄力 · 避开地面预警";remaining=enemy.AttackWindupRemaining;progress=enemy.AttackWindupProgress;break;}
+                {message="蓄力中";remaining=enemy.AttackWindupRemaining;progress=enemy.AttackWindupProgress;break;}
                 if(state!=null&&state.Phase==LargeBossPhase.Exposed)
-                {message="核心暴露 · 伤害提高35%，集中攻击";remaining=state.Remaining;progress=remaining/LargeBossPhaseState.ExposureSeconds;opportunity=true;}
+                {message="核心暴露";remaining=state.Remaining;progress=remaining/LargeBossPhaseState.ExposureSeconds;opportunity=true;}
             }
             if(string.IsNullOrEmpty(message))return;
-            bool mobile=MobileControls.Active;
-            float w=mobile?Mathf.Min(360*TouchRatio,width*.50f):Mathf.Min(460,width-620);
-            if(w<180)return;
-            int font=mobile?TouchFont(12):15;
-            string label=message;
-            float h=Mathf.Max(mobile?36*TouchRatio:38,Style(font,true,true,TextAnchor.MiddleCenter).CalcHeight(new GUIContent(label),w-20)+24);
-            float top=mobile?TouchRect(MobileControls.Layout.BossHealth).yMax+12*TouchRatio:100;
-            // Notifications and registered HUD controls have priority over this strip.
-            Rect notice=mobile?TouchRect(MobileControls.Layout.Notice):new Rect((width-550)*.5f,26,550,
-                string.IsNullOrEmpty(session.Notification)?0:Mathf.Max(40,Style(14,true,true,TextAnchor.MiddleCenter).CalcHeight(new GUIContent(PlatformText(session.Notification)),522)+12));
-            for(float y=top;y+h<height*.40f;y+=8)
-            {
-                Rect r=new Rect((width-w)*.5f,y,w,h);bool overlaps=!string.IsNullOrEmpty(session.Notification)&&r.Overlaps(notice);
-                foreach(var occupied in blockedRects)if(r.Overlaps(occupied)){overlaps=true;break;}
-                if(overlaps)continue;
-                Color tint=opportunity?jade:gold;
-                Fill(r,new Color(.025f,.035f,.05f,.82f));Fill(new Rect(r.x,r.y,3,r.height),tint);
-                Text(new Rect(r.x+10,r.y+6,r.width-20,r.height-24),label,font,tint,true,true,TextAnchor.MiddleCenter);
-                Bar(new Rect(r.x+10,r.yMax-12,r.width-20,5),progress,tint);
-                return;
-            }
+            if(bossStatusFrame!=Time.frameCount)return;
+            float u=MobileControls.Active?TouchRatio:1;
+            Rect r=new Rect(bossStatusAnchor.x,bossStatusAnchor.yMax+4*u,bossStatusAnchor.width,18*u);
+            Color tint=opportunity?jade:gold;
+            Fill(r,ink);
+            Bar(new Rect(r.x,r.yMax-4*u,r.width,4*u),progress,tint);
+            Text(new Rect(r.x,r.y,r.width,14*u),message,Mathf.RoundToInt(10*u),tint,true,false,TextAnchor.MiddleCenter);
         }
 
         private void DrawSystemLog()

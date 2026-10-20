@@ -208,7 +208,7 @@ namespace Emberfall
                 DrawIcon(new Rect(tile.x+5*u,tile.y+3*u,tile.width-10*u,tile.height-17*u),UIIconAtlas.Utility("potion"),Color.white);
                 Text(new Rect(tile.x,tile.yMax-14*u,tile.width-2*u,14*u),session.Progression.Profile.potions.ToString(),Mathf.RoundToInt(9*u),pale,true,false,TextAnchor.MiddleRight);
                 DesktopInventoryGesture(tile,tile,"@potion");
-                if(GUI.Button(tile,GUIContent.none,invisibleButton)){if(MobileControls.Active)OpenInventoryPopup("@potion",tile);else DesktopInventoryClick("@potion");}
+                if(GUI.Button(tile,GUIContent.none,invisibleButton)){if(MobileControls.Active)OpenInventoryPopup("@potion",tile);DesktopInventoryClick("@potion");}
             }
             string[] keys={"refinement","shard","thread","affix-reforge","revival","basic-attack"};
             int[] quantities={session.Progression.Profile.refinementStones,session.Progression.Profile.mechanicMaterials,session.Progression.Profile.fashionThreads,session.Progression.Profile.affixReforgeStones,session.Progression.Profile.revivalStones,session.Progression.Profile.basicAttackMaterials};

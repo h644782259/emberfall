@@ -141,7 +141,7 @@ namespace Emberfall
             if (chapter) { chapterObjective = null; chapterObjectives[0] = chapterObjectives[1] = null; BeginChapterRoom(); }
             else BeginRoomChainScene();
             yield return FinishScenePreparation();
-            Notify(chapter ? ChapterObjectiveStatus : RoomTactics.Name(RoomChainRun.Room.Objective) + " · 房间 " + (RoomChainRun.Room.Index + 1) + " / 5");
+            // Room progress is already shown in the objective card.
         }
 
         private IEnumerator FinishScenePreparation()

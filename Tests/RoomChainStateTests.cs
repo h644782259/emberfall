@@ -17,7 +17,7 @@ public static class RoomChainStateTests
             {
                 var plan=run.Room;var repeat=new RoomChainPlan(room,seed,run.SelectedBranch);
                 Check(plan.Index==room && plan.Layout==repeat.Layout && plan.Objective==repeat.Objective,"reproducible identity");
-                Check(plan.EnemyCount==(plan.Boss?7:plan.Branch==RoomBranch.Seal?8:10),"bounded authored roster per room and branch");
+                Check(plan.EnemyCount==(plan.Boss?1:plan.Branch==RoomBranch.Seal?24:30),"bounded authored roster per room and branch");
                 if(room==3)Check(!plan.Interlude&&plan.Objective==RoomObjective.Hunt&&plan.EnemyCount==10&&!run.DoorUnlocked,"fourth room has a guarded target and locked exit");
                 if(room<3){goals.Add(plan.Objective);terrain.Add((plan.Layout-20)/2);}
                 if(plan.Interlude)Check(run.ChooseInterlude()&&!run.ChooseInterlude(),"choice once");

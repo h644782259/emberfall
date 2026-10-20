@@ -11,8 +11,12 @@ namespace Emberfall
   private Vector2 entryRewardContentOrigin;
   private void BeginEntryRewardPopup()
   {
+   if(panel==Panel.Inventory&&entryRewardPopupVisible&&entryRewardPopup!=null&&entryRewardPopup.BagSlot>=0&&
+      Event.current.type==EventType.MouseDown&&Event.current.button==0&&entryRewardAnchor.Contains(Event.current.mousePosition)&&
+      inventoryLastClick=="@bag:"+entryRewardPopup.BagSlot&&Time.unscaledTime-inventoryLastClickAt<.4f)
+   {DesktopInventoryClick(inventoryLastClick);Event.current.Use();return;}
    if(panel==Panel.Inventory&&entryRewardPopupVisible&&Event.current.type==EventType.MouseDown&&Event.current.button==0&&
-      !entryRewardPopupRect.Contains(Event.current.mousePosition))
+      !entryRewardPopupRect.Contains(Event.current.mousePosition)&&!entryRewardAnchor.Contains(Event.current.mousePosition))
    {DismissEquippedItemDetails();entryRewardPopup=null;Event.current.Use();return;}
    entryRewardPopup=null;entryRewardAnchorIsRoot=false;
    if(suppressRewardHover&&!dismissedRewardAnchor.Contains(Mouse))suppressRewardHover=false;
@@ -85,7 +89,7 @@ namespace Emberfall
   {
    string key=inspectionKey??item.Key;
    if(!MobileControls.Active&&suppressRewardHover)return;
-   if((MobileControls.Active||clickToInspect)&&GUI.Button(hit,GUIContent.none,invisibleButton)){entryRewardSelection=entryRewardSelection==key?null:key;entryRewardPopupScroll=Vector2.zero;}
+   if((MobileControls.Active||clickToInspect)&&GUI.Button(hit,GUIContent.none,invisibleButton)){entryRewardSelection=entryRewardSelection==key?null:key;entryRewardPopupScroll=Vector2.zero;if(panel==Panel.Inventory&&item.BagSlot>=0)DesktopInventoryClick("@bag:"+item.BagSlot);}
    bool hover=hit.Contains(Event.current.mousePosition)&&GUI.enabled;
    if(!MobileControls.Active&&hover)entryRewardHoverKey=key;
    if(MobileControls.Active||clickToInspect?entryRewardSelection==key:hover||entryRewardPopupVisible&&entryRewardHoverKey==key&&entryRewardPopupRect.Contains(Mouse))

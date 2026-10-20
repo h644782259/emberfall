@@ -14,7 +14,12 @@ namespace Emberfall
             root.transform.position=entrance+Vector3.up*4.4f;
             var sign=root.AddComponent<PortalNameplate>();sign.title=title;sign.accent=accent;
         }
-        private void OnGUI()
+        private static readonly System.Collections.Generic.List<PortalNameplate> active = new System.Collections.Generic.List<PortalNameplate>();
+        private void OnEnable(){active.Add(this);}
+        private void OnDisable(){active.Remove(this);}
+        public static void DrawBehindHUD()
+        {foreach(var sign in active)if(sign!=null)sign.DrawNameplate();}
+        private void DrawNameplate()
         {
             var game=GameSession.Instance;var camera=Camera.main;
             if(Event.current.type!=EventType.Repaint||camera==null||game==null||!game.HasStarted||game.InDungeon||game.InputBlocked)return;
@@ -30,7 +35,7 @@ namespace Emberfall
             Matrix4x4 matrix=GUI.matrix;Color color=GUI.color;int depth=GUI.depth;
             try
             {
-                GUI.matrix=Matrix4x4.identity;GUI.depth=10;
+                GUI.matrix=Matrix4x4.identity;
                 GUI.color=Color.white;
                 style.normal.textColor=new Color(.02f,.025f,.04f,.75f);
                 GUI.Label(new Rect(caption.x+scale,caption.y+2*scale,caption.width,caption.height),title,style);

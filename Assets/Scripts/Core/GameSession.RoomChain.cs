@@ -21,7 +21,7 @@ namespace Emberfall
   {
    try
    {
-   RoomGenerationStage("北门标记");var plan=RoomChainRun.Room;LogSystem("远征种子 "+runSeed+" · "+RoomTactics.Name(plan.Objective));DungeonWave=plan.Index+1;wavePopulation=Mathf.Max(1,plan.EnemyCount);objectiveHealedThisWave=false;
+   RoomGenerationStage("北门标记");var plan=RoomChainRun.Room;DungeonWave=plan.Index+1;wavePopulation=Mathf.Max(1,plan.EnemyCount);objectiveHealedThisWave=false;
    roomExitMarker=WorldBuilder.MakeRoomExitPortal(world.transform,DungeonPoint(new Vector3(0,0,14)));roomExitMarker.name="Locked room gate";roomExitMarker.transform.SetParent(world.transform,true);roomExitMarker.SetActive(false);
    BuildRoomObjective();if(RoomChainRun.Finished){FinalizeRoomChain();return;}
    if(plan.Index==RoomTactics.EventRoom(runSeed)){RoomGenerationStage("支线晶核");BuildSideEvent();}

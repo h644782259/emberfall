@@ -20,7 +20,7 @@ namespace Emberfall
             string diagnostic="生成失败 · "+roomGenerationStage+" · "+reason+" · 种子 "+runSeed+" / "+location+" / 布局 "+(plan==null?-1:plan.Layout);
             if(error!=null)diagnostic+=" · "+error.GetType().Name;
             RoomChainRun.Fail(RoomFailureReason.GenerationOrPathFailure);
-            LogSystem(diagnostic);
+            LogSystem("副本生成失败，请重试或返回营地。");
             Debug.LogError(diagnostic);
             if(error!=null)Debug.LogException(error);
             FinalizeRoomChain();

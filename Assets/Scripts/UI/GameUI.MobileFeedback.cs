@@ -47,10 +47,6 @@ namespace Emberfall
             string reason=!string.IsNullOrEmpty(rejected)?rejected:targetReason.Length>0?targetReason:
                 state=="缺能"||state=="限疗空"||state=="蓄力"?state:
                 state.Length==0&&window.Window&&!window.Actionable?window.BlockReason:"";
-            if(reason.Length>0&&reason!="冷却"&&reason!="需落地"&&reason!="空中"&&(session.Player==null||!session.Player.IsJumping))
-            {
-                Text(caption,MobileCombatPresentation.SkillRejectionCaption(reason),TouchFont(11),gold,true,false,TextAnchor.MiddleCenter);
-            }
             if(state=="蓄力")
             {
                 var charge=session.Player.GetComponent<SkillChargeController>();
